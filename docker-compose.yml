@@ -1,0 +1,16 @@
+# Production-like local infra (optional). Local dev works with SQLite out of the box.
+# To use Postgres: set DATABASE_PROVIDER-compatible schema (see apps/api/README section in root README).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: companio
+      POSTGRES_PASSWORD: companio
+      POSTGRES_DB: companio
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+volumes:
+  pgdata: {}

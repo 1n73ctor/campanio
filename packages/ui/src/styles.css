@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-paper text-ink font-sans antialiased; }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; }
+  :focus-visible { outline: 3px solid #7B5CF0; outline-offset: 2px; }
+  ::selection { background: #C6F432; }
+}
+
+@layer components {
+  .brutal { @apply border-3 border-ink shadow-brutal; }
+  .brutal-press { @apply transition-[transform,box-shadow] duration-100 hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-brutal-sm; }
+  .container-x { @apply mx-auto w-full max-w-6xl px-4 sm:px-6; }
+  .dots { background-image: radial-gradient(#14141422 1.2px, transparent 1.2px); background-size: 18px 18px; }
+}

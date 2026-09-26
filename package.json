@@ -1,0 +1,26 @@
+{
+  "name": "companio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Companio — platonic companion booking platform: API + website + admin (monorepo)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @companio/types",
+    "setup": "npm run build:packages && npm run db:setup -w @companio/api",
+    "dev:api": "npm run dev -w @companio/api",
+    "dev:web": "npm run dev -w @companio/web",
+    "dev:admin": "npm run dev -w @companio/admin",
+    "dev": "npm run build:packages && concurrently -n api,web,admin -c magenta,green,cyan \"npm:dev:api\" \"npm:dev:web\" \"npm:dev:admin\"",
+    "build": "npm run build:packages && npm run build -w @companio/api && npm run build -w @companio/web && npm run build -w @companio/admin",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

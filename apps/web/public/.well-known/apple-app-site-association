@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.app.companio"],
+        "components": [
+          { "/": "/companions/*" },
+          { "/": "/bookings/*" },
+          { "/": "/explore/*" }
+        ]
+      }
+    ]
+  }
+}

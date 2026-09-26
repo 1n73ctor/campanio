@@ -1,0 +1,373 @@
+// Companio data model.
+// Local dev uses SQLite so the project runs with zero infra. For production switch
+// `provider` to "postgresql" and point DATABASE_URL at Postgres (see docker-compose.yml).
+// Enum-like fields are Strings; the allowed values live in @companio/types (enums.ts).
+// All money columns are integer rupees.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  phone              String?   @unique
+  email              String?   @unique
+  passwordHash       String?
+  name               String?
+  dob                DateTime?
+  gender             String?
+  city               String?
+  bio                String?
+  avatarUrl          String?
+  role               String    @default("USER")
+  status             String    @default("ACTIVE")
+  statusReason       String?
+  onboarded          Boolean   @default(false)
+  guidelinesAccepted DateTime?
+  warnings           Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  companion         CompanionProfile?
+  wallet            Wallet?
+  bookings          Booking[]         @relation("BookingUser")
+  companionBookings Booking[]         @relation("BookingCompanion")
+  messages          Message[]
+  reviewsWritten    Review[]          @relation("ReviewAuthor")
+  reviewsReceived   Review[]          @relation("ReviewTarget")
+  reportsMade       Report[]          @relation("ReportReporter")
+  reportsAgainst    Report[]          @relation("ReportTarget")
+  blocks            Block[]           @relation("Blocker")
+  blockedBy         Block[]           @relation("Blocked")
+  kycSubmissions    KycSubmission[]
+  payouts           Payout[]
+  notifications     Notification[]
+  sosAlerts         SosAlert[]
+  disputes          Dispute[]
+  payments          Payment[]
+  auditLogs         AuditLog[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model CompanionProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline          String
+  about             String
+  hourlyRate        Int
+  /// comma-separated category slugs
+  categories        String
+  /// comma-separated languages
+  languages         String
+  city              String
+  /// JSON array of photo URLs
+  photos            String   @default("[]")
+  /// JSON weekly availability { mon: [{from,to}], ... }
+  availability      String   @default("{}")
+  kycStatus         String   @default("NOT_SUBMITTED")
+  isListed          Boolean  @default(false)
+  ratingAvg         Float    @default(0)
+  ratingCount       Int      @default(0)
+  completedBookings Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([city])
+  @@index([isListed, city])
+}
+
+model KycSubmission {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idType     String
+  idLast4    String
+  idDocPath  String
+  selfiePath String
+  status     String    @default("PENDING")
+  reviewNote String?
+  reviewerId String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status])
+}
+
+model Booking {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation("BookingUser", fields: [userId], references: [id])
+  companionUserId String
+  companion       User      @relation("BookingCompanion", fields: [companionUserId], references: [id])
+  category        String
+  startAt         DateTime
+  endAt           DateTime
+  hours           Int
+  meetingPoint    String
+  note            String?
+  status          String    @default("PENDING_PAYMENT")
+  hourlyRate      Int
+  subtotal        Int
+  connectionFee   Int
+  gst             Int
+  total           Int
+  commission      Int
+  companionPayout Int
+  startCode       String
+  cancelReason    String?
+  cancelledBy     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  paidAt          DateTime?
+  acceptedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+
+  escrow    Escrow?
+  payments  Payment[]
+  messages  Message[]
+  review    Review?
+  dispute   Dispute?
+  sosAlerts SosAlert[]
+  locations LiveLocation[]
+  reports   Report[]
+
+  @@index([userId, status])
+  @@index([companionUserId, status])
+  @@index([status, startAt])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  bookingId         String
+  booking           Booking  @relation(fields: [bookingId], references: [id])
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  provider          String
+  providerOrderId   String   @unique
+  providerPaymentId String?
+  amount            Int
+  walletAmount      Int      @default(0)
+  status            String   @default("CREATED")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Escrow {
+  id         String    @id @default(cuid())
+  bookingId  String    @unique
+  booking    Booking   @relation(fields: [bookingId], references: [id])
+  amount     Int
+  refunded   Int       @default(0)
+  released   Int       @default(0)
+  /// platform revenue retained (connection fee + GST + commission)
+  retained   Int       @default(0)
+  status     String    @default("HELD")
+  heldAt     DateTime  @default(now())
+  settledAt  DateTime?
+}
+
+model Wallet {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Int         @default(0)
+  updatedAt DateTime    @updatedAt
+  txns      WalletTxn[]
+}
+
+model WalletTxn {
+  id           String   @id @default(cuid())
+  walletId     String
+  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type         String
+  amount       Int
+  reason       String
+  refType      String?
+  refId        String?
+  balanceAfter Int
+  createdAt    DateTime @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+model Payout {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  amount      Int
+  upiId       String
+  status      String    @default("REQUESTED")
+  reference   String?
+  note        String?
+  processedBy String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([status])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  authorId  String
+  author    User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  targetId  String
+  target    User     @relation("ReviewTarget", fields: [targetId], references: [id])
+  rating    Int
+  comment   String?
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([targetId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  body      String
+  flagged   Boolean  @default(false)
+  flagReason String?
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  reports Report[]
+
+  @@index([bookingId, createdAt])
+  @@index([flagged])
+}
+
+model Report {
+  id           String   @id @default(cuid())
+  reporterId   String
+  reporter     User     @relation("ReportReporter", fields: [reporterId], references: [id])
+  targetUserId String
+  target       User     @relation("ReportTarget", fields: [targetUserId], references: [id])
+  bookingId    String?
+  booking      Booking? @relation(fields: [bookingId], references: [id])
+  messageId    String?
+  message      Message? @relation(fields: [messageId], references: [id])
+  reason       String
+  details      String?
+  status       String   @default("OPEN")
+  action       String?
+  resolution   String?
+  handledById  String?
+  createdAt    DateTime @default(now())
+  handledAt    DateTime?
+
+  @@index([status])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Dispute {
+  id             String    @id @default(cuid())
+  bookingId      String    @unique
+  booking        Booking   @relation(fields: [bookingId], references: [id])
+  raisedById     String
+  raisedBy       User      @relation(fields: [raisedById], references: [id])
+  reason         String
+  details        String?
+  /// booking status before the dispute froze it
+  previousStatus String
+  status         String    @default("OPEN")
+  outcome        String?
+  refundAmount   Int?
+  resolutionNote String?
+  resolvedById   String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+}
+
+model SosAlert {
+  id         String    @id @default(cuid())
+  bookingId  String
+  booking    Booking   @relation(fields: [bookingId], references: [id])
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  lat        Float?
+  lng        Float?
+  status     String    @default("ACTIVE")
+  note       String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+}
+
+model LiveLocation {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  userId    String
+  lat       Float
+  lng       Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookingId, userId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  meta       String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

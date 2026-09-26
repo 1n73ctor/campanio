@@ -1,0 +1,65 @@
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { CATEGORIES, CITIES, GENDERS, ID_TYPES, LANGUAGES } from '@companio/types';
+
+const CAT = CATEGORIES.map((c) => c.slug);
+const CITY = CITIES.map((c) => c.slug);
+
+export class SearchDto {
+  @IsOptional() @IsIn(CAT) category?: string;
+  @IsOptional() @IsIn(CITY) city?: string;
+  @IsOptional() @IsString() @MaxLength(80) q?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) minPrice?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) maxPrice?: number;
+  @IsOptional() @IsIn(GENDERS) gender?: string;
+  @IsOptional() @IsIn(LANGUAGES) language?: string;
+  @IsOptional() @IsIn(['recommended', 'rating', 'price_asc', 'price_desc', 'newest']) sort?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(48) pageSize?: number;
+}
+
+export class ApplyDto {
+  @IsString() @Length(8, 90) headline: string;
+  @IsString() @Length(40, 1500) about: string;
+  @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate: number;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CAT, { each: true }) categories: string[];
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages: string[];
+  @IsIn(CITY) city: string;
+}
+
+export class UpdateProfileDto {
+  @IsOptional() @IsString() @Length(8, 90) headline?: string;
+  @IsOptional() @IsString() @Length(40, 1500) about?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate?: number;
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CAT, { each: true }) categories?: string[];
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages?: string[];
+  @IsOptional() @IsIn(CITY) city?: string;
+}
+
+export class AvailabilityDto {
+  @IsObject() availability: Record<string, { from: string; to: string }[]>;
+}
+
+export class ListingDto {
+  @IsBoolean() listed: boolean;
+}
+
+export class KycDto {
+  @IsIn(ID_TYPES) idType: string;
+  @IsString() @Matches(/^[A-Za-z0-9]{4}$/, { message: 'Enter the last 4 characters of your ID' }) idLast4: string;
+}

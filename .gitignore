@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+*.tsbuildinfo
+.env
+.env.local
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+.DS_Store
+next-env.d.ts
