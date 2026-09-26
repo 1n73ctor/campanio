@@ -47,7 +47,7 @@ Payments use a **mock gateway** by default, which shows a fake UPI/card sheet.
 
 **Website (acquisition + full booking flow)**
 - Home, Explore (search, filters, sort, pagination), companion profiles with reviews and availability.
-- **SEO**: 110 ISR landing pages (10 categories plus 10 categories × 10 cities) at `/explore/<category>/<city>`,
+- **SEO**: ISR landing pages for every category × city (100+ cities; the 10 featured cities are pre-built, the rest render on first visit) at `/explore/<category>/<city>`,
   each with unique copy, FAQs and JSON-LD (FAQPage, BreadcrumbList, ItemList). There is also a sitemap, robots, a canonical URL on every page, and a generated OG image.
 - Phone OTP login and onboarding (DOB must be 18+, platonic guidelines must be accepted).
 - Booking flow:

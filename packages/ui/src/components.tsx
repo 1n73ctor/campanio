@@ -240,9 +240,17 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn('relative h-8 w-14 rounded-full border-3 border-ink transition disabled:opacity-50', checked ? 'bg-lime' : 'bg-white')}
+      className={cn(
+        // shrink-0: rows put long text beside the switch, which would otherwise squash it into a circle
+        'inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full border-3 border-ink px-[3px] transition-colors focus-visible:outline-none focus-visible:shadow-brutal-sm disabled:cursor-not-allowed disabled:opacity-50',
+        checked ? 'bg-lime' : 'bg-white',
+      )}
     >
-      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full border-2 border-ink bg-ink transition-all', checked ? 'left-[26px]' : 'left-0.5 bg-white')} />
+      {/* 50px inner width − 6px padding − 20px knob = 24px travel */}
+      <span
+        aria-hidden
+        className={cn('h-5 w-5 rounded-full border-2 border-ink transition-transform motion-reduce:transition-none', checked ? 'translate-x-6 bg-ink' : 'translate-x-0 bg-white')}
+      />
     </button>
   );
 }

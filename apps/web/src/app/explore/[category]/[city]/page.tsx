@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CATEGORIES, CITIES, categoryBySlug, cityBySlug } from '@companio/types';
+import { CATEGORIES, FEATURED_CITIES, categoryBySlug, cityBySlug } from '@companio/types';
 import { Landing } from '@/components/landing';
 import { landingCopy } from '@/lib/seo';
 import { serverApi, safe } from '@/lib/server-api';
 
 /** One page per category × city (ISR). This is the SEO acquisition engine. */
 export const revalidate = 600;
-export const dynamicParams = false;
-export const generateStaticParams = () => CATEGORIES.flatMap((c) => CITIES.map((city) => ({ category: c.slug, city: city.slug })));
+// featured cities are pre-rendered at build; the rest render on first visit and are then cached (unknown slugs 404 below)
+export const dynamicParams = true;
+export const generateStaticParams = () => CATEGORIES.flatMap((c) => FEATURED_CITIES.map((city) => ({ category: c.slug, city: city.slug })));
 
 type Params = { category: string; city: string };
 

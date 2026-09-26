@@ -11,8 +11,10 @@ export function PwaRegister() {
   const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if ('serviceWorker' in navigator) {
+      if (process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => {});
+      // in dev, drop any worker left over from a production run on this origin — it would serve stale code
+      else navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
     }
     let dismissed = false;
     try {

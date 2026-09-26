@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { CATEGORIES, CITIES } from '@companio/types';
+import { CATEGORIES, FEATURED_CITIES } from '@companio/types';
 
 const prisma = new PrismaClient();
 const HOUR = 3600_000;
@@ -85,7 +85,7 @@ async function main() {
   // --- companions across every city ---
   let phoneSeq = 9100000000;
   const companions: { userId: string; profileId: string; rate: number; categories: string[]; city: string; name: string }[] = [];
-  for (const city of CITIES) {
+  for (const city of FEATURED_CITIES) {
     const count = city.slug === 'jaipur' || city.slug === 'mumbai' || city.slug === 'delhi' || city.slug === 'bengaluru' ? 6 : 3;
     for (let i = 0; i < count; i++) {
       const female = rand() > 0.45;
@@ -224,7 +224,7 @@ async function main() {
   const reviewers: string[] = [];
   for (let i = 0; i < 12; i++) {
     const u = await prisma.user.create({
-      data: { phone: `+91${8000000000 + i}`, name: `${pick([...FIRST_F, ...FIRST_M])} ${pick(LAST)}`, dob: new Date('1998-01-01'), city: pick(CITIES).slug, onboarded: true, guidelinesAccepted: new Date(), wallet: { create: {} }, createdAt: new Date(Date.now() - Math.floor(rand() * 13) * DAY) },
+      data: { phone: `+91${8000000000 + i}`, name: `${pick([...FIRST_F, ...FIRST_M])} ${pick(LAST)}`, dob: new Date('1998-01-01'), city: pick(FEATURED_CITIES).slug, onboarded: true, guidelinesAccepted: new Date(), wallet: { create: {} }, createdAt: new Date(Date.now() - Math.floor(rand() * 13) * DAY) },
     });
     reviewers.push(u.id);
   }

@@ -16,6 +16,9 @@ const NAV = [
   { href: '/become-a-companion', label: 'Become a companion' },
 ];
 
+/** Fired after notifications are marked read elsewhere, so the bell badge refreshes. */
+export const NOTIFICATIONS_CHANGED = 'companio:notifications-changed';
+
 export function SiteHeader() {
   const { user, ready, api, signOut } = useAuth();
   const pathname = usePathname();
@@ -31,7 +34,10 @@ export function SiteHeader() {
 
   useEffect(() => {
     if (!user) return;
-    api.notifications.list().then((r) => setUnread(r.unread)).catch(() => {});
+    const refresh = () => api.notifications.list().then((r) => setUnread(r.unread)).catch(() => {});
+    refresh();
+    window.addEventListener(NOTIFICATIONS_CHANGED, refresh);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED, refresh);
   }, [user, api, pathname]);
 
   useRealtime({

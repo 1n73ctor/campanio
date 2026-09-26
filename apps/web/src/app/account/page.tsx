@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CITIES } from '@companio/types';
-import { Avatar, Button, Card, Field, Input, Modal, Select, Textarea } from '@companio/ui';
+import { Avatar, Button, Card, Field, Input, Modal, Textarea } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
+import { CityPicker } from '@/components/city-picker';
 import { useToast } from '@/components/toast';
 import { errMsg, fmtDate } from '@/lib/format';
 
@@ -81,13 +81,7 @@ export default function AccountPage() {
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} />
         </Field>
         <Field label="City">
-          <Select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
-            {CITIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <CityPicker value={form.city} onChange={(city) => setForm({ ...form, city })} />
         </Field>
         <Field label="Bio">
           <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={500} />

@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { CATEGORIES, CITIES } from '@companio/types';
+import { CATEGORIES } from '@companio/types';
 import { Button, Select } from '@companio/ui';
+import { CityPicker } from '@/components/city-picker';
 
 export function SearchBar({ defaultCategory = '', defaultCity = '' }: { defaultCategory?: string; defaultCity?: string }) {
   const router = useRouter();
@@ -31,14 +32,7 @@ export function SearchBar({ defaultCategory = '', defaultCity = '' }: { defaultC
         ))}
       </Select>
       <div className="hidden w-[3px] bg-ink/10 sm:block" />
-      <Select aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} className="border-0 sm:flex-1">
-        <option value="">Any city</option>
-        {CITIES.map((c) => (
-          <option key={c.slug} value={c.slug}>
-            📍 {c.name}
-          </option>
-        ))}
-      </Select>
+      <CityPicker aria-label="City" value={city} onChange={setCity} anyLabel="Any city" className="sm:flex-1" />
       <Button type="submit" size="md" className="sm:w-40">
         Find company →
       </Button>

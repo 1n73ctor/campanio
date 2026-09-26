@@ -1,6 +1,8 @@
 /* Companio service worker: offline shell + network-first pages, cache-first static assets, web push. */
-const VERSION = 'companio-v1';
+const VERSION = 'companio-v2';
 const SHELL = ['/', '/explore', '/offline'];
+// only content-hashed files are immutable; dev chunks (page.js, webpack.js…) keep the same URL across edits
+const HASHED = /(^|[-.\/])[0-9a-f]{8,}\.[a-z0-9]+$/i;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL).catch(() => {})));
@@ -17,7 +19,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // never cache API calls
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/pwa-icon/')) {
+  if ((url.pathname.startsWith('/_next/static/') && HASHED.test(url.pathname)) || url.pathname.startsWith('/pwa-icon/')) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res; })));
     return;
   }

@@ -1,7 +1,8 @@
 'use client';
 
-import { CATEGORIES, CITIES, LANGUAGES, type ApplyCompanionInput } from '@companio/types';
-import { Chip, Field, Input, Select, Textarea } from '@companio/ui';
+import { CATEGORIES, LANGUAGES, type ApplyCompanionInput } from '@companio/types';
+import { Chip, Field, Input, Textarea } from '@companio/ui';
+import { CityPicker } from '@/components/city-picker';
 
 export function CompanionProfileFields({ value, onChange }: { value: ApplyCompanionInput; onChange: (v: ApplyCompanionInput) => void }) {
   const toggle = (key: 'categories' | 'languages', item: string, max: number) => {
@@ -37,14 +38,7 @@ export function CompanionProfileFields({ value, onChange }: { value: ApplyCompan
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="City">
-          <Select value={value.city} onChange={(e) => onChange({ ...value, city: e.target.value })}>
-            <option value="">Choose</option>
-            {CITIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <CityPicker value={value.city} onChange={(city) => onChange({ ...value, city })} />
         </Field>
         <Field label="Hourly rate (₹)" hint="₹199 – ₹10,000. You keep 85%.">
           <Input type="number" min={199} max={10000} step={50} value={value.hourlyRate} onChange={(e) => onChange({ ...value, hourlyRate: Number(e.target.value) })} />

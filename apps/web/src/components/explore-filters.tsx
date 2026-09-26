@@ -2,8 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { CATEGORIES, CITIES, GENDERS, LANGUAGES, humanize } from '@companio/types';
+import { CATEGORIES, GENDERS, LANGUAGES, humanize } from '@companio/types';
 import { Button, Chip, Input, Select } from '@companio/ui';
+import { CityPicker } from '@/components/city-picker';
 
 /**
  * On /explore filters update the URL in place. On static SEO landing pages (`preset` given) they hand off to
@@ -51,14 +52,7 @@ export function ExploreFilters({ lockCategory, lockCity, preset }: { lockCategor
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {!lockCity && (
-          <Select aria-label="City" value={sp.get('city') ?? ''} onChange={(e) => set('city', e.target.value || null)}>
-            <option value="">All cities</option>
-            {CITIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <CityPicker aria-label="City" value={sp.get('city') ?? ''} onChange={(city) => set('city', city || null)} anyLabel="All cities" />
         )}
         <Select aria-label="Max price" value={sp.get('maxPrice') ?? ''} onChange={(e) => set('maxPrice', e.target.value || null)}>
           <option value="">Any price</option>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CATEGORIES, CITIES } from '@companio/types';
+import { CATEGORIES, CITIES, POPULAR_CITIES } from '@companio/types';
 import { Avatar, Badge, Card, buttonClass, cn, toneSolid } from '@companio/ui';
 import { CompanionCard } from '@/components/companion-card';
 import { SearchBar } from '@/components/search-bar';
@@ -49,7 +49,7 @@ export default async function Home() {
         }}
       />
       {/* HERO */}
-      <section className="dots relative overflow-hidden border-b-3 border-ink">
+      <section className="dots relative overflow-x-clip border-b-3 border-ink">
         <div className="container-x grid items-center gap-12 py-14 lg:grid-cols-[1.15fr_1fr] lg:py-20">
           <div>
             <Badge tone="lime" className="mb-5 -rotate-2 px-3 py-1 text-sm">
@@ -201,13 +201,16 @@ export default async function Home() {
 
       {/* CITIES */}
       <section className="container-x py-16">
-        <h2 className="mb-6 text-3xl font-extrabold sm:text-4xl">Now in 10 cities</h2>
-        <div className="flex flex-wrap gap-3">
-          {CITIES.map((c) => (
+        <h2 className="mb-6 text-3xl font-extrabold sm:text-4xl">Popular cities</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          {POPULAR_CITIES.map((c) => (
             <Link key={c.slug} href={`/explore?city=${c.slug}`} className="brutal brutal-press rounded-full bg-white px-5 py-2.5 font-display font-bold">
               📍 {c.name}
             </Link>
           ))}
+          <Link href="/explore" className="px-2 font-display font-bold underline">
+            + {CITIES.length - POPULAR_CITIES.length} more cities
+          </Link>
         </div>
       </section>
 

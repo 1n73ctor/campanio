@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { CATEGORIES, CITIES, type Category, type City, type CompanionCardDto, type Paginated } from '@companio/types';
+import { CATEGORIES, CITIES, POPULAR_CITIES, type Category, type City, type CompanionCardDto, type Paginated } from '@companio/types';
 import { Badge, toneSolid, cn } from '@companio/ui';
 import { ExploreFilters } from './explore-filters';
 import { Faq, JsonLd } from './misc';
@@ -71,7 +71,7 @@ export function Landing({ cat, city, data }: { cat: Category; city?: City; data:
                         {c.emoji} {c.name}
                       </Link>
                     ))
-                  : CITIES.map((c) => (
+                  : POPULAR_CITIES.map((c) => (
                       <Link key={c.slug} href={`/explore/${cat.slug}/${c.slug}`} className="rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-semibold hover:bg-paper-deep">
                         {cat.name} in {c.name}
                       </Link>
@@ -82,7 +82,7 @@ export function Landing({ cat, city, data }: { cat: Category; city?: City; data:
               <div>
                 <h2 className="mb-3 text-lg font-extrabold">{cat.name} in other cities</h2>
                 <div className="flex flex-wrap gap-2">
-                  {CITIES.filter((c) => c.slug !== city.slug).map((c) => (
+                  {nearbyCities(city).map((c) => (
                     <Link key={c.slug} href={`/explore/${cat.slug}/${c.slug}`} className="rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-semibold hover:bg-paper-deep">
                       {c.name}
                     </Link>
@@ -114,4 +114,10 @@ export function Landing({ cat, city, data }: { cat: Category; city?: City; data:
       />
     </>
   );
+}
+
+/** Same-state cities first, then popular ones — keeps internal links relevant without listing every city. */
+function nearbyCities(city: City, limit = 12) {
+  const pool = [...CITIES.filter((c) => c.state === city.state), ...POPULAR_CITIES];
+  return pool.filter((c, i) => c.slug !== city.slug && pool.findIndex((x) => x.slug === c.slug) === i).slice(0, limit);
 }

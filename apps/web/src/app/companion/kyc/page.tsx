@@ -30,32 +30,53 @@ export default function KycPage() {
 
   useEffect(() => () => streamRef.current?.getTracks().forEach((t) => t.stop()), []);
 
+  // attach the stream once the <video> is actually mounted
+  useEffect(() => {
+    if (camOn && videoRef.current && streamRef.current) videoRef.current.srcObject = streamRef.current;
+  }, [camOn]);
+
   if (!user) return <FullLoader />;
   const status = user.companion?.kycStatus;
 
   const startCam = async () => {
+    // getUserMedia only exists on secure origins (https:// or localhost)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast('Camera needs a secure connection — open this page over https:// (or on localhost)', 'error');
+      return;
+    }
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 720 } });
-      streamRef.current = s;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 } } });
       setCamOn(true);
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = s;
-      });
-    } catch {
-      toast('Camera permission is needed for the live selfie', 'error');
+    } catch (e) {
+      const name = (e as DOMException)?.name;
+      toast(
+        name === 'NotFoundError' || name === 'OverconstrainedError'
+          ? 'No camera found on this device'
+          : name === 'NotReadableError'
+            ? 'Your camera is in use by another app — close it and try again'
+            : 'Camera permission is needed for the live selfie — allow it in your browser’s site settings',
+        'error',
+      );
     }
   };
 
   const capture = () => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || !v.videoWidth) {
+      toast('Camera is still starting — try again in a second', 'error');
+      return;
+    }
     const c = document.createElement('canvas');
     c.width = v.videoWidth;
     c.height = v.videoHeight;
     c.getContext('2d')!.drawImage(v, 0, 0);
     c.toBlob(
       (b) => {
-        if (!b) return;
+        if (!b) {
+          toast('Couldn’t capture the photo — please try again', 'error');
+          return;
+        }
         setSelfie(b);
         setSelfieUrl(URL.createObjectURL(b));
         streamRef.current?.getTracks().forEach((t) => t.stop());

@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CITIES, GENDERS, MIN_AGE, ageFromDob, humanize, type Gender } from '@companio/types';
+import { GENDERS, MIN_AGE, ageFromDob, humanize, type Gender } from '@companio/types';
 import { Button, Card, Checkbox, Field, Input, Select, Textarea } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader } from '@/components/misc';
+import { CityPicker } from '@/components/city-picker';
 import { errMsg } from '@/lib/format';
 
 function OnboardingInner() {
@@ -65,14 +66,7 @@ function OnboardingInner() {
           </Field>
         </div>
         <Field label="City">
-          <Select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required>
-            <option value="">Choose your city</option>
-            {CITIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <CityPicker value={form.city} onChange={(city) => setForm({ ...form, city })} placeholder="Search your city…" required />
         </Field>
         <Field label="A line about you (optional)">
           <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={500} placeholder="New in town, love street food and indie music…" />
