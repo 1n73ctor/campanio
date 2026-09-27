@@ -30,5 +30,8 @@ export function productionProblems(): string[] {
   if (config.paymentProvider === 'razorpay' && (!config.razorpay.keyId || !config.razorpay.keySecret || !config.razorpay.webhookSecret))
     p.push('PAYMENT_PROVIDER=razorpay needs RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET');
   if (config.corsOrigins.some((o) => o.includes('localhost'))) p.push('CORS_ORIGINS still lists localhost — set it to your live website and admin URLs');
+  // upload links (KYC documents, photos) are built from PUBLIC_API_URL, and photo links are saved in the database
+  if (/localhost|127\.0\.0\.1/.test(config.publicApiUrl)) p.push('PUBLIC_API_URL points to localhost — set it to this API\'s public https:// address');
+  if (/localhost|127\.0\.0\.1/.test(config.webUrl)) p.push('WEB_URL points to localhost — set it to your website\'s https:// address');
   return p;
 }

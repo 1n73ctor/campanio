@@ -102,6 +102,45 @@ const fieldBase = 'w-full rounded-chunky border-3 border-ink bg-white px-3.5 tex
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
   return <input ref={ref} className={cn(fieldBase, 'h-11', className)} {...rest} />;
 });
+type NumberInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
+  value: number;
+  onValueChange: (value: number) => void;
+  /** allow a decimal point (e.g. percentages) */
+  decimals?: boolean;
+};
+
+/**
+ * Number field that behaves while typing: it can be cleared (reports 0, shows empty), never shows "05", and only
+ * accepts digits (plus one "." with `decimals`). A text input with a numeric keyboard, because <input type="number">
+ * keeps leading zeros and changes value on mouse-wheel scroll.
+ */
+export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(function NumberInput({ value, onValueChange, decimals, className, ...rest }, ref) {
+  const [text, setText] = React.useState(() => String(value));
+  // follow outside changes (e.g. settings reloaded), but keep what's typed when it already means the same number
+  React.useEffect(() => {
+    setText((t) => ((t === '' ? value === 0 : Number(t) === value) ? t : String(value)));
+  }, [value]);
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode={decimals ? 'decimal' : 'numeric'}
+      autoComplete="off"
+      className={cn(fieldBase, 'h-11 tabular-nums', className)}
+      value={text}
+      onChange={(e) => {
+        let raw = e.target.value.replace(decimals ? /[^\d.]/g : /\D/g, '');
+        if (decimals) raw = raw.replace(/(\..*)\./g, '$1'); // keep only the first "."
+        raw = raw.replace(/^0+(?=\d)/, ''); // "05" → "5" (but "0.5" stays)
+        setText(raw);
+        const n = raw === '' || raw === '.' ? 0 : Number(raw);
+        if (Number.isFinite(n)) onValueChange(n);
+      }}
+      {...rest}
+    />
+  );
+});
+
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...rest }, ref) {
   return <textarea ref={ref} className={cn(fieldBase, 'min-h-[96px] py-2.5', className)} {...rest} />;
 });

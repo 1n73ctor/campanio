@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { COMPANION_FEE_KEYS, companionFeeFor, type Gender, type PlatformSettings } from '@companio/types';
-import { Button, Callout, Card, Field, Input, Toggle } from '@companio/ui';
+import { Button, Callout, Card, Field, NumberInput, Toggle } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
@@ -36,6 +36,22 @@ export default function SettingsPage() {
 
   if (error) return <ErrorBox error={error} />;
   if (!form) return <Loading />;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const saved = await api.admin.updateSettings(form);
+      // an API server running older code silently drops settings it doesn't know (like the registration fee)
+      if (!('companionFeeMaleOn' in saved)) {
+        toast('Saved, but your API server is out of date and ignored the registration fee settings. Deploy the latest API (./deploy/deploy.sh).', 'error');
+      } else toast('Settings saved');
+      reload();
+    } catch (e) {
+      toast(errMsg(e), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
   const exampleSubtotal = 499 * 2;
   const gst = Math.round((form.connectionFee * form.gstPct) / 100);
   const commission = Math.round((exampleSubtotal * form.commissionPct) / 100);
@@ -47,25 +63,11 @@ export default function SettingsPage() {
         <Card className="grid gap-4 p-6 sm:grid-cols-2">
           {FIELDS.map((f) => (
             <Field key={f.key} label={`${f.label} (${f.suffix})`} hint={f.hint}>
-              <Input type="number" min={0} step={f.key.endsWith('Pct') ? 0.5 : 1} value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: Number(e.target.value) })} />
+              <NumberInput decimals={f.key.endsWith('Pct')} value={form[f.key]} onValueChange={(n) => setForm((x) => (x ? { ...x, [f.key]: n } : x))} />
             </Field>
           ))}
           <div className="sm:col-span-2">
-            <Button
-              loading={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await api.admin.updateSettings(form);
-                  toast('Settings saved');
-                  reload();
-                } catch (e) {
-                  toast(errMsg(e), 'error');
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
+            <Button loading={busy} onClick={save}>
               Save settings
             </Button>
           </div>
@@ -79,7 +81,7 @@ export default function SettingsPage() {
           <h2 className="font-display text-lg font-extrabold">Companion registration fee</h2>
           <p className="mt-1 text-sm text-ink-soft">
             One-time fee to apply as a companion, set per gender. GST ({form.gstPct}%) is added on top. When it’s off, applicants of that gender never see a payment
-            screen. Companions who applied before a fee was switched on aren’t charged. Save to apply.
+            screen. Companions who applied before a fee was switched on aren’t charged.
           </p>
           <div className="mt-4 divide-y-2 divide-ink/10">
             {FEE_GENDERS.map(({ gender, label }) => {
@@ -91,14 +93,11 @@ export default function SettingsPage() {
                 <div key={gender} className="grid items-center gap-3 py-3 sm:grid-cols-[1fr_auto_160px_1fr]">
                   <span className="font-bold">{label}</span>
                   <Toggle checked={on} onChange={(v) => setForm({ ...form, [onKey]: v ? 1 : 0 })} label={`Charge ${label.toLowerCase()} applicants`} />
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
+                  <NumberInput
                     aria-label={`${label} fee (₹, before GST)`}
                     value={form[key]}
                     disabled={!on}
-                    onChange={(e) => setForm({ ...form, [key]: Math.max(0, Math.round(Number(e.target.value))) })}
+                    onValueChange={(n) => setForm((x) => (x ? { ...x, [key]: Math.round(n) } : x))}
                   />
                   <span className="text-sm text-ink-soft">
                     {!on ? 'No fee — no payment screen' : preview.required ? <>Applicant pays <b className="text-ink">{formatINR(preview.total)}</b> ({formatINR(preview.amount)} + {formatINR(preview.gst)} GST)</> : 'Enter an amount above ₹0'}
@@ -107,6 +106,9 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          <Button className="mt-4" loading={busy} onClick={save}>
+            Save fee settings
+          </Button>
         </Card>
       </div>
     </>

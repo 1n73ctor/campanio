@@ -1,7 +1,7 @@
 'use client';
 
 import { CATEGORIES, LANGUAGES, type ApplyCompanionInput } from '@companio/types';
-import { Chip, Field, Input, Textarea } from '@companio/ui';
+import { Chip, Field, Input, NumberInput, Textarea } from '@companio/ui';
 import { CityPicker } from '@/components/city-picker';
 
 export function CompanionProfileFields({ value, onChange }: { value: ApplyCompanionInput; onChange: (v: ApplyCompanionInput) => void }) {
@@ -41,7 +41,7 @@ export function CompanionProfileFields({ value, onChange }: { value: ApplyCompan
           <CityPicker value={value.city} onChange={(city) => onChange({ ...value, city })} />
         </Field>
         <Field label="Hourly rate (₹)" hint="₹199 – ₹10,000. You keep 85%.">
-          <Input type="number" min={199} max={10000} step={50} value={value.hourlyRate} onChange={(e) => onChange({ ...value, hourlyRate: Number(e.target.value) })} />
+          <NumberInput value={value.hourlyRate} onValueChange={(hourlyRate) => onChange({ ...value, hourlyRate })} />
         </Field>
       </div>
     </div>
