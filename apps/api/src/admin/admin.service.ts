@@ -170,7 +170,7 @@ export class AdminService {
     const where = { status: q.status ?? 'PENDING' };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.kycSubmission.count({ where }),
-      this.prisma.kycSubmission.findMany({ where, include: { user: { include: { companion: true } } }, orderBy: { createdAt: 'asc' }, skip, take }),
+      this.prisma.kycSubmission.findMany({ where, include: { user: { include: { companion: true } } }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return {
       items: rows.map((k) => ({ ...toKycDto(k), fee: toFeeAdminDto(k.user), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
@@ -267,7 +267,7 @@ export class AdminService {
     const where = { status: q.status ?? 'OPEN' };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.dispute.count({ where }),
-      this.prisma.dispute.findMany({ where, include: { raisedBy: true, booking: { include: bookingInclude } }, orderBy: { createdAt: 'asc' }, skip, take }),
+      this.prisma.dispute.findMany({ where, include: { raisedBy: true, booking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return { items: rows.map((d) => toDisputeDto(d, admin)), total, page, pageSize };
   }
@@ -320,7 +320,7 @@ export class AdminService {
     const where = { status: q.status ?? 'OPEN' };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.report.count({ where }),
-      this.prisma.report.findMany({ where, include: { reporter: true, target: true, message: true }, orderBy: { createdAt: 'asc' }, skip, take }),
+      this.prisma.report.findMany({ where, include: { reporter: true, target: true, message: true }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return { items: rows.map(toReportDto), total, page, pageSize };
   }
@@ -410,7 +410,7 @@ export class AdminService {
     const where = { status: q.status ?? 'REQUESTED' };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.payout.count({ where }),
-      this.prisma.payout.findMany({ where, include: { user: true }, orderBy: { createdAt: 'asc' }, skip, take }),
+      this.prisma.payout.findMany({ where, include: { user: true }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return { items: rows.map(toPayoutDto), total, page, pageSize };
   }
