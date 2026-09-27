@@ -30,7 +30,8 @@ async function bootstrap() {
   const log = new Logger('Bootstrap');
   log.log(`API ready on http://localhost:${config.port}  ·  docs: /docs  ·  payments: ${config.paymentProvider}`);
   if (config.otpDevEcho) log.warn('OTP_DEV_ECHO is on — OTP codes are returned in API responses (dev only)');
-  if (process.env.NODE_ENV === 'production' && config.smsProvider === 'console')
-    log.warn('SMS_PROVIDER=console — login codes are only written to this log, so real users cannot sign in. Plug in an SMS provider in src/auth/sms.service.ts');
+  if (config.firebaseProjectId) log.log(`Phone sign-in: Firebase (project ${config.firebaseProjectId})`);
+  else if (process.env.NODE_ENV === 'production' && config.smsProvider === 'console')
+    log.warn('No SMS delivery: set FIREBASE_PROJECT_ID (Firebase phone sign-in) or plug an SMS provider into src/auth/sms.service.ts — otherwise real users cannot sign in');
 }
 void bootstrap();

@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { AdminLoginDto, OtpRequestDto, OtpVerifyDto } from './auth.dto';
+import { AdminLoginDto, FirebaseLoginDto, OtpRequestDto, OtpVerifyDto } from './auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -14,6 +14,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   request(@Body() dto: OtpRequestDto) {
     return this.auth.requestOtp(dto.phone);
+  }
+
+  @Post('firebase')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  firebase(@Body() dto: FirebaseLoginDto) {
+    return this.auth.firebaseLogin(dto.idToken, dto.ref);
   }
 
   @Post('otp/verify')

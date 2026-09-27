@@ -131,6 +131,7 @@ export function createApiClient(opts: ClientOptions) {
     auth: {
       requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
       verifyOtp: (phone: string, code: string, ref?: string) => post<AuthResponse>('/auth/otp/verify', { phone, code, ref }),
+      firebase: (idToken: string, ref?: string) => post<AuthResponse>('/auth/firebase', { idToken, ref }),
       adminLogin: (email: string, password: string) => post<AuthResponse>('/auth/admin/login', { email, password }),
     },
     me: {

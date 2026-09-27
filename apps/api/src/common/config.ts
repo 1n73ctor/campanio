@@ -9,6 +9,8 @@ export const config = {
   webUrl: (process.env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
   otpDevEcho: bool(process.env.OTP_DEV_ECHO) && process.env.NODE_ENV !== 'production',
   smsProvider: process.env.SMS_PROVIDER ?? 'console',
+  /** Firebase project whose phone sign-ins we accept (web sends the SMS through Firebase). Empty = disabled. */
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? '',
   paymentProvider: (process.env.PAYMENT_PROVIDER ?? 'mock') as 'mock' | 'razorpay',
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID ?? '',

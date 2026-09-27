@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Callout, Card, Field, Input, Logo } from '@companio/ui';
@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { captureRef, clearRef, getRef } from '@/lib/referral';
+import { FIREBASE_ENABLED, confirmFirebaseCode, firebaseErrorMessage, sendFirebaseCode } from '@/lib/firebase-phone';
 import { REFERRAL_REWARD, formatINR } from '@companio/types';
 
 function LoginInner() {
@@ -26,6 +27,7 @@ function LoginInner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const recaptchaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (ready && user) router.replace(user.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`);
@@ -41,12 +43,16 @@ function LoginInner() {
     setError(null);
     setBusy(true);
     try {
-      const r = await api.auth.requestOtp(phone);
-      setDevCode(r.devCode ?? null);
+      if (FIREBASE_ENABLED) {
+        await sendFirebaseCode(phone, recaptchaRef.current!);
+      } else {
+        const r = await api.auth.requestOtp(phone);
+        setDevCode(r.devCode ?? null);
+      }
       setStep('code');
       setCooldown(30);
     } catch (e) {
-      setError(errMsg(e));
+      setError(firebaseErrorMessage(e) ?? errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -56,13 +62,15 @@ function LoginInner() {
     setError(null);
     setBusy(true);
     try {
-      const r = await api.auth.verifyOtp(phone, code, getRef());
+      const r = FIREBASE_ENABLED
+        ? await api.auth.firebase(await confirmFirebaseCode(code), getRef())
+        : await api.auth.verifyOtp(phone, code, getRef());
       if (r.isNew) track({ name: 'sign_up' });
       clearRef(); // the code only applies to a brand-new account, so it's spent either way
       signIn(r.token, r.user);
       router.replace(r.user.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`);
     } catch (e) {
-      setError(errMsg(e));
+      setError(firebaseErrorMessage(e) ?? errMsg(e));
       setBusy(false);
     }
   };
@@ -115,6 +123,8 @@ function LoginInner() {
               />
             </Field>
           )}
+          {/* Firebase's invisible reCAPTCHA mounts here */}
+          <div ref={recaptchaRef} />
           {devCode && step === 'code' && (
             <Callout tone="lavender" title="Dev mode">
               Your code is <b className="font-mono text-ink">{devCode}</b> (shown because OTP_DEV_ECHO is on).

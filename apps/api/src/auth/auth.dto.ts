@@ -18,6 +18,18 @@ export class OtpVerifyDto extends OtpRequestDto {
   ref?: string;
 }
 
+export class FirebaseLoginDto {
+  /** Firebase Auth ID token from a completed phone-number sign-in */
+  @IsString()
+  @Length(20, 4096)
+  idToken: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 20)
+  ref?: string;
+}
+
 export class AdminLoginDto {
   @IsEmail()
   email: string;
