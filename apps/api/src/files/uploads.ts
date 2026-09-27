@@ -2,12 +2,13 @@ import { BadRequestException } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { diskStorage } from 'multer';
 import { randomBytes } from 'crypto';
-import { extname, join } from 'path';
+import { extname, join, resolve } from 'path';
 import { mkdirSync } from 'fs';
 import { config } from '../common/config';
 
-export const PUBLIC_DIR = join(process.cwd(), config.uploadDir, 'public');
-export const PRIVATE_DIR = join(process.cwd(), config.uploadDir, 'private');
+// resolve (not join) so an absolute UPLOAD_DIR like /srv/companio-data/uploads is used as-is
+export const PUBLIC_DIR = resolve(process.cwd(), config.uploadDir, 'public');
+export const PRIVATE_DIR = resolve(process.cwd(), config.uploadDir, 'private');
 mkdirSync(PUBLIC_DIR, { recursive: true });
 mkdirSync(PRIVATE_DIR, { recursive: true });
 

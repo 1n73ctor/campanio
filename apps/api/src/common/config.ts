@@ -17,3 +17,16 @@ export const config = {
   },
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
 };
+
+/** Settings that must never reach a public server. Returns human-readable problems; empty = OK. */
+export function productionProblems(): string[] {
+  if (process.env.NODE_ENV !== 'production') return [];
+  const p: string[] = [];
+  if (config.jwtSecret === 'dev-secret-change-me' || config.jwtSecret.length < 32) p.push('JWT_SECRET must be a random string of 32+ characters (openssl rand -hex 48)');
+  if (config.paymentProvider === 'mock' && !['1', 'true', 'yes'].includes((process.env.ALLOW_MOCK_PAYMENTS ?? '').toLowerCase()))
+    p.push('PAYMENT_PROVIDER=mock lets anyone "pay" with the fake gateway — use razorpay (or set ALLOW_MOCK_PAYMENTS=true on a private staging server)');
+  if (config.paymentProvider === 'razorpay' && (!config.razorpay.keyId || !config.razorpay.keySecret || !config.razorpay.webhookSecret))
+    p.push('PAYMENT_PROVIDER=razorpay needs RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET');
+  if (config.corsOrigins.some((o) => o.includes('localhost'))) p.push('CORS_ORIGINS still lists localhost — set it to your live website and admin URLs');
+  return p;
+}

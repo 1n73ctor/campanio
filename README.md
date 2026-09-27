@@ -105,6 +105,22 @@ Payments use a **mock gateway** by default, which shows a fake UPI/card sheet.
 7. **Store rules (for the native app)**: keep the 18+ rating and platonic positioning, and keep report/block and in-app deletion. Booking payments
    use your own gateway, which is allowed because it pays for a real-world service. Digital subscriptions may need IAP.
 
+## Deploying the API to an Ubuntu server
+
+The website and admin run on Netlify; the API and its SQLite database run on one Ubuntu server behind Nginx + HTTPS,
+kept alive by PM2. Everything is in [`deploy/`](deploy/).
+
+1. Point a DNS A record (e.g. `api.yourdomain.com`) at the server, clone the repo there, then run
+   `./deploy/setup-server.sh api.yourdomain.com you@yourdomain.com` once. It installs Node 20, Nginx, PM2 and a firewall,
+   gets an HTTPS certificate, creates `/srv/companio-data` (database, uploads, backups) and `apps/api/.env`, and
+   schedules a daily backup.
+2. Edit `apps/api/.env` (CORS/Netlify URLs, Razorpay keys, SMS provider, admin login), then run `./deploy/deploy.sh --no-pull`
+   and `npm run db:create-admin -w @companio/api`. Don't run the seed on a live server; it inserts demo data.
+3. On Netlify, set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com` for both sites and redeploy.
+
+Updates: `./deploy/deploy.sh` (backs up, pulls, builds, updates the schema, restarts, health-checks).
+In production the API refuses to start with the dev JWT secret, mock payments or localhost CORS origins.
+
 ## Scripts
 
 `npm run dev` · `npm run build` · `npm run typecheck` · `npm run db:setup -w @companio/api` · `npm run db:studio -w @companio/api`
