@@ -80,6 +80,8 @@ export type AdminUserDetail = {
   bookings: BookingDto[];
   reports: ReportDto[];
   kyc: KycSubmissionDto[];
+  /** other accounts with the same phone number (earlier deleted accounts, or a new sign-up after deletion) */
+  linkedAccounts: { id: string; name: string | null; status: string; createdAt: string; deletedAt: string | null }[];
 };
 export type AdminBookingDetail = {
   booking: BookingDto;
@@ -138,13 +140,19 @@ export function createApiClient(opts: ClientOptions) {
       requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
       verifyOtp: (phone: string, code: string, ref?: string) => post<AuthResponse>('/auth/otp/verify', { phone, code, ref }),
       firebase: (idToken: string, ref?: string) => post<AuthResponse>('/auth/firebase', { idToken, ref }),
-      adminLogin: (email: string, password: string) => post<AuthResponse>('/auth/admin/login', { email, password }),
+      /** returns { twoFactorRequired: true } when the admin has 2FA on and no code was given */
+      adminLogin: (email: string, password: string, code?: string) => post<AuthResponse | { twoFactorRequired: true }>('/auth/admin/login', { email, password, code }),
     },
     me: {
       get: () => get<UserDto>('/me'),
       update: (input: UpdateMeInput) => patch<UserDto>('/me', input),
       uploadAvatar: (file: File | Blob) => request<UserDto>('POST', '/me/avatar', form({ file })),
-      deleteAccount: () => del<{ deleted: true }>('/me'),
+      /** account deletion step 1: re-confirm the phone (dev code or Firebase token) → short-lived deletion token */
+      /** signs out every other device; returns a fresh token for this one */
+      logoutOthers: () => post<{ token: string }>('/me/logout-others'),
+      confirmDelete: (proof: { code?: string; idToken?: string }) => post<{ deleteToken: string }>('/me/delete/confirm', proof),
+      /** step 2, after the user's final "yes" */
+      deleteAccount: (deleteToken: string) => post<{ deleted: true }>('/me/delete', { deleteToken }),
       blocks: () => get<{ userId: string; name: string | null; avatarUrl: string | null; createdAt: string }[]>('/me/blocks'),
       block: (userId: string) => post<{ blocked: boolean }>(`/me/blocks/${userId}`),
       unblock: (userId: string) => del<{ blocked: boolean }>(`/me/blocks/${userId}`),
@@ -224,6 +232,10 @@ export function createApiClient(opts: ClientOptions) {
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
       approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),
       rejectKyc: (id: string, note: string, refundFee = false) => post<{ ok: true }>(`/admin/kyc/${id}/reject`, { note, refundFee }),
+      twoFactor: () => get<{ enabled: boolean }>('/admin/2fa'),
+      twoFactorSetup: () => post<{ secret: string; otpauthUrl: string; qrSvg: string }>('/admin/2fa/setup'),
+      twoFactorEnable: (code: string) => post<{ enabled: true }>('/admin/2fa/enable', { code }),
+      twoFactorDisable: (code: string) => post<{ enabled: false }>('/admin/2fa/disable', { code }),
       refundCompanionFee: (userId: string, note?: string) => post<{ ok: true; amount: number }>(`/admin/users/${userId}/refund-companion-fee`, { note }),
       bookings: (q: AdminPage) => get<Paginated<BookingDto>>('/admin/bookings', q),
       booking: (id: string) => get<AdminBookingDetail>(`/admin/bookings/${id}`),

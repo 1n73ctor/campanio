@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@companio/ui';
 
 type Toast = { id: number; text: string; tone: 'ok' | 'error' | 'info' };
@@ -34,3 +34,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export const useToast = () => useContext(Ctx);
+
+/** Shows a one-off message left in sessionStorage by a page that did a full reload (e.g. after deleting an account). */
+export function FlashToast() {
+  const toast = useToast();
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('companio.flash');
+      if (msg) {
+        sessionStorage.removeItem('companio.flash');
+        toast(msg);
+      }
+    } catch {}
+  }, [toast]);
+  return null;
+}

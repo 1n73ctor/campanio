@@ -47,7 +47,7 @@ ENV_FILE="$ROOT/apps/api/.env"
 if [[ -f "$ENV_FILE" ]]; then
   echo "Keeping existing $ENV_FILE"
 else
-  sed -e "s|__JWT_SECRET__|$(openssl rand -hex 48)|" -e "s|__API_DOMAIN__|$API_DOMAIN|g" "$ROOT/deploy/api.env.production" >"$ENV_FILE"
+  sed -e "s|__JWT_SECRET__|$(openssl rand -hex 48)|" -e "s|__KYC_KEY__|$(openssl rand -base64 32)|" -e "s|__API_DOMAIN__|$API_DOMAIN|g" "$ROOT/deploy/api.env.production" >"$ENV_FILE"
   chmod 600 "$ENV_FILE"
   echo "Created $ENV_FILE with a random JWT_SECRET"
 fi

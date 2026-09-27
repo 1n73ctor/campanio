@@ -26,7 +26,7 @@ export default function Privacy() {
           “Cookie settings” in the footer. Invite links store the inviter’s code on your device for 30 days so the referral reward can be applied when you sign up.
         </p>
         <h2>Your rights</h2>
-        <p>Access, correct or delete your data from Account settings or by emailing privacy@companio.app. Deleting your account removes your profile and personal data; we keep financial records for the legally required period.</p>
+        <p>Access, correct or delete your data from Account settings or by emailing privacy@companio.app. Deleting your account (confirmed with a code sent to your phone) hides your profile from everyone immediately and signs you out. For safety and legal reasons we keep a private record of the account — your details, bookings, payments, reports and verification — that only our trust & safety team can access, for as long as needed to handle safety investigations and meet legal obligations. You can later sign up again with the same number as a new account.</p>
         <h2>Security</h2>
         <p>Encryption in transit, access controls, audit logs for admin actions, and signed expiring URLs for sensitive files.</p>
       </Prose>

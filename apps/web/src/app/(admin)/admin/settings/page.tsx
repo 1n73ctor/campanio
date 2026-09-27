@@ -7,6 +7,7 @@ import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { formatINR } from '@/admin/lib/format';
+import { TwoFactorCard } from '@/admin/components/two-factor';
 
 const FEE_GENDERS: { gender: Gender; label: string }[] = [
   { gender: 'MALE', label: 'Male' },
@@ -59,6 +60,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageTitle title="Platform settings" subtitle="Business rules enforced by the API. Changes apply to new bookings immediately and are audit-logged." />
+      <TwoFactorCard />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card className="grid gap-4 p-6 sm:grid-cols-2">
           {FIELDS.map((f) => (

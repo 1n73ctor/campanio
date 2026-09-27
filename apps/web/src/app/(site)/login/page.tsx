@@ -10,6 +10,7 @@ import { track } from '@/lib/analytics';
 import { captureRef, clearRef, getRef } from '@/lib/referral';
 import { FIREBASE_ENABLED, confirmFirebaseCode, firebaseErrorMessage, sendFirebaseCode } from '@/lib/firebase-phone';
 import { REFERRAL_REWARD, formatINR } from '@companio/types';
+import { safeNext } from '@/lib/safe-next';
 
 function LoginInner() {
   const { api, signIn, user, ready } = useAuth();
@@ -19,7 +20,7 @@ function LoginInner() {
     captureRef(window.location.search); // this page's effect runs before the layout's, so capture here too
     setInvited(!!getRef());
   }, []);
-  const next = useSearchParams().get('next') || '/explore';
+  const next = safeNext(useSearchParams().get('next'));
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');

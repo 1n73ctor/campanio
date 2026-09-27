@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -23,7 +23,8 @@ const CITY = CITIES.map((c) => c.slug);
 export class SearchDto {
   @IsOptional() @IsIn(CAT) category?: string;
   @IsOptional() @IsIn(CITY) city?: string;
-  @IsOptional() @IsString() @MaxLength(80) q?: string;
+  // % and _ are LIKE wildcards in the database query — search them as plain text
+  @IsOptional() @IsString() @MaxLength(80) @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[%_\\]/g, ' ').trim() : value)) q?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) minPrice?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) maxPrice?: number;
   @IsOptional() @IsIn(GENDERS) gender?: string;

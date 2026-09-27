@@ -16,6 +16,8 @@ import { PrismaService } from './prisma.service';
 export interface JwtPayload {
   sub: string;
   role: Role;
+  /** session version — must match User.tokenVersion (bumped by "log out of all other devices") */
+  v?: number;
 }
 
 export const ROLES_KEY = 'roles';
@@ -47,6 +49,7 @@ export class AuthGuard implements CanActivate {
     }
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, include: { companion: true } });
     if (!user || user.status === 'DELETED') throw new UnauthorizedException('Account not found');
+    if ((payload.v ?? 0) !== user.tokenVersion) throw new UnauthorizedException('You were signed out. Please sign in again.');
     if (user.status === 'BANNED') throw new ForbiddenException('This account has been banned');
     if (user.status === 'SUSPENDED') throw new ForbiddenException(`This account is suspended${user.statusReason ? `: ${user.statusReason}` : ''}`);
     req.user = user;

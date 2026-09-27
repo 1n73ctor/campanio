@@ -8,12 +8,13 @@ import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader } from '@/components/misc';
 import { CityPicker } from '@/components/city-picker';
 import { errMsg } from '@/lib/format';
+import { safeNext } from '@/lib/safe-next';
 
 function OnboardingInner() {
   const user = useRequireAuth({ allowUnonboarded: true });
   const { api, setUser } = useAuth();
   const router = useRouter();
-  const next = useSearchParams().get('next') || '/explore';
+  const next = safeNext(useSearchParams().get('next'));
   const [form, setForm] = useState({ name: '', dob: '', gender: '' as Gender | '', city: '', bio: '' });
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);

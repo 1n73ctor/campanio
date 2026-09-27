@@ -22,7 +22,8 @@ async function main() {
   await prisma.user.upsert({
     where: { email },
     create: { email, passwordHash, name: 'Admin', role: 'ADMIN', onboarded: true },
-    update: { passwordHash, status: 'ACTIVE' },
+    // also the recovery path for a lost authenticator: clears 2FA, the lockout and every open session
+    update: { passwordHash, status: 'ACTIVE', failedLogins: 0, lockedUntil: null, totpSecret: null, totpEnabledAt: null, totpLastStep: null, tokenVersion: { increment: 1 } },
   });
   console.log(existing ? `✅ admin password reset for ${email}` : `✅ admin created: ${email}`);
 }

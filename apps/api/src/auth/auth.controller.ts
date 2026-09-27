@@ -34,6 +34,6 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   adminLogin(@Body() dto: AdminLoginDto) {
-    return this.auth.adminLogin(dto.email, dto.password);
+    return this.auth.adminLogin(dto.email, dto.password, dto.code);
   }
 }

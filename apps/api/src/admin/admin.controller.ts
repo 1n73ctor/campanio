@@ -3,6 +3,12 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser, Roles } from '../common/auth';
 import { AdminService } from './admin.service';
+import { AuthService } from '../auth/auth.service';
+import { IsString, Length } from 'class-validator';
+
+class TotpDto {
+  @IsString() @Length(6, 6) code: string;
+}
 import {
   HiddenDto,
   NoteDto,
@@ -22,7 +28,10 @@ import {
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
-  constructor(private svc: AdminService) {}
+  constructor(
+    private svc: AdminService,
+    private auth: AuthService,
+  ) {}
 
   @Get('stats') stats() { return this.svc.stats(); }
 
@@ -81,6 +90,12 @@ export class AdminController {
   @Post('sos/:id/resolve') resolveSos(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.resolveSos(a, id, dto.note);
   }
+
+  // two-factor sign-in for the signed-in admin
+  @Get('2fa') twoFactor(@CurrentUser() a: User) { return this.auth.twoFactorStatus(a); }
+  @Post('2fa/setup') twoFactorSetup(@CurrentUser() a: User) { return this.auth.twoFactorSetup(a); }
+  @Post('2fa/enable') twoFactorEnable(@CurrentUser() a: User, @Body() dto: TotpDto) { return this.auth.twoFactorEnable(a, dto.code); }
+  @Post('2fa/disable') twoFactorDisable(@CurrentUser() a: User, @Body() dto: TotpDto) { return this.auth.twoFactorDisable(a, dto.code); }
 
   @Get('settings') settings() { return this.svc.getSettings(); }
   @Put('settings') updateSettings(@CurrentUser() a: User, @Body() dto: SettingsDto) { return this.svc.updateSettings(a, dto); }

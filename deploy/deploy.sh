@@ -17,6 +17,15 @@ if [[ "${1:-}" != "--no-pull" ]]; then
   git pull --ff-only
 fi
 
+step "Checking settings"
+# ID documents are encrypted at rest; older servers get a key the first time they deploy this version
+if ! grep -qE '^KYC_ENCRYPTION_KEY=.{40,}' apps/api/.env; then
+  sed -i '/^KYC_ENCRYPTION_KEY=/d' apps/api/.env
+  echo "KYC_ENCRYPTION_KEY=$(openssl rand -base64 32)" >>apps/api/.env
+  echo "Added a KYC_ENCRYPTION_KEY to apps/api/.env — save a copy somewhere safe (password manager):"
+  echo "without it, ID documents in backups can't be read."
+fi
+
 step "Backing up the database before changing anything"
 "$ROOT/deploy/backup.sh"
 
@@ -32,13 +41,16 @@ step "Updating the database schema"
 # `prisma db push` refuses changes that would delete data unless told otherwise, so this can't silently drop columns
 npm run db:push -w @companio/api -- --skip-generate
 
+step "Encrypting any ID documents stored before encryption was enabled"
+npm run kyc:encrypt -w @companio/api
+
 step "Starting the API"
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save >/dev/null
 
 step "Health check"
 for _ in $(seq 1 30); do
-  if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/docs"; then
+  if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/meta/health"; then
     printf '\033[1;32mAPI is up on port %s.\033[0m\n' "$PORT"
     exit 0
   fi

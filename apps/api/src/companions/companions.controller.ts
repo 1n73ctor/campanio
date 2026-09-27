@@ -19,7 +19,7 @@ import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser } from '../common/auth';
-import { privateDocUpload, publicImageUpload, publicUrl } from '../files/uploads';
+import { publicUrl, storePrivateDoc, storePublicImage, uploadLimits } from '../files/uploads';
 import { CompanionsService } from './companions.service';
 import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
 import { CompanionFeeService } from './companion-fee.service';
@@ -82,10 +82,10 @@ export class CompanionSelfController {
   }
 
   @Post('photos')
-  @UseInterceptors(FileInterceptor('file', publicImageUpload))
+  @UseInterceptors(FileInterceptor('file', uploadLimits))
   photo(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.svc.addPhoto(user.id, publicUrl(file.filename));
+    return this.svc.addPhoto(user.id, publicUrl(storePublicImage(file)));
   }
 
   @Delete('photos/:index')
@@ -94,7 +94,7 @@ export class CompanionSelfController {
   }
 
   @Post('kyc')
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'idDoc', maxCount: 1 }, { name: 'selfie', maxCount: 1 }], privateDocUpload))
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'idDoc', maxCount: 1 }, { name: 'selfie', maxCount: 1 }], uploadLimits))
   kyc(
     @CurrentUser() user: User,
     @Body() dto: KycDto,
@@ -103,6 +103,6 @@ export class CompanionSelfController {
     const idDoc = files?.idDoc?.[0];
     const selfie = files?.selfie?.[0];
     if (!idDoc || !selfie) throw new BadRequestException('Upload both your ID document and a live selfie');
-    return this.svc.submitKyc(user, dto.idType, dto.idLast4, idDoc.filename, selfie.filename);
+    return this.svc.submitKyc(user, dto.idType, dto.idLast4, storePrivateDoc(idDoc), storePrivateDoc(selfie));
   }
 }

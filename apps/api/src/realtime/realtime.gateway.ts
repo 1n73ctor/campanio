@@ -45,6 +45,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
       const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
       if (!user || user.status !== 'ACTIVE') throw new Error('inactive');
+      if ((payload.v ?? 0) !== user.tokenVersion) throw new Error('session revoked');
       (socket.data as SocketData) = { userId: user.id, role: user.role };
       await socket.join(`user:${user.id}`);
       if (user.role === 'ADMIN') await socket.join('admins');

@@ -44,7 +44,7 @@ export default function UsersPage() {
                     <Avatar name={u.name} src={u.avatarUrl} size={32} />
                     <span>
                       <span className="block font-bold underline">{u.name ?? '—'}</span>
-                      <span className="text-xs text-ink-mute">{u.phone ?? u.email}</span>
+                      <span className="text-xs text-ink-mute">{u.phone ?? (u.deletedPhone ? `${u.deletedPhone} (deleted)` : u.email)}</span>
                     </span>
                   </Link>
                 </Td>

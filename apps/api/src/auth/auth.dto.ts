@@ -36,4 +36,9 @@ export class AdminLoginDto {
   @IsString()
   @Length(6, 200)
   password: string;
+  /** 6-digit authenticator code, when two-factor sign-in is on */
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  code?: string;
 }

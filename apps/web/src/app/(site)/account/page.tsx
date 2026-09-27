@@ -1,24 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Avatar, Button, Card, Field, Input, Modal, Textarea } from '@companio/ui';
+import { Avatar, Button, Card, Field, Input, Textarea } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
 import { CityPicker } from '@/components/city-picker';
 import { useToast } from '@/components/toast';
 import { errMsg, fmtDate } from '@/lib/format';
+import { DeleteAccount } from '@/components/delete-account';
+import { SessionsCard } from '@/components/sessions-card';
 
 export default function AccountPage() {
   const user = useRequireAuth();
-  const { api, setUser, signOut } = useAuth();
-  const router = useRouter();
+  const { api, setUser } = useAuth();
   const toast = useToast();
   const [form, setForm] = useState({ name: '', city: '', bio: '' });
   const [blocks, setBlocks] = useState<{ userId: string; name: string | null; avatarUrl: string | null }[]>([]);
   const [busy, setBusy] = useState(false);
-  const [del, setDel] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,17 +49,6 @@ export default function AccountPage() {
     }
   };
 
-  const deleteAccount = async () => {
-    setBusy(true);
-    try {
-      await api.me.deleteAccount();
-      signOut();
-      router.replace('/?deleted=1');
-    } catch (e) {
-      toast(errMsg(e), 'error');
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="container-x max-w-2xl pb-10">
@@ -117,27 +104,8 @@ export default function AccountPage() {
         )}
       </Card>
 
-      <Card tone="pink" className="mt-6 p-6">
-        <h2 className="font-display text-lg font-extrabold">Delete account</h2>
-        <p className="mt-1 text-sm text-ink-soft">Permanently removes your profile and personal data. Finish or cancel active bookings and withdraw any wallet balance first.</p>
-        <Button variant="danger" className="mt-4" onClick={() => setDel(true)}>
-          Delete my account
-        </Button>
-      </Card>
-
-      <Modal
-        open={del}
-        onClose={() => setDel(false)}
-        title="Delete account?"
-        footer={
-          <Button variant="danger" loading={busy} disabled={confirmText !== 'DELETE'} onClick={deleteAccount}>
-            Permanently delete
-          </Button>
-        }
-      >
-        <p>This can’t be undone. Type <b>DELETE</b> to confirm.</p>
-        <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
-      </Modal>
+      <SessionsCard />
+      <DeleteAccount />
     </div>
   );
 }

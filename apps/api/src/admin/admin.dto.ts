@@ -1,10 +1,11 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 import { DISPUTE_OUTCOMES, MODERATION_ACTIONS, USER_STATUSES } from '@companio/types';
 
 export class PageDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
-  @IsOptional() @IsString() @MaxLength(80) q?: string;
+  // % and _ are LIKE wildcards in the database query — search them as plain text
+  @IsOptional() @IsString() @MaxLength(80) @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[%_\\]/g, ' ').trim() : value)) q?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() role?: string;
 }

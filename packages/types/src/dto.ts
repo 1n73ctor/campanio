@@ -435,6 +435,10 @@ export interface AdminUserDto extends UserDto {
   reportsAgainst: number;
   walletBalance: Rupees;
   companionFee?: CompanionFeeAdminDto;
+  /** set when the user deleted their account (the record is kept for safety) */
+  deletedAt?: string | null;
+  /** their phone number at deletion time */
+  deletedPhone?: string | null;
 }
 
 export interface PlatformSettings {

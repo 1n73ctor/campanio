@@ -127,6 +127,8 @@ function Login() {
   const { api, signIn } = useAdmin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [needsCode, setNeedsCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -144,10 +146,16 @@ function Login() {
             setBusy(true);
             setError(null);
             try {
-              const r = await api.auth.adminLogin(email, password);
+              const r = await api.auth.adminLogin(email, password, needsCode ? code : undefined);
+              if ('twoFactorRequired' in r) {
+                setNeedsCode(true); // password was right; now the authenticator code
+                setBusy(false);
+                return;
+              }
               signIn(r.token, r.user);
             } catch (err) {
               setError(errMsg(err));
+              setCode('');
               setBusy(false);
             }
           }}
@@ -155,11 +163,24 @@ function Login() {
           <Field label="Email">
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required autoFocus />
           </Field>
-          <Field label="Password" error={error}>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+          <Field label="Password" error={needsCode ? null : error}>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required disabled={needsCode} />
           </Field>
-          <Button type="submit" size="lg" className="w-full" loading={busy}>
-            Sign in
+          {needsCode && (
+            <Field label="Authenticator code" hint="The 6-digit code from your authenticator app" error={error}>
+              <Input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="text-center font-display text-2xl tracking-[0.4em]"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                autoFocus
+                required
+              />
+            </Field>
+          )}
+          <Button type="submit" size="lg" className="w-full" loading={busy} disabled={needsCode && code.length !== 6}>
+            {needsCode ? 'Verify & sign in' : 'Sign in'}
           </Button>
         </form>
       </Card>

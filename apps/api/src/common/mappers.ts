@@ -112,8 +112,8 @@ export function toReviewDto(r: Review & { author: User }): ReviewDto {
     id: r.id,
     rating: r.rating,
     comment: r.comment,
-    // first name + initial only — reviewers stay semi-anonymous
-    authorName: name.split(' ').length > 1 ? `${name.split(' ')[0]} ${name.split(' ')[1][0]}.` : name,
+    // first name + initial only — reviewers stay semi-anonymous; deleted accounts show as "Deleted user"
+    authorName: r.author.status === 'DELETED' ? 'Deleted user' : name.split(' ').length > 1 ? `${name.split(' ')[0]} ${name.split(' ')[1][0]}.` : name,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -139,6 +139,8 @@ export function toBookingDto(b: BookingWithRelations, viewer: { id: string; role
     viewer.role === 'ADMIN' ? 'admin' : viewer.id === b.companionUserId ? 'companion' : 'user';
   // Contact details stay hidden; phones are masked for everyone except admins.
   const phone = (p: string | null) => (viewerRole === 'admin' ? p : maskPhone(p));
+  // deleted accounts appear as "Deleted user" to everyone except admins (who keep the full record for safety)
+  const shown = (u: User) => (viewerRole !== 'admin' && u.status === 'DELETED' ? { name: 'Deleted user', avatarUrl: null } : { name: u.name, avatarUrl: u.avatarUrl });
   return {
     id: b.id,
     status: b.status as BookingDto['status'],
@@ -156,12 +158,12 @@ export function toBookingDto(b: BookingWithRelations, viewer: { id: string; role
     commission: b.commission,
     companionPayout: b.companionPayout,
     startCode: viewerRole === 'user' || viewerRole === 'admin' ? b.startCode : null,
-    user: { id: b.user.id, name: b.user.name, avatarUrl: b.user.avatarUrl, phoneMasked: phone(b.user.phone) },
+    user: { id: b.user.id, name: shown(b.user).name, avatarUrl: shown(b.user).avatarUrl, phoneMasked: phone(b.user.phone) },
     companion: {
       id: b.companion.id,
       profileId: b.companion.companion?.id ?? '',
-      name: b.companion.name,
-      avatarUrl: b.companion.avatarUrl,
+      name: shown(b.companion).name,
+      avatarUrl: shown(b.companion).avatarUrl,
       phoneMasked: phone(b.companion.phone),
     },
     escrow: b.escrow

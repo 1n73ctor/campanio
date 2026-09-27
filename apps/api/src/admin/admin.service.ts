@@ -99,7 +99,7 @@ export class AdminService {
     const where: Prisma.UserWhereInput = {
       ...(q.role ? { role: q.role } : { role: { not: 'ADMIN' } }),
       ...(q.status ? { status: q.status } : {}),
-      ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { email: { contains: q.q } }] } : {}),
+      ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { deletedPhone: { contains: q.q } }, { email: { contains: q.q } }] } : {}),
     };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
@@ -116,6 +116,8 @@ export class AdminService {
       bookingsCount: u._count.bookings,
       reportsAgainst: u._count.reportsAgainst,
       walletBalance: u.wallet?.balance ?? 0,
+      deletedAt: u.deletedAt?.toISOString() ?? null,
+      deletedPhone: u.deletedPhone,
     }));
     return { items, total, page, pageSize };
   }
@@ -134,6 +136,15 @@ export class AdminService {
       include: { companion: true, wallet: { include: { txns: { orderBy: { createdAt: 'desc' }, take: 30 } } }, _count: { select: { bookings: true, reportsAgainst: true } } },
     });
     if (!u) throw new NotFoundException();
+    // other accounts that used the same phone number (deleted before, or re-registered after deletion)
+    const numbers = [u.phone, u.deletedPhone].filter((p): p is string => !!p);
+    const linked = numbers.length
+      ? await this.prisma.user.findMany({
+          where: { id: { not: u.id }, OR: [{ phone: { in: numbers } }, { deletedPhone: { in: numbers } }] },
+          select: { id: true, name: true, status: true, createdAt: true, deletedAt: true },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
     const [bookings, reports, kyc] = await Promise.all([
       this.prisma.booking.findMany({
         where: { OR: [{ userId: id }, { companionUserId: id }] },
@@ -145,7 +156,16 @@ export class AdminService {
       this.prisma.kycSubmission.findMany({ where: { userId: id }, include: { user: true }, orderBy: { createdAt: 'desc' } }),
     ]);
     return {
-      user: { ...toUserDto(u), bookingsCount: u._count.bookings, reportsAgainst: u._count.reportsAgainst, walletBalance: u.wallet?.balance ?? 0, companionFee: toFeeAdminDto(u) },
+      user: {
+        ...toUserDto(u),
+        bookingsCount: u._count.bookings,
+        reportsAgainst: u._count.reportsAgainst,
+        walletBalance: u.wallet?.balance ?? 0,
+        companionFee: toFeeAdminDto(u),
+        deletedAt: u.deletedAt?.toISOString() ?? null,
+        deletedPhone: u.deletedPhone,
+      },
+      linkedAccounts: linked.map((l) => ({ id: l.id, name: l.name, status: l.status, createdAt: l.createdAt.toISOString(), deletedAt: l.deletedAt?.toISOString() ?? null })),
       warnings: u.warnings,
       statusReason: u.statusReason,
       wallet: u.wallet?.txns.map((t) => ({ id: t.id, type: t.type, amount: t.amount, reason: t.reason, balanceAfter: t.balanceAfter, createdAt: t.createdAt.toISOString() })) ?? [],
@@ -158,6 +178,8 @@ export class AdminService {
   async setUserStatus(admin: User, id: string, status: string, reason?: string) {
     const u = await this.prisma.user.findUnique({ where: { id } });
     if (!u || u.role === 'ADMIN') throw new NotFoundException();
+    // a deleted account can only be banned (which also stops its phone number from signing up again)
+    if (u.deletedAt && status !== 'BANNED') throw new BadRequestException('Deleted accounts can only be banned');
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id }, data: { status, statusReason: status === 'ACTIVE' ? null : reason ?? null } }),
       ...(status !== 'ACTIVE' ? [this.prisma.companionProfile.updateMany({ where: { userId: id }, data: { isListed: false } })] : []),

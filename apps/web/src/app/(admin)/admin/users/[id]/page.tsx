@@ -28,7 +28,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
       <Link href="/admin/users" className="text-sm font-semibold underline">← Users</Link>
       <PageTitle
         title={u.name ?? 'Unnamed'}
-        subtitle={`${u.phone ?? u.email ?? ''} · ${humanize(u.role)} · joined ${d(u.createdAt)}`}
+        subtitle={`${u.phone ?? u.deletedPhone ?? u.email ?? ''} · ${humanize(u.role)} · joined ${d(u.createdAt)}`}
         actions={
           <>
             <StatusBadge status={u.status} />
@@ -43,6 +43,38 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
           </>
         }
       />
+      {u.deletedAt && (
+        <Card tone="pink" className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+          <div>
+            <p className="font-display font-extrabold">🗑️ Deleted by the user on {dt(u.deletedAt)}</p>
+            <p>
+              Original phone <b>{u.deletedPhone ?? '—'}</b>. Hidden from everyone and can’t sign in; this record is kept for safety.
+              {u.status === 'BANNED' ? ' This number is banned from signing up again.' : ' The number is free to sign up again as a new account.'}
+            </p>
+          </div>
+          {u.status !== 'BANNED' && (
+            <Button size="sm" variant="danger" onClick={() => setTarget('BANNED')}>
+              Ban this number
+            </Button>
+          )}
+        </Card>
+      )}
+      {data.linkedAccounts.length > 0 && (
+        <Card tone="sunny" className="mb-4 p-4 text-sm">
+          <p className="font-display font-extrabold">🔗 Other accounts with this phone number</p>
+          <ul className="mt-1 space-y-1">
+            {data.linkedAccounts.map((l) => (
+              <li key={l.id}>
+                <Link href={`/admin/users/${l.id}`} className="font-bold underline">
+                  {l.name ?? 'Unnamed'}
+                </Link>{' '}
+                · joined {d(l.createdAt)} · <StatusBadge status={l.status} />
+                {l.deletedAt && <> · deleted {d(l.deletedAt)}</>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {data.statusReason && <Card tone="pink" className="mb-4 p-3 text-sm">Status reason: {data.statusReason}</Card>}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Bookings" value={u.bookingsCount} />

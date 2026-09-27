@@ -45,6 +45,16 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
+  // on deletion the phone moves here: frees the number for a new sign-up, but admins still see who it was
+  deletedPhone       String?
+  // bumped by "log out of all other devices": tokens carrying an older version stop working
+  tokenVersion       Int       @default(0)
+  // admin sign-in protection: lock after repeated wrong passwords; optional authenticator-app 2FA
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+  totpSecret         String?
+  totpEnabledAt      DateTime?
+  totpLastStep       Int?
 
   companion         CompanionProfile?
   wallet            Wallet?
