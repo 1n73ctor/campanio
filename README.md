@@ -10,8 +10,7 @@ panel are done. The React Native (Expo) app plugs in later as `apps/mobile`, reu
 ```
 apps/
   api/      NestJS + Prisma + Socket.IO   → http://localhost:4000  (Swagger: /docs)
-  web/      Next.js 15 website + web app  → http://localhost:3000  (PWA, SEO landing pages)
-  admin/    Next.js 15 admin panel        → http://localhost:3000/admin (proxied from :3001/admin)
+  web/      Next.js 15 website + web app  → http://localhost:3000  (PWA, SEO landing pages; admin panel at /admin)
 packages/
   types/        shared DTOs, enums, catalog (categories × cities), formatters
   ui/           design tokens (Tailwind preset) + React primitives (candy / neo-brutalist)
@@ -26,7 +25,7 @@ Requires Node ≥ 20.9. No Docker or Postgres is needed for local dev (SQLite).
 npm install
 cp apps/api/.env.example apps/api/.env        # already done if you cloned this folder as-is
 npm run setup                                  # builds @companio/types, creates the DB, seeds demo data
-npm run dev                                    # api :4000 · web :3000 · admin :3001
+npm run dev                                    # api :4000 · web :3000 (admin panel at /admin)
 ```
 
 To reset the demo data later, run `npm run db:reset -w @companio/api`. This wipes the database.
@@ -116,8 +115,8 @@ kept alive by PM2. Everything is in [`deploy/`](deploy/).
    schedules a daily backup.
 2. Edit `apps/api/.env` (CORS/Netlify URLs, Razorpay keys, SMS provider, admin login), then run `./deploy/deploy.sh --no-pull`
    and `npm run db:create-admin -w @companio/api`. Don't run the seed on a live server; it inserts demo data.
-3. On Netlify, set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com` for both sites. The admin is a second Netlify site
-   (base directory `apps/admin`); set `ADMIN_URL` on the website to that site's URL so it's served at `<website>/admin`. Redeploy both.
+3. On Netlify (base directory `apps/web`), set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com` and redeploy. The admin panel is
+   part of the website at `<website>/admin`, so there's only one Netlify site.
 
 Updates: `./deploy/deploy.sh` (backs up, pulls, builds, updates the schema, restarts, health-checks).
 In production the API refuses to start with the dev JWT secret, mock payments or localhost CORS origins.

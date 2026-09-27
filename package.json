@@ -12,9 +12,8 @@
     "setup": "npm run build:packages && npm run db:setup -w @companio/api",
     "dev:api": "npm run dev -w @companio/api",
     "dev:web": "npm run dev -w @companio/web",
-    "dev:admin": "npm run dev -w @companio/admin",
-    "dev": "npm run build:packages && concurrently -n api,web,admin -c magenta,green,cyan \"npm:dev:api\" \"npm:dev:web\" \"npm:dev:admin\"",
-    "build": "npm run build:packages && npm run build -w @companio/api && npm run build -w @companio/web && npm run build -w @companio/admin",
+    "dev": "npm run build:packages && concurrently -n api,web -c magenta,green \"npm:dev:api\" \"npm:dev:web\"",
+    "build": "npm run build:packages && npm run build -w @companio/api && npm run build -w @companio/web",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
