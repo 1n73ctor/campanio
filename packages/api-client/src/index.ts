@@ -11,6 +11,9 @@ import type {
   City,
   CompanionCardDto,
   CompanionFeeDto,
+  SafetyShareDto,
+  SafetyShareViewDto,
+  OffersDto,
   FeeCheckoutResponse,
   ReferralDto,
   CompanionDashboardDto,
@@ -129,6 +132,7 @@ export function createApiClient(opts: ClientOptions) {
       catalog: () => get<{ categories: Category[]; cities: City[]; languages: string[] }>('/meta/catalog'),
       pricing: () => get<{ connectionFee: number; gstPct: number; freeCancelHours: number; lateCancelRefundPct: number }>('/meta/pricing'),
       coverage: () => get<Record<string, Record<string, number>>>('/meta/coverage'),
+      offers: () => get<OffersDto>('/meta/offers'),
     },
     auth: {
       requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
@@ -154,7 +158,7 @@ export function createApiClient(opts: ClientOptions) {
       fee: () => get<CompanionFeeDto>('/companion/fee'),
       apply: (input: ApplyCompanionInput) => post<CompanionProfileDto>('/companion/apply', input),
       dashboard: () => get<CompanionDashboardDto>('/companion/dashboard'),
-      updateProfile: (input: Partial<ApplyCompanionInput>) => patch<CompanionProfileDto>('/companion/profile', input),
+      updateProfile: (input: Partial<ApplyCompanionInput> & { womenOnly?: boolean }) => patch<CompanionProfileDto>('/companion/profile', input),
       setAvailability: (availability: Availability) => put<CompanionProfileDto>('/companion/availability', { availability }),
       setListed: (listed: boolean) => post<CompanionProfileDto>('/companion/listing', { listed }),
       addPhoto: (file: File | Blob) => request<CompanionProfileDto>('POST', '/companion/photos', form({ file })),
@@ -176,6 +180,11 @@ export function createApiClient(opts: ClientOptions) {
       review: (id: string, rating: number, comment?: string) => post<BookingDto>(`/bookings/${id}/review`, { rating, comment }),
       sos: (id: string, input: { lat?: number; lng?: number; note?: string }) => post<{ alert: SosAlertDto; guidance: string }>(`/bookings/${id}/sos`, input),
       shareLocation: (id: string, lat: number, lng: number) => post<LocationDto>(`/bookings/${id}/location`, { lat, lng }),
+      /** "watch my session" link for a trusted contact (null = not shared) */
+      // the API answers an empty body when there's no link; normalise that to null
+      safetyShare: (id: string) => get<SafetyShareDto | null>(`/bookings/${id}/share`).then((s) => s ?? null),
+      createSafetyShare: (id: string) => post<SafetyShareDto>(`/bookings/${id}/share`),
+      stopSafetyShare: (id: string) => request<{ ok: true }>('DELETE', `/bookings/${id}/share`),
       locations: (id: string) => get<LocationDto[]>(`/bookings/${id}/location`),
       messages: (id: string) => get<MessageDto[]>(`/bookings/${id}/messages`),
       send: (id: string, body: string) => post<{ message: MessageDto; warning: string | null }>(`/bookings/${id}/messages`, { body }),
@@ -185,6 +194,11 @@ export function createApiClient(opts: ClientOptions) {
       companionFee: (useWallet = true) => post<FeeCheckoutResponse>('/payments/companion-fee', { useWallet }),
       verify: (input: VerifyPaymentInput) => post<{ status: 'PAID'; bookingId: string | null; purpose: string }>('/payments/verify', input),
       mockPay: (orderId: string) => post<VerifyPaymentInput>(`/payments/mock/${orderId}/pay`),
+    },
+    /** public, no login: what a trusted contact sees on a shared link */
+    safety: {
+      view: (token: string) => get<SafetyShareViewDto>(`/share/${encodeURIComponent(token)}`),
+      alert: (token: string, note?: string) => post<{ ok: true; guidance: string }>(`/share/${encodeURIComponent(token)}/alert`, { note }),
     },
     wallet: {
       get: () => get<WalletDto>('/wallet'),

@@ -66,4 +66,7 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeNonBinary?: number;
   @IsOptional() @IsIn([0, 1]) companionFeeUnspecifiedOn?: number;
   @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeUnspecified?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(5000) welcomeCredit?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(50) cashbackPct?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(5000) cashbackMax?: number;
 }

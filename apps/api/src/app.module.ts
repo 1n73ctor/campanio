@@ -22,6 +22,9 @@ import { FilesController } from './files/files.controller';
 import { RealtimeGateway } from './realtime/realtime.gateway';
 import { ReferralsModule } from './referrals/referrals.service';
 import { CompanionFeeModule } from './companions/companion-fee.service';
+import { OffersModule } from './offers/offers.service';
+import { SafetyShareService } from './safety/safety-share.service';
+import { PublicSafetyShareController, SafetyShareController } from './safety/safety-share.controller';
 import { ReferralsController } from './referrals/referrals.controller';
 
 @Module({
@@ -37,6 +40,7 @@ import { ReferralsController } from './referrals/referrals.controller';
     PaymentsModule,
     ReferralsModule,
     CompanionFeeModule,
+    OffersModule,
   ],
   controllers: [
     MetaController,
@@ -49,7 +53,9 @@ import { ReferralsController } from './referrals/referrals.controller';
     AdminController,
     FilesController,
     ReferralsController,
+    SafetyShareController,
+    PublicSafetyShareController,
   ],
-  providers: [CompanionsService, AdminService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [CompanionsService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

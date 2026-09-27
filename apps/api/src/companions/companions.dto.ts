@@ -29,6 +29,7 @@ export class SearchDto {
   @IsOptional() @IsIn(GENDERS) gender?: string;
   @IsOptional() @IsIn(LANGUAGES) language?: string;
   @IsOptional() @IsIn(['recommended', 'rating', 'price_asc', 'price_desc', 'newest']) sort?: string;
+  @IsOptional() @IsIn(['today', 'weekend']) when?: 'today' | 'weekend';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(48) pageSize?: number;
 }
@@ -49,6 +50,8 @@ export class UpdateProfileDto {
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CAT, { each: true }) categories?: string[];
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages?: string[];
   @IsOptional() @IsIn(CITY) city?: string;
+  /** only accept bookings from women (women companions only) */
+  @IsOptional() @IsBoolean() womenOnly?: boolean;
 }
 
 export class AvailabilityDto {

@@ -57,6 +57,9 @@ export default function SosPage() {
                   🤝 {s.booking.userName} ↔ {s.booking.companionName} at {s.booking.meetingPoint}
                 </p>
               </div>
+              {s.source === 'TRUSTED_CONTACT' && (
+                <p className="self-start rounded-full border-2 border-ink bg-sunny px-2.5 py-0.5 text-xs font-extrabold">👀 Raised by their trusted contact, not by {s.user.name ?? 'the user'}</p>
+              )}
               {s.note && <p className="text-sm italic">“{s.note}”</p>}
               <div className="flex gap-2">
                 <Link href={`/admin/bookings/${s.bookingId}`}>

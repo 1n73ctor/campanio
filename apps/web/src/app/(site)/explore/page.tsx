@@ -24,6 +24,7 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
     gender: sp.gender as CompanionSearchQuery['gender'],
     language: sp.language,
     sort: (sp.sort as CompanionSearchQuery['sort']) ?? 'recommended',
+    when: sp.when === 'today' || sp.when === 'weekend' ? sp.when : undefined,
     page: sp.page ? Number(sp.page) : 1,
     pageSize: 12,
   };

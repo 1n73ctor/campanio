@@ -24,6 +24,20 @@ export function CompanionCard({ c }: { c: CompanionCardDto }) {
             <Stars value={c.ratingAvg} count={c.ratingCount} />
           </div>
         </div>
+        {(c.freeToday || c.freeWeekend || c.womenOnly) && (
+          <div className="flex flex-wrap gap-1.5">
+            {(c.freeToday || c.freeWeekend) && (
+              <span className={`rounded-full border-2 border-ink px-2.5 py-0.5 text-xs font-extrabold ${c.freeToday ? 'bg-lime' : 'bg-sky-soft'}`}>
+                {c.freeToday ? '🟢 Free today' : '🗓️ Free this weekend'}
+              </span>
+            )}
+            {c.womenOnly && (
+              <span title="Only accepts bookings from women" className="rounded-full border-2 border-ink bg-pink-soft px-2.5 py-0.5 text-xs font-extrabold">
+                👩 Women only
+              </span>
+            )}
+          </div>
+        )}
         <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium">{c.headline}</p>
         <div className="flex flex-wrap gap-1.5">
           {cats.slice(0, 3).map((cat) => (

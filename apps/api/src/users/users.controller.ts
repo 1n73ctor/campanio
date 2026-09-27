@@ -20,6 +20,7 @@ import { PrismaService } from '../common/prisma.service';
 import { toUserDto } from '../common/mappers';
 import { publicImageUpload, publicUrl } from '../files/uploads';
 import { UpdateMeDto } from './users.dto';
+import { OffersService } from '../offers/offers.service';
 
 const ACTIVE_BOOKING = ['REQUESTED', 'ACCEPTED', 'IN_PROGRESS', 'DISPUTED'];
 
@@ -28,7 +29,10 @@ const ACTIVE_BOOKING = ['REQUESTED', 'ACCEPTED', 'IN_PROGRESS', 'DISPUTED'];
 @UseGuards(AuthGuard)
 @Controller('me')
 export class UsersController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private offers: OffersService,
+  ) {}
 
   @Get()
   async me(@CurrentUser() user: User) {
@@ -70,6 +74,7 @@ export class UsersController {
       },
       include: { companion: true },
     });
+    if (!user.onboarded && u.onboarded) await this.offers.grantWelcomeCredit(u.id); // first time onboarding completes
     return toUserDto(u);
   }
 

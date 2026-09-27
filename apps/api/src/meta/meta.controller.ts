@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { CATEGORIES, CITIES, LANGUAGES } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
+import { OffersService } from '../offers/offers.service';
 
 @ApiTags('meta')
 @Controller('meta')
@@ -10,7 +11,14 @@ export class MetaController {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
+    private offers: OffersService,
   ) {}
+
+  /** Welcome credit / cashback terms for marketing copy (all 0 = no offers running). */
+  @Get('offers')
+  offersTerms() {
+    return this.offers.publicTerms();
+  }
 
   @Get('health')
   health() {

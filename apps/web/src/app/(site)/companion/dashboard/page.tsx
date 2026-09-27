@@ -93,6 +93,33 @@ export default function CompanionDashboard() {
               }}
             />
           </Card>
+          {user.gender === 'FEMALE' && (
+            <Card className="space-y-2 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-display font-extrabold">👩 Women-only bookings</p>
+                  <p className="text-xs text-ink-soft">{d.profile.womenOnly ? 'Only women members can book you.' : 'Anyone can book you.'}</p>
+                </div>
+                <Toggle
+                  checked={d.profile.womenOnly}
+                  label="Only accept bookings from women"
+                  onChange={async (v) => {
+                    try {
+                      await api.companion.updateProfile({ womenOnly: v });
+                      toast(v ? 'Only women can book you now' : 'Anyone can book you now');
+                      load();
+                    } catch (e) {
+                      toast(errMsg(e), 'error');
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-ink-mute">
+                Members choose their gender at sign-up and can’t change it later. If someone misrepresents themselves, report them and our team will act. Existing
+                bookings aren’t affected.
+              </p>
+            </Card>
+          )}
           <Card className="p-5">
             <h3 className="mb-2 font-display font-extrabold">Recent payouts</h3>
             {d.payouts.length === 0 ? (

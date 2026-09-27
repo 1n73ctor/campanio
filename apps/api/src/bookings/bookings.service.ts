@@ -8,6 +8,7 @@ import { bookingInclude, toBookingDto, toMessageDto, toSosDto, type BookingWithR
 import { filterMessage } from '../common/content-filter';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
+import { OffersService } from '../offers/offers.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { EscrowService } from './escrow.service';
 import type { CreateBookingDto, DisputeDto, ListBookingsDto, ReviewDto, SosDto } from './bookings.dto';
@@ -28,6 +29,7 @@ export class BookingsService {
     private notifications: NotificationsService,
     private rt: RealtimeService,
     private referrals: ReferralsService,
+    private offers: OffersService,
   ) {}
 
   // ---------- read ----------
@@ -77,6 +79,7 @@ export class BookingsService {
     const c = await this.prisma.companionProfile.findUnique({ where: { id: dto.companionId }, include: { user: true } });
     if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Companion not available');
     if (c.userId === user.id) throw new BadRequestException("You can't book yourself");
+    if (c.womenOnly && user.gender !== 'FEMALE') throw new ForbiddenException(`${c.user.name?.split(' ')[0] ?? 'This companion'} only accepts bookings from women`);
     if (!c.categories.split(',').includes(dto.category)) throw new BadRequestException(`${c.user.name} doesn't offer ${categoryBySlug(dto.category)?.name ?? dto.category}`);
 
     const blocked = await this.prisma.block.count({
@@ -233,6 +236,7 @@ export class BookingsService {
     });
     if (isUser) {
       await this.referrals.onBookingReleased(b);
+      await this.offers.onBookingReleased(b); // cashback (only for fully released bookings)
       await this.notifications.notify(b.companionUserId, {
         type: 'booking.paid_out',
         title: `₹${b.companionPayout} added to your wallet 💸`,
@@ -350,7 +354,7 @@ export class BookingsService {
     const admins = await this.prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
     await Promise.all(
       admins.map((a) =>
-        this.notifications.notify(a.id, { type: 'sos', title: '🚨 SOS alert', body: `${viewer.name} triggered SOS on booking ${id.slice(-6)}`, link: `/sos` }),
+        this.notifications.notify(a.id, { type: 'sos', title: '🚨 SOS alert', body: `${viewer.name} triggered SOS on booking ${id.slice(-6)}`, link: `/admin/sos` }),
       ),
     );
     return { alert: toSosDto(alert), guidance: 'Our safety team has been alerted. If you are in immediate danger, call 112 now.' };

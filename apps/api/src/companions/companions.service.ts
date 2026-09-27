@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { Prisma, User } from '@prisma/client';
+import type { CompanionProfile, Prisma, User } from '@prisma/client';
 import { WEEKDAYS, type CompanionDetailDto, type CompanionDashboardDto, type Paginated, type CompanionCardDto } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
@@ -15,6 +15,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ApplyDto, SearchDto, UpdateProfileDto } from './companions.dto';
 import { CompanionFeeService } from './companion-fee.service';
+import { BADGE_HORIZON, availabilityBadges } from './availability';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -52,11 +53,30 @@ export class CompanionsService {
             : q.sort === 'rating'
               ? [{ ratingAvg: 'desc' }, { ratingCount: 'desc' }]
               : [{ ratingAvg: 'desc' }, { completedBookings: 'desc' }, { createdAt: 'desc' }];
+    if (q.when) {
+      // availability lives in JSON, so filter in memory (a city's listed companions is a small set), then paginate
+      const all = await this.prisma.companionProfile.findMany({ where, orderBy, include: { user: true }, take: 1000 });
+      const cards = await this.withBadges(all);
+      const matching = cards.filter((c) => (q.when === 'today' ? c.freeToday : c.freeWeekend));
+      return { items: matching.slice((page - 1) * pageSize, page * pageSize), total: matching.length, page, pageSize };
+    }
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.companionProfile.count({ where }),
       this.prisma.companionProfile.findMany({ where, orderBy, include: { user: true }, skip: (page - 1) * pageSize, take: pageSize }),
     ]);
-    return { items: rows.map(toCompanionCard), total, page, pageSize };
+    return { items: await this.withBadges(rows), total, page, pageSize };
+  }
+
+  /** Cards with "free today" / "free this weekend" badges, from weekly hours minus confirmed bookings. */
+  private async withBadges(rows: (CompanionProfile & { user: User })[]): Promise<CompanionCardDto[]> {
+    if (!rows.length) return [];
+    const now = Date.now();
+    const busy = await this.prisma.booking.findMany({
+      // same statuses that block a new booking (BookingsService.assertNoOverlap)
+      where: { companionUserId: { in: rows.map((r) => r.userId) }, status: { in: ['ACCEPTED', 'IN_PROGRESS'] }, endAt: { gt: new Date(now) }, startAt: { lt: new Date(now + BADGE_HORIZON) } },
+      select: { companionUserId: true, startAt: true, endAt: true },
+    });
+    return rows.map((r) => ({ ...toCompanionCard(r), ...availabilityBadges(r.availability, busy.filter((b) => b.companionUserId === r.userId), now) }));
   }
 
   async detail(id: string): Promise<CompanionDetailDto> {
@@ -69,8 +89,9 @@ export class CompanionsService {
       take: 20,
     });
     const p = toCompanionProfileDto(c);
+    const [card] = await this.withBadges([c]);
     return {
-      ...toCompanionCard(c),
+      ...card,
       about: c.about,
       photos: p.photos,
       availability: p.availability,
@@ -117,6 +138,10 @@ export class CompanionsService {
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     await this.own(userId);
+    if (dto.womenOnly) {
+      const u = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+      if (u.gender !== 'FEMALE') throw new BadRequestException('Women-only bookings are available to women companions');
+    }
     const p = await this.prisma.companionProfile.update({
       where: { userId },
       data: {
@@ -126,6 +151,7 @@ export class CompanionsService {
         categories: dto.categories?.join(','),
         languages: dto.languages?.join(','),
         city: dto.city,
+        womenOnly: dto.womenOnly,
       },
     });
     return toCompanionProfileDto(p);

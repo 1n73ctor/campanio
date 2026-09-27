@@ -58,6 +58,7 @@ export function toCompanionProfileDto(c: CompanionProfile): CompanionProfileDto 
     availability: json<Availability>(c.availability, {}),
     kycStatus: c.kycStatus as CompanionProfileDto['kycStatus'],
     isListed: c.isListed,
+    womenOnly: c.womenOnly,
     ratingAvg: Math.round(c.ratingAvg * 10) / 10,
     ratingCount: c.ratingCount,
     completedBookings: c.completedBookings,
@@ -101,6 +102,7 @@ export function toCompanionCard(c: CompanionProfile & { user: User }): Companion
     ratingCount: c.ratingCount,
     completedBookings: c.completedBookings,
     verified: c.kycStatus === 'APPROVED',
+    womenOnly: c.womenOnly,
   };
 }
 
@@ -272,6 +274,7 @@ export function toSosDto(s: SosAlert & { user: User }): SosAlertDto {
     lng: s.lng,
     status: s.status as SosAlertDto['status'],
     note: s.note,
+    source: s.source === 'TRUSTED_CONTACT' ? 'TRUSTED_CONTACT' : 'USER',
     createdAt: s.createdAt.toISOString(),
     resolvedAt: iso(s.resolvedAt),
   };

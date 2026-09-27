@@ -40,6 +40,8 @@ model User {
   companionFeePaid       Int?
   companionFeePaidAt     DateTime?
   companionFeeRefundedAt DateTime?
+  // one-time welcome credit (set when it's paid so it can never be paid twice)
+  welcomeCreditAt        DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
@@ -94,6 +96,8 @@ model CompanionProfile {
   availability      String   @default("{}")
   kycStatus         String   @default("NOT_SUBMITTED")
   isListed          Boolean  @default(false)
+  // women companions can accept bookings from women only
+  womenOnly         Boolean  @default(false)
   ratingAvg         Float    @default(0)
   ratingCount       Int      @default(0)
   completedBookings Int      @default(0)
@@ -159,6 +163,7 @@ model Booking {
   dispute   Dispute?
   sosAlerts SosAlert[]
   locations LiveLocation[]
+  safetyShares SafetyShare[]
   reports   Report[]
 
   @@index([userId, status])
@@ -334,10 +339,26 @@ model SosAlert {
   lng        Float?
   status     String    @default("ACTIVE")
   note       String?
+  // USER (in-app SOS) or TRUSTED_CONTACT (raised from a shared safety link; userId = the person who shared it)
+  source     String    @default("USER")
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 
   @@index([status])
+}
+
+/// "Watch my session": a private, expiring link a booking participant sends to someone they trust.
+model SafetyShare {
+  id        String    @id @default(cuid())
+  bookingId String
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([bookingId, userId])
 }
 
 model LiveLocation {

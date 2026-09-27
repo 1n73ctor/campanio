@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { useRealtime } from '@/lib/socket';
 import { errMsg, timeAgo } from '@/lib/format';
 import { useToast } from './toast';
+import { TrustedContact } from './trusted-contact';
 
 /** Live location sharing + SOS. Web needs the tab open; the native app will do this in the background. */
 export function SafetyPanel({ booking }: { booking: BookingDto }) {
@@ -73,12 +74,13 @@ export function SafetyPanel({ booking }: { booking: BookingDto }) {
   return (
     <Card tone="sky" className="space-y-4 p-5">
       <h2 className="font-display text-lg font-extrabold">🛡️ Safety</h2>
+      <TrustedContact booking={booking} />
       {active ? (
         <>
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-bold">Share live location</p>
-              <p className="text-xs text-ink-soft">Visible to the other person and our safety team during this booking. Keep this tab open.</p>
+              <p className="text-xs text-ink-soft">Visible to the other person, our safety team and your trusted contact (if shared) during this booking. Keep this tab open.</p>
             </div>
             <Toggle checked={sharing} onChange={setSharing} label="Share live location" />
           </div>

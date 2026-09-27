@@ -50,6 +50,23 @@ export function ExploreFilters({ lockCategory, lockCity, preset }: { lockCategor
           ))}
         </div>
       )}
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ['', 'Any time'],
+            ['today', '🟢 Free today'],
+            ['weekend', '🗓️ Free this weekend'],
+          ] as const
+        ).map(([v, label]) => (
+          <Chip key={v || 'any'} active={(sp.get('when') ?? '') === v} onClick={() => set('when', v || null)}>
+            {label}
+          </Chip>
+        ))}
+        <span className="mx-1 hidden w-[3px] self-stretch bg-ink/10 sm:block" aria-hidden />
+        <Chip active={sp.get('gender') === 'FEMALE'} onClick={() => set('gender', sp.get('gender') === 'FEMALE' ? null : 'FEMALE')}>
+          👩 Women companions
+        </Chip>
+      </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {!lockCity && (
           <CityPicker aria-label="City" value={sp.get('city') ?? ''} onChange={(city) => set('city', city || null)} anyLabel="All cities" />

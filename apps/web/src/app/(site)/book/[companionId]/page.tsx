@@ -63,6 +63,18 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
   if (loadErr) return <div className="container-x py-16 text-center font-semibold">{loadErr}</div>;
   if (!user || !c) return <FullLoader />;
   const first = c.name.split(' ')[0];
+  if (c.womenOnly && user.gender !== 'FEMALE') {
+    return (
+      <div className="container-x max-w-xl py-16">
+        <Callout tone="pink" title={`${first} only accepts bookings from women`}>
+          {first} has chosen to meet women members only, for their safety. There are plenty of other verified companions to explore.
+        </Callout>
+        <Link href="/explore" className="mt-4 inline-block font-semibold underline">
+          ← Explore other companions
+        </Link>
+      </div>
+    );
+  }
 
   const submit = async () => {
     setBusy(true);

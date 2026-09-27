@@ -147,6 +147,9 @@ export default async function CompanionPage({ params }: { params: Promise<{ id: 
               <span className="text-base font-semibold text-ink-mute">/hour</span>
             </p>
             <p className="text-sm text-ink-soft">+ a small connection fee & GST. Full breakdown before you pay.</p>
+            {c.womenOnly && (
+              <p className="rounded-chunky border-2 border-ink bg-pink-soft px-3 py-2 text-sm font-semibold">👩 {first} only accepts bookings from women.</p>
+            )}
             <Link href={`/book/${c.id}`} className={buttonClass('primary', 'lg', 'w-full')}>
               Book {first}
             </Link>

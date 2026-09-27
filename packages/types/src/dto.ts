@@ -82,6 +82,8 @@ export interface CompanionProfileDto {
   availability: Availability;
   kycStatus: KycStatus;
   isListed: boolean;
+  /** only accepts bookings from members whose gender is FEMALE (available to women companions) */
+  womenOnly: boolean;
   ratingAvg: number;
   ratingCount: number;
   completedBookings: number;
@@ -103,6 +105,12 @@ export interface CompanionCardDto {
   ratingCount: number;
   completedBookings: number;
   verified: boolean;
+  /** only accepts bookings from women */
+  womenOnly: boolean;
+  /** has a free hour today that can still be booked (bookings start 2h+ from now) — only if they set weekly hours */
+  freeToday?: boolean;
+  /** has 2+ free hours on the coming Saturday or Sunday */
+  freeWeekend?: boolean;
 }
 
 export interface ReviewDto {
@@ -131,6 +139,8 @@ export interface CompanionSearchQuery {
   gender?: Gender;
   language?: string;
   sort?: 'recommended' | 'rating' | 'price_asc' | 'price_desc' | 'newest';
+  /** only companions free today / this weekend */
+  when?: 'today' | 'weekend';
   page?: number;
   pageSize?: number;
 }
@@ -351,8 +361,35 @@ export interface SosAlertDto {
   lng: number | null;
   status: SosStatus;
   note: string | null;
+  /** USER = raised in the app; TRUSTED_CONTACT = raised from a shared safety link */
+  source: 'USER' | 'TRUSTED_CONTACT';
   createdAt: string;
   resolvedAt: string | null;
+}
+
+/** A booking participant's private "watch my session" link for a trusted contact. */
+export interface SafetyShareDto {
+  url: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** What a trusted contact sees on the shared link — no phone numbers, IDs or chat. */
+export interface SafetyShareViewDto {
+  sharerName: string;
+  sharerRole: 'member' | 'companion';
+  other: { firstName: string; avatarUrl: string | null; verified: boolean; verifiedLabel: string };
+  activity: string;
+  meetingPoint: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  statusLabel: string;
+  /** the sharer's last shared position, if they turned on live location */
+  location: { lat: number; lng: number; updatedAt: string } | null;
+  /** an SOS / safety alert is open for this booking */
+  alertActive: boolean;
+  expiresAt: string;
 }
 
 export interface ReferralDto {
@@ -425,6 +462,19 @@ export interface PlatformSettings {
   companionFeeNonBinary: Rupees;
   companionFeeUnspecifiedOn: number;
   companionFeeUnspecified: Rupees;
+  /** wallet credit for every new member once they finish onboarding (0 = off) */
+  welcomeCredit: Rupees;
+  /** % of a completed booking's total returned to the member's wallet (0 = off) … */
+  cashbackPct: number;
+  /** … capped at this many rupees per booking */
+  cashbackMax: Rupees;
+}
+
+/** Public offer terms, for marketing copy ("₹100 off your first booking"). */
+export interface OffersDto {
+  welcomeCredit: Rupees;
+  cashbackPct: number;
+  cashbackMax: Rupees;
 }
 
 /** Where the caller stands with the companion registration fee. */

@@ -78,6 +78,36 @@ export default function SettingsPage() {
           Companion earns {formatINR(exampleSubtotal - commission)}. Platform keeps {formatINR(form.connectionFee + gst + commission)}.
         </Callout>
         <Card className="p-6 lg:col-span-2">
+          <h2 className="font-display text-lg font-extrabold">Member offers</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Wallet credits that bring members in and back. Set an amount to 0 to switch it off. The homepage advertises whatever is switched on.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <Field label="Welcome credit (₹)" hint="Once per new member, when they finish their profile. Used automatically at checkout.">
+              <NumberInput value={form.welcomeCredit} onValueChange={(n) => setForm((x) => (x ? { ...x, welcomeCredit: Math.round(n) } : x))} />
+            </Field>
+            <Field label="Cashback (%)" hint="Of the booking total, to the member’s wallet after a completed session.">
+              <NumberInput decimals value={form.cashbackPct} onValueChange={(n) => setForm((x) => (x ? { ...x, cashbackPct: n } : x))} />
+            </Field>
+            <Field label="Cashback cap (₹ per booking)" hint="Maximum cashback on one booking. 0 = no cap.">
+              <NumberInput value={form.cashbackMax} onValueChange={(n) => setForm((x) => (x ? { ...x, cashbackMax: Math.round(n) } : x))} />
+            </Field>
+          </div>
+          <p className="mt-3 text-sm">
+            {form.welcomeCredit <= 0 && form.cashbackPct <= 0 ? (
+              <span className="text-ink-mute">No offers running.</span>
+            ) : (
+              <>
+                Example: a new member gets <b>{formatINR(form.welcomeCredit)}</b>; after a {formatINR(exampleSubtotal + form.connectionFee + gst)} booking they get{' '}
+                <b>{formatINR(form.cashbackMax > 0 ? Math.min(Math.round(((exampleSubtotal + form.connectionFee + gst) * form.cashbackPct) / 100), form.cashbackMax) : Math.round(((exampleSubtotal + form.connectionFee + gst) * form.cashbackPct) / 100))}</b> cashback.
+              </>
+            )}
+          </p>
+          <Button className="mt-4" loading={busy} onClick={save}>
+            Save offers
+          </Button>
+        </Card>
+        <Card className="p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-extrabold">Companion registration fee</h2>
           <p className="mt-1 text-sm text-ink-soft">
             One-time fee to apply as a companion, set per gender. GST ({form.gstPct}%) is added on top. When it’s off, applicants of that gender never see a payment

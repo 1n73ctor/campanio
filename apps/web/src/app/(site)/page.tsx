@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CATEGORIES, CITIES, POPULAR_CITIES } from '@companio/types';
+import { CATEGORIES, CITIES, POPULAR_CITIES, formatINR } from '@companio/types';
 import { Avatar, Badge, Card, buttonClass, cn, toneSolid } from '@companio/ui';
 import { CompanionCard } from '@/components/companion-card';
 import { SearchBar } from '@/components/search-bar';
@@ -33,8 +33,16 @@ const FAQS = [
 
 export default async function Home() {
   const api = serverApi(300);
-  const featured = await safe(api.companions.search({ sort: 'rating', pageSize: 8 }), { items: [], total: 0, page: 1, pageSize: 8 });
+  const [featured, freeToday, offers] = await Promise.all([
+    safe(api.companions.search({ sort: 'rating', pageSize: 8 }), { items: [], total: 0, page: 1, pageSize: 8 }),
+    safe(api.companions.search({ sort: 'rating', when: 'today', pageSize: 4 }), { items: [], total: 0, page: 1, pageSize: 4 }),
+    safe(api.meta.offers(), { welcomeCredit: 0, cashbackPct: 0, cashbackMax: 0 }),
+  ]);
   const hero = featured.items.slice(0, 3);
+  const offerLine = [
+    offers.welcomeCredit > 0 && `🎁 ${formatINR(offers.welcomeCredit)} off your first booking`,
+    offers.cashbackPct > 0 && `💸 ${offers.cashbackPct}% cashback on every booking`,
+  ].filter(Boolean);
 
   return (
     <>
@@ -66,6 +74,11 @@ export default async function Home() {
             <p className="mt-6 max-w-xl text-lg text-ink-soft">
               Gym partners, movie buddies, city guides and event plus-ones — verified humans for the things that are better together. Book in minutes, pay safely, have fun.
             </p>
+            {offerLine.length > 0 && (
+              <Link href="/login" className="mt-6 inline-block rounded-chunky border-3 border-ink bg-sunny px-4 py-2 font-display font-extrabold shadow-brutal-sm">
+                {offerLine.join(' · ')}
+              </Link>
+            )}
             <div className="mt-8 max-w-2xl">
               <SearchBar />
             </div>
@@ -158,6 +171,25 @@ export default async function Home() {
       </section>
 
       {/* FEATURED */}
+      {freeToday.items.length > 0 && (
+        <section className="container-x pt-16">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-extrabold sm:text-4xl">🟢 Free today</h2>
+              <p className="mt-1 text-ink-soft">{freeToday.total} companion{freeToday.total === 1 ? ' has' : 's have'} time later today. Book now, meet in a couple of hours.</p>
+            </div>
+            <Link href="/explore?when=today" className={buttonClass('white', 'sm')}>
+              See all
+            </Link>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {freeToday.items.map((c) => (
+              <CompanionCard key={c.id} c={c} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {featured.items.length > 0 && (
         <section className="container-x py-16">
           <div className="mb-8 flex items-end justify-between gap-4">

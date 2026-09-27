@@ -20,6 +20,10 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   companionFeeNonBinary: 0,
   companionFeeUnspecifiedOn: 0,
   companionFeeUnspecified: 0,
+  // member offers: off until an admin sets them
+  welcomeCredit: 0,
+  cashbackPct: 0,
+  cashbackMax: 200,
 };
 
 /** Platform business rules live here (and only here). Admins can edit them from the panel. */
