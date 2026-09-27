@@ -22,6 +22,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import type { PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
+import { CompanionFeeService, feePaid, toFeeAdminDto } from '../companions/companion-fee.service';
 
 const PAGE = 25;
 const DAY = 86_400_000;
@@ -37,6 +38,7 @@ export class AdminService {
     private notifications: NotificationsService,
     private rt: RealtimeService,
     private referrals: ReferralsService,
+    private fee: CompanionFeeService,
   ) {}
 
   private page(q: PageDto) {
@@ -116,6 +118,14 @@ export class AdminService {
     return { items, total, page, pageSize };
   }
 
+  /** Refund a user's companion registration fee to their wallet (any time, admin's decision). */
+  async refundCompanionFee(admin: User, userId: string, note?: string) {
+    const amount = await this.prisma.$transaction((tx) => this.fee.refund(tx, userId, note || 'refunded by admin'));
+    await this.fee.notifyRefunded(userId, amount);
+    await this.audit.log(admin.id, 'companion_fee.refund', 'user', userId, { amount, note });
+    return { ok: true, amount };
+  }
+
   async user(id: string, admin: User) {
     const u = await this.prisma.user.findUnique({
       where: { id },
@@ -133,7 +143,7 @@ export class AdminService {
       this.prisma.kycSubmission.findMany({ where: { userId: id }, include: { user: true }, orderBy: { createdAt: 'desc' } }),
     ]);
     return {
-      user: { ...toUserDto(u), bookingsCount: u._count.bookings, reportsAgainst: u._count.reportsAgainst, walletBalance: u.wallet?.balance ?? 0 },
+      user: { ...toUserDto(u), bookingsCount: u._count.bookings, reportsAgainst: u._count.reportsAgainst, walletBalance: u.wallet?.balance ?? 0, companionFee: toFeeAdminDto(u) },
       warnings: u.warnings,
       statusReason: u.statusReason,
       wallet: u.wallet?.txns.map((t) => ({ id: t.id, type: t.type, amount: t.amount, reason: t.reason, balanceAfter: t.balanceAfter, createdAt: t.createdAt.toISOString() })) ?? [],
@@ -163,22 +173,28 @@ export class AdminService {
       this.prisma.kycSubmission.findMany({ where, include: { user: { include: { companion: true } } }, orderBy: { createdAt: 'asc' }, skip, take }),
     ]);
     return {
-      items: rows.map((k) => ({ ...toKycDto(k), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
+      items: rows.map((k) => ({ ...toKycDto(k), fee: toFeeAdminDto(k.user), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
       total,
       page,
       pageSize,
     };
   }
 
-  async kycDecide(admin: User, id: string, approve: boolean, note?: string) {
+  async kycDecide(admin: User, id: string, approve: boolean, note?: string, refundFee = false) {
     const k = await this.prisma.kycSubmission.findUnique({ where: { id } });
     if (!k) throw new NotFoundException();
     if (k.status !== 'PENDING') throw new BadRequestException('Already reviewed');
     const status = approve ? 'APPROVED' : 'REJECTED';
-    await this.prisma.$transaction([
-      this.prisma.kycSubmission.update({ where: { id }, data: { status, reviewNote: note ?? null, reviewerId: admin.id, reviewedAt: new Date() } }),
-      this.prisma.companionProfile.update({ where: { userId: k.userId }, data: { kycStatus: status, ...(approve ? { isListed: true } : {}) } }),
-    ]);
+    // rejecting can also refund the registration fee (the admin's call); a refund means re-applying needs a new payment
+    const refunded = await this.prisma.$transaction(async (tx) => {
+      await tx.kycSubmission.update({ where: { id }, data: { status, reviewNote: note ?? null, reviewerId: admin.id, reviewedAt: new Date() } });
+      await tx.companionProfile.update({ where: { userId: k.userId }, data: { kycStatus: status, ...(approve ? { isListed: true } : {}) } });
+      return !approve && refundFee ? this.fee.refund(tx, k.userId, 'verification not approved') : 0;
+    });
+    if (refunded) {
+      await this.fee.notifyRefunded(k.userId, refunded);
+      await this.audit.log(admin.id, 'companion_fee.refund', 'user', k.userId, { amount: refunded, via: 'kyc.reject', kycId: id });
+    }
     await this.notifications.notify(k.userId, approve
       ? { type: 'kyc.approved', title: "You're verified ✅ and live!", body: 'Your profile is now visible to members. Set your availability to get bookings.', link: '/companion/dashboard' }
       : { type: 'kyc.rejected', title: 'Verification needs another look', body: note ?? 'Please re-submit clearer documents.', link: '/companion/kyc' });

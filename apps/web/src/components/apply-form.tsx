@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ApplyCompanionInput } from '@companio/types';
 import { Button, Card, Checkbox, buttonClass } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
@@ -10,6 +10,8 @@ import { errMsg } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { CompanionProfileFields, profileValid } from './profile-form';
 import { useToast } from './toast';
+import { CompanionFeeSummary, useCompanionFee } from './companion-fee';
+import { formatINR } from '@companio/types';
 
 export function ApplyForm() {
   const { user, ready, api, refresh } = useAuth();
@@ -18,6 +20,12 @@ export function ApplyForm() {
   const [v, setV] = useState<ApplyCompanionInput>({ headline: '', about: '', hourlyRate: 399, categories: [], languages: [], city: user?.city ?? '' });
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
+  const feePay = useCompanionFee();
+  // the form's first render happens before the session loads, so fill in the city from onboarding once it does
+  useEffect(() => {
+    if (user?.city) setV((x) => (x.city ? x : { ...x, city: user.city! }));
+  }, [user?.city]);
+  const { fee } = feePay;
 
   if (!ready) return null;
   if (!user)
@@ -51,6 +59,11 @@ export function ApplyForm() {
   const submit = async () => {
     setBusy(true);
     try {
+      // fee first (only when one applies to this person); the profile is created right after it's confirmed
+      if (fee?.due && !(await feePay.pay())) {
+        setBusy(false);
+        return;
+      }
       await api.companion.apply({ ...v, hourlyRate: Math.round(v.hourlyRate) });
       track({ name: 'companion_apply' });
       await refresh();
@@ -73,9 +86,12 @@ export function ApplyForm() {
           label={<>I’ll keep every booking <b>platonic and in public places</b>, never ask for off-platform payment, and follow the community guidelines.</>}
         />
       </div>
+      <CompanionFeeSummary fee={fee} balance={feePay.balance} useWallet={feePay.useWallet} setUseWallet={feePay.setUseWallet} />
+      {fee?.paid && <p className="text-sm font-semibold text-lime-deep">✓ Registration fee paid ({formatINR(fee.paidAmount ?? 0)})</p>}
       <Button size="lg" className="w-full" loading={busy} disabled={!profileValid(v) || !agree} onClick={submit}>
-        Create profile → verify ID
+        {fee?.due ? `Pay ${formatINR(fee.total - (feePay.useWallet ? Math.min(feePay.balance, fee.total) : 0))} & submit application` : 'Create profile → verify ID'}
       </Button>
+      {feePay.modal}
     </Card>
   );
 }

@@ -22,6 +22,7 @@ import { AuthGuard, CurrentUser } from '../common/auth';
 import { privateDocUpload, publicImageUpload, publicUrl } from '../files/uploads';
 import { CompanionsService } from './companions.service';
 import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
+import { CompanionFeeService } from './companion-fee.service';
 
 @ApiTags('companions')
 @Controller('companions')
@@ -44,7 +45,16 @@ export class CompanionsController {
 @UseGuards(AuthGuard)
 @Controller('companion')
 export class CompanionSelfController {
-  constructor(private svc: CompanionsService) {}
+  constructor(
+    private svc: CompanionsService,
+    private fee: CompanionFeeService,
+  ) {}
+
+  /** Registration fee the caller owes before applying (due=false → no payment step). Pay via POST /payments/companion-fee. */
+  @Get('fee')
+  feeStatus(@CurrentUser() user: User) {
+    return this.fee.status(user);
+  }
 
   @Post('apply')
   apply(@CurrentUser() user: User, @Body() dto: ApplyDto) {

@@ -21,6 +21,7 @@ import { AdminService } from './admin/admin.service';
 import { FilesController } from './files/files.controller';
 import { RealtimeGateway } from './realtime/realtime.gateway';
 import { ReferralsModule } from './referrals/referrals.service';
+import { CompanionFeeModule } from './companions/companion-fee.service';
 import { ReferralsController } from './referrals/referrals.controller';
 
 @Module({
@@ -35,6 +36,7 @@ import { ReferralsController } from './referrals/referrals.controller';
     BookingsModule,
     PaymentsModule,
     ReferralsModule,
+    CompanionFeeModule,
   ],
   controllers: [
     MetaController,

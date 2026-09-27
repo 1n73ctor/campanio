@@ -10,6 +10,8 @@ import type {
   CheckoutResponse,
   City,
   CompanionCardDto,
+  CompanionFeeDto,
+  FeeCheckoutResponse,
   ReferralDto,
   CompanionDashboardDto,
   CompanionDetailDto,
@@ -148,6 +150,8 @@ export function createApiClient(opts: ClientOptions) {
       get: (id: string) => get<CompanionDetailDto>(`/companions/${id}`),
     },
     companion: {
+      /** registration fee owed before applying; `due: false` → no payment step */
+      fee: () => get<CompanionFeeDto>('/companion/fee'),
       apply: (input: ApplyCompanionInput) => post<CompanionProfileDto>('/companion/apply', input),
       dashboard: () => get<CompanionDashboardDto>('/companion/dashboard'),
       updateProfile: (input: Partial<ApplyCompanionInput>) => patch<CompanionProfileDto>('/companion/profile', input),
@@ -178,7 +182,8 @@ export function createApiClient(opts: ClientOptions) {
     },
     payments: {
       checkout: (bookingId: string, useWallet = true) => post<CheckoutResponse>('/payments/checkout', { bookingId, useWallet }),
-      verify: (input: VerifyPaymentInput) => post<{ status: 'PAID'; bookingId: string }>('/payments/verify', input),
+      companionFee: (useWallet = true) => post<FeeCheckoutResponse>('/payments/companion-fee', { useWallet }),
+      verify: (input: VerifyPaymentInput) => post<{ status: 'PAID'; bookingId: string | null; purpose: string }>('/payments/verify', input),
       mockPay: (orderId: string) => post<VerifyPaymentInput>(`/payments/mock/${orderId}/pay`),
     },
     wallet: {
@@ -204,7 +209,8 @@ export function createApiClient(opts: ClientOptions) {
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
       approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),
-      rejectKyc: (id: string, note: string) => post<{ ok: true }>(`/admin/kyc/${id}/reject`, { note }),
+      rejectKyc: (id: string, note: string, refundFee = false) => post<{ ok: true }>(`/admin/kyc/${id}/reject`, { note, refundFee }),
+      refundCompanionFee: (userId: string, note?: string) => post<{ ok: true; amount: number }>(`/admin/users/${userId}/refund-companion-fee`, { note }),
       bookings: (q: AdminPage) => get<Paginated<BookingDto>>('/admin/bookings', q),
       booking: (id: string) => get<AdminBookingDetail>(`/admin/bookings/${id}`),
       refund: (id: string, note: string, amount?: number) => post<{ ok: true; amount: number }>(`/admin/bookings/${id}/refund`, { note, amount }),

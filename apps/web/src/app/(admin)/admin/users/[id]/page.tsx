@@ -17,6 +17,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
   const [target, setTarget] = useState<Exclude<UserStatus, 'DELETED'> | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [refunding, setRefunding] = useState(false);
 
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
@@ -64,6 +65,36 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
               <p className="font-bold">Companion: “{u.companion.headline}”</p>
               <p>{formatINR(u.companion.hourlyRate)}/hr · ★ {u.companion.ratingAvg} ({u.companion.ratingCount}) · {u.companion.completedBookings} completed</p>
               <p>KYC <StatusBadge status={u.companion.kycStatus} /> · {u.companion.isListed ? 'listed' : 'not listed'}</p>
+            </div>
+          )}
+          {u.companionFee?.paidAt && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-dashed border-ink/20 pt-2">
+              <p>
+                Registration fee <b>{formatINR(u.companionFee.paidAmount ?? 0)}</b> paid {d(u.companionFee.paidAt)}
+                {u.companionFee.refundedAt && <> · <b>refunded</b> {d(u.companionFee.refundedAt)}</>}
+              </p>
+              {!u.companionFee.refundedAt && (
+                <Button
+                  size="sm"
+                  variant="white"
+                  loading={refunding}
+                  onClick={async () => {
+                    if (!confirm(`Refund ${formatINR(u.companionFee?.paidAmount ?? 0)} to ${u.name ?? 'this user'}'s wallet? They'll need to pay again to re-apply.`)) return;
+                    setRefunding(true);
+                    try {
+                      await api.admin.refundCompanionFee(u.id);
+                      toast('Fee refunded to their wallet');
+                      reload();
+                    } catch (e) {
+                      toast(errMsg(e), 'error');
+                    } finally {
+                      setRefunding(false);
+                    }
+                  }}
+                >
+                  Refund to wallet
+                </Button>
+              )}
             </div>
           )}
         </Card>

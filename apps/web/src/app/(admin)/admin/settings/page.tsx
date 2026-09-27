@@ -1,12 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { PlatformSettings } from '@companio/types';
-import { Button, Callout, Card, Field, Input } from '@companio/ui';
+import { COMPANION_FEE_KEYS, companionFeeFor, type Gender, type PlatformSettings } from '@companio/types';
+import { Button, Callout, Card, Field, Input, Toggle } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { formatINR } from '@/admin/lib/format';
+
+const FEE_GENDERS: { gender: Gender; label: string }[] = [
+  { gender: 'MALE', label: 'Male' },
+  { gender: 'FEMALE', label: 'Female' },
+  { gender: 'NON_BINARY', label: 'Non-binary' },
+  { gender: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say / not set' },
+];
 
 const FIELDS: { key: keyof PlatformSettings; label: string; hint: string; suffix: string }[] = [
   { key: 'connectionFee', label: 'Connection fee', hint: 'Flat fee per booking, charged to the member', suffix: '₹' },
@@ -68,6 +75,39 @@ export default function SettingsPage() {
           <br />
           Companion earns {formatINR(exampleSubtotal - commission)}. Platform keeps {formatINR(form.connectionFee + gst + commission)}.
         </Callout>
+        <Card className="p-6 lg:col-span-2">
+          <h2 className="font-display text-lg font-extrabold">Companion registration fee</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            One-time fee to apply as a companion, set per gender. GST ({form.gstPct}%) is added on top. When it’s off, applicants of that gender never see a payment
+            screen. Companions who applied before a fee was switched on aren’t charged. Save to apply.
+          </p>
+          <div className="mt-4 divide-y-2 divide-ink/10">
+            {FEE_GENDERS.map(({ gender, label }) => {
+              const key = COMPANION_FEE_KEYS[gender];
+              const onKey = `${key}On` as keyof PlatformSettings;
+              const on = form[onKey] === 1;
+              const preview = companionFeeFor(form as unknown as Record<string, number>, gender);
+              return (
+                <div key={gender} className="grid items-center gap-3 py-3 sm:grid-cols-[1fr_auto_160px_1fr]">
+                  <span className="font-bold">{label}</span>
+                  <Toggle checked={on} onChange={(v) => setForm({ ...form, [onKey]: v ? 1 : 0 })} label={`Charge ${label.toLowerCase()} applicants`} />
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    aria-label={`${label} fee (₹, before GST)`}
+                    value={form[key]}
+                    disabled={!on}
+                    onChange={(e) => setForm({ ...form, [key]: Math.max(0, Math.round(Number(e.target.value))) })}
+                  />
+                  <span className="text-sm text-ink-soft">
+                    {!on ? 'No fee — no payment screen' : preview.required ? <>Applicant pays <b className="text-ink">{formatINR(preview.total)}</b> ({formatINR(preview.amount)} + {formatINR(preview.gst)} GST)</> : 'Enter an amount above ₹0'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       </div>
     </>
   );

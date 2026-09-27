@@ -12,6 +12,9 @@ class CheckoutDto {
   @IsString() bookingId: string;
   @IsOptional() @IsBoolean() useWallet?: boolean;
 }
+class FeeCheckoutDto {
+  @IsOptional() @IsBoolean() useWallet?: boolean;
+}
 class VerifyDto {
   @IsString() orderId: string;
   @IsString() paymentId: string;
@@ -29,6 +32,15 @@ export class PaymentsController {
   @HttpCode(200)
   checkout(@CurrentUser() user: User, @Body() dto: CheckoutDto) {
     return this.svc.checkout(user, dto.bookingId, dto.useWallet ?? true);
+  }
+
+  /** Companion registration fee (see CompanionFeeService). Confirm with POST /payments/verify like a booking. */
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('companion-fee')
+  @HttpCode(200)
+  companionFee(@CurrentUser() user: User, @Body() dto: FeeCheckoutDto) {
+    return this.svc.checkoutCompanionFee(user, dto.useWallet ?? true);
   }
 
   @ApiBearerAuth()

@@ -157,6 +157,8 @@ export interface KycSubmissionDto {
   reviewNote: string | null;
   createdAt: string;
   reviewedAt: string | null;
+  /** registration fee status of the applicant (admin views only) */
+  fee?: CompanionFeeAdminDto;
 }
 
 // ---------- bookings ----------
@@ -395,6 +397,7 @@ export interface AdminUserDto extends UserDto {
   bookingsCount: number;
   reportsAgainst: number;
   walletBalance: Rupees;
+  companionFee?: CompanionFeeAdminDto;
 }
 
 export interface PlatformSettings {
@@ -410,6 +413,45 @@ export interface PlatformSettings {
   /** hours a companion has to accept a request */
   requestExpiryHours: number;
   minPayout: Rupees;
+  /**
+   * Companion registration fee, per gender. `…On` is 1 (charge) or 0 (no fee — no payment screen at all);
+   * the amount is before GST (GST at `gstPct` is added on top). See `companionFeeFor`.
+   */
+  companionFeeFemaleOn: number;
+  companionFeeFemale: Rupees;
+  companionFeeMaleOn: number;
+  companionFeeMale: Rupees;
+  companionFeeNonBinaryOn: number;
+  companionFeeNonBinary: Rupees;
+  companionFeeUnspecifiedOn: number;
+  companionFeeUnspecified: Rupees;
+}
+
+/** Where the caller stands with the companion registration fee. */
+export interface CompanionFeeDto {
+  /** a fee applies to this user's gender right now and hasn't been paid (or was refunded) */
+  due: boolean;
+  amount: Rupees;
+  gst: Rupees;
+  gstPct: number;
+  total: Rupees;
+  /** paid and not refunded */
+  paid: boolean;
+  paidAmount: Rupees | null;
+  paidAt: string | null;
+  refundedAt: string | null;
+}
+
+export type FeeCheckoutResponse =
+  | { status: 'PAID' }
+  | { status: 'ACTION_REQUIRED'; provider: 'mock'; orderId: string; amount: Rupees; walletAmount: Rupees }
+  | { status: 'ACTION_REQUIRED'; provider: 'razorpay'; orderId: string; amount: Rupees; walletAmount: Rupees; keyId: string };
+
+/** Admin view of a user's registration fee (null fields = never paid). */
+export interface CompanionFeeAdminDto {
+  paidAmount: Rupees | null;
+  paidAt: string | null;
+  refundedAt: string | null;
 }
 
 export interface AuditLogDto {

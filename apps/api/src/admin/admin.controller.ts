@@ -28,6 +28,9 @@ export class AdminController {
 
   @Get('users') users(@Query() q: PageDto) { return this.svc.users(q); }
   @Get('users/:id') user(@CurrentUser() a: User, @Param('id') id: string) { return this.svc.user(id, a); }
+  @Post('users/:id/refund-companion-fee') refundCompanionFee(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
+    return this.svc.refundCompanionFee(a, id, dto.note);
+  }
   @Post('users/:id/status') userStatus(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: UserStatusDto) {
     return this.svc.setUserStatus(a, id, dto.status, dto.reason);
   }
@@ -37,7 +40,7 @@ export class AdminController {
     return this.svc.kycDecide(a, id, true, dto.note);
   }
   @Post('kyc/:id/reject') kycReject(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: RejectDto) {
-    return this.svc.kycDecide(a, id, false, dto.note);
+    return this.svc.kycDecide(a, id, false, dto.note, dto.refundFee);
   }
 
   @Get('bookings') bookings(@CurrentUser() a: User, @Query() q: PageDto) { return this.svc.bookings(q, a); }

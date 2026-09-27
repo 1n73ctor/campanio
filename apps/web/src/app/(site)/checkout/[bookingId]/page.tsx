@@ -9,22 +9,8 @@ import { FullLoader } from '@/components/misc';
 import { useToast } from '@/components/toast';
 import { errMsg, fmtDateTime } from '@/lib/format';
 import { track } from '@/lib/analytics';
+import { loadRazorpay } from '@/lib/razorpay';
 
-declare global {
-  interface Window {
-    Razorpay?: new (opts: Record<string, unknown>) => { open: () => void; on: (e: string, cb: (r: unknown) => void) => void };
-  }
-}
-
-const loadRazorpay = () =>
-  new Promise<void>((resolve, reject) => {
-    if (window.Razorpay) return resolve();
-    const s = document.createElement('script');
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Could not load Razorpay'));
-    document.body.appendChild(s);
-  });
 
 export default function CheckoutPage({ params }: { params: Promise<{ bookingId: string }> }) {
   const { bookingId } = use(params);

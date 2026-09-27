@@ -46,6 +46,10 @@ export class UsersController {
         throw new BadRequestException('Date of birth cannot be changed after onboarding. Contact support.');
       }
     }
+    // the companion registration fee depends on gender, so it's fixed once set (like DOB)
+    if (dto.gender && user.onboarded && user.gender && dto.gender !== user.gender) {
+      throw new BadRequestException('Gender cannot be changed after onboarding. Contact support.');
+    }
     const next = {
       name: dto.name ?? user.name,
       dob: dto.dob ? new Date(dto.dob) : user.dob,

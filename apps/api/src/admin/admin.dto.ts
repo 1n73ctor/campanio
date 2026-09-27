@@ -20,6 +20,8 @@ export class NoteDto {
 
 export class RejectDto {
   @IsString() @Length(3, 500) note: string;
+  /** also refund the applicant's companion registration fee to their wallet */
+  @IsOptional() @IsBoolean() refundFee?: boolean;
 }
 
 export class RefundDto {
@@ -56,4 +58,12 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(1) @Max(168) autoReleaseHours?: number;
   @IsOptional() @IsInt() @Min(1) @Max(72) requestExpiryHours?: number;
   @IsOptional() @IsInt() @Min(0) @Max(100000) minPayout?: number;
+  @IsOptional() @IsIn([0, 1]) companionFeeFemaleOn?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeFemale?: number;
+  @IsOptional() @IsIn([0, 1]) companionFeeMaleOn?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeMale?: number;
+  @IsOptional() @IsIn([0, 1]) companionFeeNonBinaryOn?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeNonBinary?: number;
+  @IsOptional() @IsIn([0, 1]) companionFeeUnspecifiedOn?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) companionFeeUnspecified?: number;
 }

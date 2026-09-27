@@ -36,6 +36,10 @@ model User {
   referredBy         User?     @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
   referrals          User[]    @relation("Referrals")
   referralRewardedAt DateTime?
+  // companion registration fee (amount incl. GST); a refund reopens the fee, so re-applying means paying again
+  companionFeePaid       Int?
+  companionFeePaidAt     DateTime?
+  companionFeeRefundedAt DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
@@ -164,8 +168,10 @@ model Booking {
 
 model Payment {
   id                String   @id @default(cuid())
-  bookingId         String
-  booking           Booking  @relation(fields: [bookingId], references: [id])
+  // BOOKING (bookingId set) or COMPANION_FEE (registration fee to become a companion)
+  purpose           String   @default("BOOKING")
+  bookingId         String?
+  booking           Booking? @relation(fields: [bookingId], references: [id])
   userId            String
   user              User     @relation(fields: [userId], references: [id])
   provider          String

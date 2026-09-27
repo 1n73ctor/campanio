@@ -11,6 +11,15 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   autoReleaseHours: 24,
   requestExpiryHours: 12,
   minPayout: 500,
+  // companion registration fee: off for everyone until an admin enables it (amounts before GST)
+  companionFeeFemaleOn: 0,
+  companionFeeFemale: 0,
+  companionFeeMaleOn: 0,
+  companionFeeMale: 0,
+  companionFeeNonBinaryOn: 0,
+  companionFeeNonBinary: 0,
+  companionFeeUnspecifiedOn: 0,
+  companionFeeUnspecified: 0,
 };
 
 /** Platform business rules live here (and only here). Admins can edit them from the panel. */

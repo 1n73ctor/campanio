@@ -177,6 +177,26 @@ export const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kan
 export const categoryBySlug = (slug: string) => CATEGORIES.find((c) => c.slug === slug);
 export const cityBySlug = (slug: string) => CITIES.find((c) => c.slug === slug);
 
+/** Settings keys for the companion registration fee per gender: `<key>On` (0/1) and `<key>` (₹ before GST). */
+export const COMPANION_FEE_KEYS = {
+  FEMALE: 'companionFeeFemale',
+  MALE: 'companionFeeMale',
+  NON_BINARY: 'companionFeeNonBinary',
+  PREFER_NOT_TO_SAY: 'companionFeeUnspecified',
+} as const;
+
+/**
+ * The registration fee a new companion of this gender pays: amount + GST on top. A missing gender counts as
+ * "prefer not to say". `required: false` means no fee and no payment screen.
+ */
+export function companionFeeFor(s: Record<string, number>, gender: string | null | undefined) {
+  const key = COMPANION_FEE_KEYS[(gender ?? 'PREFER_NOT_TO_SAY') as keyof typeof COMPANION_FEE_KEYS] ?? COMPANION_FEE_KEYS.PREFER_NOT_TO_SAY;
+  const amount = Math.max(0, Math.round(s[key] ?? 0));
+  const required = s[`${key}On`] === 1 && amount > 0;
+  const gst = required ? Math.round((amount * (s.gstPct ?? 0)) / 100) : 0;
+  return { required, amount: required ? amount : 0, gst, gstPct: s.gstPct ?? 0, total: required ? amount + gst : 0 };
+}
+
 /** Wallet credit (₹) for both the inviter and the friend when the friend's first booking completes. */
 export const REFERRAL_REWARD = 100;
 

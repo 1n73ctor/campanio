@@ -14,6 +14,7 @@ import {
 } from '../common/mappers';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ApplyDto, SearchDto, UpdateProfileDto } from './companions.dto';
+import { CompanionFeeService } from './companion-fee.service';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -23,6 +24,7 @@ export class CompanionsService {
     private prisma: PrismaService,
     private wallet: WalletLedger,
     private notifications: NotificationsService,
+    private fee: CompanionFeeService,
   ) {}
 
   async search(q: SearchDto): Promise<Paginated<CompanionCardDto>> {
@@ -82,6 +84,7 @@ export class CompanionsService {
     if (!user.onboarded) throw new BadRequestException('Complete your profile first');
     const existing = await this.prisma.companionProfile.findUnique({ where: { userId: user.id } });
     if (existing) throw new BadRequestException('You already have a companion profile');
+    await this.fee.assertCanApply(user);
     const [profile] = await this.prisma.$transaction([
       this.prisma.companionProfile.create({
         data: {
@@ -167,6 +170,7 @@ export class CompanionsService {
     const p = await this.own(user.id);
     if (p.kycStatus === 'PENDING') throw new BadRequestException('Your verification is already under review');
     if (p.kycStatus === 'APPROVED') throw new BadRequestException('You are already verified');
+    await this.fee.assertCanSubmitKyc(user);
     const [k] = await this.prisma.$transaction([
       this.prisma.kycSubmission.create({
         data: { userId: user.id, idType, idLast4: idLast4.toUpperCase(), idDocPath: idDocFile, selfiePath: selfieFile },

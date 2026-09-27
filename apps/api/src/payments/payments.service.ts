@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import type { CheckoutResponse } from '@companio/types';
+import { formatINR, type CheckoutResponse, type FeeCheckoutResponse } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
 import { EscrowService } from '../bookings/escrow.service';
@@ -10,6 +10,7 @@ import { bookingInclude, toBookingDto } from '../common/mappers';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './providers/provider';
 import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
+import { CompanionFeeService } from '../companions/companion-fee.service';
 
 @Injectable()
 export class PaymentsService {
@@ -20,6 +21,7 @@ export class PaymentsService {
     private escrow: EscrowService,
     private notifications: NotificationsService,
     private rt: RealtimeService,
+    private fee: CompanionFeeService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
 
@@ -49,6 +51,30 @@ export class PaymentsService {
     return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount: external, walletAmount };
   }
 
+  /** Companion registration fee: same gateway and wallet rules as bookings. */
+  async checkoutCompanionFee(user: User, useWallet: boolean): Promise<FeeCheckoutResponse> {
+    const fee = await this.fee.status(user);
+    if (!fee.due) throw new BadRequestException(fee.paid ? 'Your registration fee is already paid' : 'No registration fee is due');
+
+    const balance = useWallet ? await this.wallet.balance(user.id) : 0;
+    const walletAmount = Math.min(balance, fee.total);
+    const external = fee.total - walletAmount;
+    const base = { purpose: 'COMPANION_FEE', userId: user.id, walletAmount };
+
+    if (external === 0) {
+      const orderId = `wallet_fee_${user.id}_${Date.now()}`;
+      await this.prisma.payment.create({ data: { ...base, provider: 'wallet', providerOrderId: orderId, amount: 0 } });
+      await this.markPaid(orderId, orderId);
+      return { status: 'PAID' };
+    }
+    const { orderId } = await this.provider.createOrder(external, `fee_${user.id}`);
+    await this.prisma.payment.create({ data: { ...base, provider: this.provider.name, providerOrderId: orderId, amount: external } });
+    if (this.provider instanceof RazorpayProvider) {
+      return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount: external, walletAmount, keyId: this.provider.keyId };
+    }
+    return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount: external, walletAmount };
+  }
+
   async verify(user: User, orderId: string, paymentId: string, signature: string) {
     const p = await this.prisma.payment.findUnique({ where: { providerOrderId: orderId } });
     if (!p || p.userId !== user.id) throw new NotFoundException('Payment not found');
@@ -57,7 +83,7 @@ export class PaymentsService {
       throw new BadRequestException('Payment verification failed');
     }
     await this.markPaid(orderId, paymentId);
-    return { status: 'PAID', bookingId: p.bookingId };
+    return { status: 'PAID' as const, bookingId: p.bookingId, purpose: p.purpose };
   }
 
   /** Dev only: simulates the gateway returning a successful payment. */
@@ -82,15 +108,21 @@ export class PaymentsService {
     return { ok: true };
   }
 
-  /** Idempotent: flips payment → PAID, debits wallet share, holds escrow, moves booking to REQUESTED. */
+  /**
+   * Idempotent: flips payment → PAID and debits the wallet share. Booking payments then hold escrow and move the
+   * booking to REQUESTED; registration fee payments unlock the companion application.
+   */
   async markPaid(orderId: string, providerPaymentId: string) {
+    const p0 = await this.prisma.payment.findUnique({ where: { providerOrderId: orderId } });
+    if (!p0) throw new NotFoundException('Payment not found');
+    if (p0.purpose === 'COMPANION_FEE') return this.markFeePaid(p0.id, providerPaymentId);
+
     const result = await this.prisma.$transaction(async (tx) => {
-      const p = await tx.payment.findUnique({ where: { providerOrderId: orderId } });
-      if (!p) throw new NotFoundException('Payment not found');
+      const p = await tx.payment.findUniqueOrThrow({ where: { id: p0.id } });
       const claimed = await tx.payment.updateMany({ where: { id: p.id, status: { not: 'PAID' } }, data: { status: 'PAID', providerPaymentId } });
       if (claimed.count === 0) return null; // already processed
 
-      const b = await tx.booking.findUniqueOrThrow({ where: { id: p.bookingId } });
+      const b = await tx.booking.findUniqueOrThrow({ where: { id: p.bookingId! } });
       if (b.status !== 'PENDING_PAYMENT') {
         // booking expired/cancelled while the user was paying → park the money in their wallet
         await this.wallet.credit(tx, b.userId, p.amount, 'Payment for an expired booking', { type: 'payment', id: p.id });
@@ -121,5 +153,28 @@ export class PaymentsService {
       link: `/bookings/${booking.id}`,
     });
     this.rt.toUser(booking.companionUserId, 'booking:update', toBookingDto(full, { id: booking.companionUserId, role: 'COMPANION' }));
+  }
+
+  private async markFeePaid(paymentId: string, providerPaymentId: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.payment.updateMany({ where: { id: paymentId, status: { not: 'PAID' } }, data: { status: 'PAID', providerPaymentId } });
+      if (claimed.count === 0) return null; // already processed
+      const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+      const total = p.amount + p.walletAmount;
+      if (!(await this.fee.recordPaid(tx, p.userId, total))) {
+        // fee was already paid (e.g. two tabs) → the extra gateway money goes to their wallet; the wallet share was never taken
+        await this.wallet.credit(tx, p.userId, p.amount, 'Duplicate registration fee payment', { type: 'payment', id: p.id });
+        return { userId: p.userId, total, duplicate: true };
+      }
+      await this.wallet.debit(tx, p.userId, p.walletAmount, 'Companion registration fee', { type: 'companion-fee', id: p.id });
+      return { userId: p.userId, total, duplicate: false };
+    });
+    if (!result) return;
+    await this.notifications.notify(
+      result.userId,
+      result.duplicate
+        ? { type: 'payment.parked', title: 'Payment moved to your wallet', body: 'Your registration fee was already paid, so we added this payment to your Companio wallet.', link: '/wallet' }
+        : { type: 'payment.captured', title: `Registration fee received ✅`, body: `${formatINR(result.total)} paid. Finish your companion application and verify your ID.`, link: '/become-a-companion' },
+    );
   }
 }

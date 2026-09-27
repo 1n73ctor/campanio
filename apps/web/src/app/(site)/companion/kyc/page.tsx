@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ID_TYPES, humanize } from '@companio/types';
+import { ID_TYPES, formatINR, humanize } from '@companio/types';
 import { Button, Callout, Card, Field, Input, Select } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
 import { useToast } from '@/components/toast';
 import { errMsg } from '@/lib/format';
+import { CompanionFeeSummary, useCompanionFee } from '@/components/companion-fee';
 
 /**
  * Web KYC: ID upload + live selfie from the webcam (liveness-lite: must be captured live, not uploaded).
@@ -27,6 +28,9 @@ export default function KycPage() {
   const [busy, setBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const feePay = useCompanionFee();
+  // only people whose earlier fee was refunded must pay again; companions from before the fee never do
+  const feeBlocked = !!(feePay.fee?.due && feePay.fee.refundedAt);
 
   useEffect(() => () => streamRef.current?.getTracks().forEach((t) => t.stop()), []);
 
@@ -91,6 +95,10 @@ export default function KycPage() {
     if (!idDoc || !selfie) return;
     setBusy(true);
     try {
+      if (feeBlocked && !(await feePay.pay())) {
+        setBusy(false);
+        return;
+      }
       await api.companion.submitKyc({ idType, idLast4: last4, idDoc, selfie: new File([selfie], 'selfie.jpg', { type: 'image/jpeg' }) });
       await refresh();
       toast('Submitted! We’ll review within 24h');
@@ -157,9 +165,13 @@ export default function KycPage() {
             )}
           </div>
         </div>
+        {feeBlocked && <CompanionFeeSummary fee={feePay.fee} balance={feePay.balance} useWallet={feePay.useWallet} setUseWallet={feePay.setUseWallet} />}
         <Button size="lg" className="w-full" loading={busy} disabled={!idDoc || !selfie || last4.length !== 4} onClick={submit}>
-          Submit for verification
+          {feeBlocked && feePay.fee
+            ? `Pay ${formatINR(feePay.fee.total - (feePay.useWallet ? Math.min(feePay.balance, feePay.fee.total) : 0))} & submit for verification`
+            : 'Submit for verification'}
         </Button>
+        {feePay.modal}
       </Card>
     </div>
   );

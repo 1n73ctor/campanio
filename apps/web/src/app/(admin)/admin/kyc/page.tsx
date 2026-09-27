@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ageFromDob, cityBySlug, humanize } from '@companio/types';
-import { Button, Card, Field, Modal, StatusBadge, Tabs, Textarea } from '@companio/ui';
+import { ageFromDob, cityBySlug, formatINR, humanize } from '@companio/types';
+import { Badge, Button, Card, Checkbox, Field, Modal, StatusBadge, Tabs, Textarea } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
@@ -16,15 +16,19 @@ export default function KycPage() {
   const { data, error, reload } = useLoad(() => api.admin.kyc({ status, page }), [status, page]);
   const [reject, setReject] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [refundFee, setRefundFee] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  const rejectFee = data?.items.find((k) => k.id === reject)?.fee;
 
   const decide = async (id: string, approve: boolean) => {
     setBusy(id);
     try {
-      approve ? await api.admin.approveKyc(id) : await api.admin.rejectKyc(id, note);
-      toast(approve ? 'Approved — companion is live' : 'Rejected');
+      approve ? await api.admin.approveKyc(id) : await api.admin.rejectKyc(id, note, refundFee);
+      toast(approve ? 'Approved — companion is live' : refundFee ? 'Rejected and fee refunded to their wallet' : 'Rejected');
       setReject(null);
       setNote('');
+      setRefundFee(false);
       reload();
     } catch (e) {
       toast(errMsg(e), 'error');
@@ -61,6 +65,11 @@ export default function KycPage() {
                     <p className="mt-1 text-xs text-ink-mute">
                       {humanize(k.idType)} ending {k.idLast4} · submitted {dt(k.createdAt)}
                     </p>
+                    {k.fee?.paidAt && (
+                      <Badge tone={k.fee.refundedAt ? 'white' : 'lime'} className="mt-2">
+                        {k.fee.refundedAt ? `Fee ${formatINR(k.fee.paidAmount ?? 0)} refunded` : `Registration fee paid · ${formatINR(k.fee.paidAmount ?? 0)}`}
+                      </Badge>
+                    )}
                   </div>
                   <StatusBadge status={k.status} />
                 </div>
@@ -95,10 +104,17 @@ export default function KycPage() {
           <Pager page={data.page} total={data.total} pageSize={data.pageSize} onPage={setPage} />
         </div>
       )}
-      <Modal open={!!reject} onClose={() => setReject(null)} title="Reject verification" footer={<Button variant="danger" loading={busy === reject} disabled={note.trim().length < 3} onClick={() => decide(reject!, false)}>Reject</Button>}>
+      <Modal open={!!reject} onClose={() => { setReject(null); setRefundFee(false); }} title="Reject verification" footer={<Button variant="danger" loading={busy === reject} disabled={note.trim().length < 3} onClick={() => decide(reject!, false)}>Reject</Button>}>
         <Field label="Reason (sent to the companion)">
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="The ID photo is blurry — please upload a clearer image with all corners visible." />
         </Field>
+        {rejectFee?.paidAt && !rejectFee.refundedAt && (
+          <Checkbox
+            checked={refundFee}
+            onChange={(e) => setRefundFee(e.target.checked)}
+            label={<>Refund their <b>{formatINR(rejectFee.paidAmount ?? 0)}</b> registration fee to their wallet. If refunded, they must pay again to re-apply.</>}
+          />
+        )}
       </Modal>
     </>
   );
