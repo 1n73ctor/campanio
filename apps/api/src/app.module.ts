@@ -20,6 +20,8 @@ import { AdminController } from './admin/admin.controller';
 import { AdminService } from './admin/admin.service';
 import { FilesController } from './files/files.controller';
 import { RealtimeGateway } from './realtime/realtime.gateway';
+import { ReferralsModule } from './referrals/referrals.service';
+import { ReferralsController } from './referrals/referrals.controller';
 
 @Module({
   imports: [
@@ -32,6 +34,7 @@ import { RealtimeGateway } from './realtime/realtime.gateway';
     AuthModule,
     BookingsModule,
     PaymentsModule,
+    ReferralsModule,
   ],
   controllers: [
     MetaController,
@@ -43,6 +46,7 @@ import { RealtimeGateway } from './realtime/realtime.gateway';
     NotificationsController,
     AdminController,
     FilesController,
+    ReferralsController,
   ],
   providers: [CompanionsService, AdminService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

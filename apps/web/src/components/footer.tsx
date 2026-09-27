@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CATEGORIES, CITIES } from '@companio/types';
 import { Logo } from '@companio/ui';
+import { CookieSettingsLink } from './analytics';
 
 export function SiteFooter() {
   return (
@@ -30,7 +31,10 @@ export function SiteFooter() {
           ]}
         />
       </div>
-      <div className="border-t border-paper/15 py-5 text-center text-xs text-paper/50">© {new Date().getFullYear()} Companio. Strictly platonic companionship. Made in India 🇮🇳</div>
+      <div className="border-t border-paper/15 py-5 text-center text-xs text-paper/50">
+        © {new Date().getFullYear()} Companio. Strictly platonic companionship. Made in India 🇮🇳
+        <CookieSettingsLink className="ml-3 underline hover:text-paper" />
+      </div>
     </footer>
   );
 }

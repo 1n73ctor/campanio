@@ -19,6 +19,7 @@ import {
 import { EscrowService } from '../bookings/escrow.service';
 import { recomputeRating } from '../bookings/bookings.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import type { PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
 
@@ -35,6 +36,7 @@ export class AdminService {
     private escrow: EscrowService,
     private notifications: NotificationsService,
     private rt: RealtimeService,
+    private referrals: ReferralsService,
   ) {}
 
   private page(q: PageDto) {
@@ -288,6 +290,7 @@ export class AdminService {
         await tx.companionProfile.update({ where: { userId: b.companionUserId }, data: { completedBookings: { increment: 1 } } });
       }
     });
+    await this.referrals.onBookingReleased(b); // only pays out if the dispute ended in a full release
     const msg = `Outcome: ${dto.outcome.toLowerCase()}. ${dto.note}`;
     await this.notifications.notify(b.userId, { type: 'dispute.resolved', title: 'Dispute resolved', body: `${msg}${refund ? ` ₹${refund} refunded.` : ''}`, link: `/bookings/${b.id}` });
     await this.notifications.notify(b.companionUserId, { type: 'dispute.resolved', title: 'Dispute resolved', body: `${msg}${release ? ` ₹${release} released to you.` : ''}`, link: `/bookings/${b.id}` });

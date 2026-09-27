@@ -8,6 +8,7 @@ import { Avatar, Button, Callout, Card, Field, Input, Select, Stars, Textarea } 
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader } from '@/components/misc';
 import { errMsg, todayIST } from '@/lib/format';
+import { track } from '@/lib/analytics';
 
 const TIMES = Array.from({ length: 36 }, (_, i) => {
   const m = 6 * 60 + i * 30;
@@ -75,6 +76,7 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
         meetingPoint: form.meetingPoint.trim(),
         note: form.note.trim() || undefined,
       });
+      track({ name: 'begin_checkout', value: b.total, bookingId: b.id, category: b.category });
       router.push(`/checkout/${b.id}`);
     } catch (e) {
       setError(errMsg(e));

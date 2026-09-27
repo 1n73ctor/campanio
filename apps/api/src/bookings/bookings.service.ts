@@ -7,6 +7,7 @@ import { SettingsService } from '../common/settings.service';
 import { bookingInclude, toBookingDto, toMessageDto, toSosDto, type BookingWithRelations } from '../common/mappers';
 import { filterMessage } from '../common/content-filter';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { EscrowService } from './escrow.service';
 import type { CreateBookingDto, DisputeDto, ListBookingsDto, ReviewDto, SosDto } from './bookings.dto';
@@ -26,6 +27,7 @@ export class BookingsService {
     private escrow: EscrowService,
     private notifications: NotificationsService,
     private rt: RealtimeService,
+    private referrals: ReferralsService,
   ) {}
 
   // ---------- read ----------
@@ -230,6 +232,7 @@ export class BookingsService {
       if (isUser) await this.escrow.settle(tx, b, 0, b.companionPayout, 'completed booking');
     });
     if (isUser) {
+      await this.referrals.onBookingReleased(b);
       await this.notifications.notify(b.companionUserId, {
         type: 'booking.paid_out',
         title: `₹${b.companionPayout} added to your wallet 💸`,

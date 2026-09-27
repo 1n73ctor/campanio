@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { EscrowService } from './escrow.service';
 
 const HOUR = 3600_000;
@@ -26,6 +27,7 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
     private settings: SettingsService,
     private escrow: EscrowService,
     private notifications: NotificationsService,
+    private referrals: ReferralsService,
   ) {}
 
   onModuleInit() {
@@ -92,6 +94,7 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
       });
       for (const b of releasable) {
         await this.prisma.$transaction((tx) => this.escrow.settle(tx, b, 0, b.companionPayout, 'completed booking'));
+        await this.referrals.onBookingReleased(b);
         await this.notifications.notify(b.companionUserId, {
           type: 'booking.paid_out',
           title: `₹${b.companionPayout} added to your wallet 💸`,

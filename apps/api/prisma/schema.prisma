@@ -30,6 +30,12 @@ model User {
   onboarded          Boolean   @default(false)
   guidelinesAccepted DateTime?
   warnings           Int       @default(0)
+  // referrals: code is generated lazily; reward is paid once, when the referred user's first booking is released
+  referralCode       String?   @unique
+  referredById       String?
+  referredBy         User?     @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals          User[]    @relation("Referrals")
+  referralRewardedAt DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?

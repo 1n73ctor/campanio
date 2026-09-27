@@ -7,6 +7,7 @@ import { PrismaService } from '../common/prisma.service';
 import { config } from '../common/config';
 import { toUserDto } from '../common/mappers';
 import { SmsService } from './sms.service';
+import { ReferralsService } from '../referrals/referrals.service';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_MAX_PER_HOUR = 5;
@@ -23,6 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private sms: SmsService,
+    private referrals: ReferralsService,
   ) {}
 
   private hash(phone: string, code: string) {
@@ -40,7 +42,7 @@ export class AuthService {
     return config.otpDevEcho ? { sent: true, devCode: code } : { sent: true };
   }
 
-  async verifyOtp(rawPhone: string, code: string): Promise<AuthResponse> {
+  async verifyOtp(rawPhone: string, code: string, ref?: string): Promise<AuthResponse> {
     const phone = normalizePhone(rawPhone);
     const otp = await this.prisma.otpCode.findFirst({ where: { phone, usedAt: null }, orderBy: { createdAt: 'desc' } });
     if (!otp || otp.expiresAt < new Date()) throw new BadRequestException('Code expired. Request a new one.');
@@ -55,6 +57,7 @@ export class AuthService {
     const isNew = !user;
     if (!user) {
       user = await this.prisma.user.create({ data: { phone, wallet: { create: {} } }, include: { companion: true } });
+      if (ref) await this.referrals.attach(user.id, ref);
     }
     if (user.status === 'BANNED') throw new ForbiddenException('This account has been banned');
     if (user.role === 'ADMIN') throw new ForbiddenException('Admins sign in through the admin panel');

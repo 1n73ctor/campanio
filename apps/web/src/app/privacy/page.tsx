@@ -19,6 +19,12 @@ export default function Privacy() {
         <p>To run bookings and payments, keep users safe (verification, moderation, SOS), prevent fraud, and meet legal obligations.</p>
         <h2>Who sees what</h2>
         <p>Other users see your first name, photo, city and reviews. Phone numbers are never shown. ID documents are visible only to our verification team via short-lived links.</p>
+        <h2>Cookies & advertising</h2>
+        <p>
+          With your consent, we use Google Analytics and the Meta Pixel to measure which ads and pages bring people to Companio (page visits, sign-ups, bookings and
+          payments, with booking value but never your messages, documents or location). Nothing is loaded if you decline, and you can change your choice anytime via
+          “Cookie settings” in the footer. Invite links store the inviter’s code on your device for 30 days so the referral reward can be applied when you sign up.
+        </p>
         <h2>Your rights</h2>
         <p>Access, correct or delete your data from Account settings or by emailing privacy@companio.app. Deleting your account removes your profile and personal data; we keep financial records for the legally required period.</p>
         <h2>Security</h2>

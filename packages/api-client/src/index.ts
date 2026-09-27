@@ -10,6 +10,7 @@ import type {
   CheckoutResponse,
   City,
   CompanionCardDto,
+  ReferralDto,
   CompanionDashboardDto,
   CompanionDetailDto,
   CompanionProfileDto,
@@ -129,7 +130,7 @@ export function createApiClient(opts: ClientOptions) {
     },
     auth: {
       requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
-      verifyOtp: (phone: string, code: string) => post<AuthResponse>('/auth/otp/verify', { phone, code }),
+      verifyOtp: (phone: string, code: string, ref?: string) => post<AuthResponse>('/auth/otp/verify', { phone, code, ref }),
       adminLogin: (email: string, password: string) => post<AuthResponse>('/auth/admin/login', { email, password }),
     },
     me: {
@@ -183,6 +184,9 @@ export function createApiClient(opts: ClientOptions) {
       get: () => get<WalletDto>('/wallet'),
       payouts: () => get<PayoutDto[]>('/wallet/payouts'),
       requestPayout: (amount: number, upiId: string) => post<PayoutDto>('/wallet/payouts', { amount, upiId }),
+    },
+    referrals: {
+      me: () => get<ReferralDto>('/referrals/me'),
     },
     notifications: {
       list: () => get<{ items: NotificationDto[]; unread: number }>('/notifications'),

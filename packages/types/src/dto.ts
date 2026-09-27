@@ -353,6 +353,17 @@ export interface SosAlertDto {
   resolvedAt: string | null;
 }
 
+export interface ReferralDto {
+  code: string;
+  reward: number;
+  /** friends who signed up with the code */
+  invited: number;
+  /** of those, how many completed a first booking (both sides got the reward) */
+  rewarded: number;
+  /** total referral credit this user has received, as inviter or as invited friend */
+  earned: number;
+}
+
 export interface NotificationDto {
   id: string;
   type: string;

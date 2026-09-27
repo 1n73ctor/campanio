@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import { ToastProvider } from './toast';
 import { PwaRegister } from './pwa';
+import { Analytics } from './analytics';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ToastProvider>
         {children}
         <PwaRegister />
+        <Analytics />
       </ToastProvider>
     </AuthProvider>
   );

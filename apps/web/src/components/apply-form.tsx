@@ -7,6 +7,7 @@ import type { ApplyCompanionInput } from '@companio/types';
 import { Button, Card, Checkbox, buttonClass } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
+import { track } from '@/lib/analytics';
 import { CompanionProfileFields, profileValid } from './profile-form';
 import { useToast } from './toast';
 
@@ -51,6 +52,7 @@ export function ApplyForm() {
     setBusy(true);
     try {
       await api.companion.apply({ ...v, hourlyRate: Math.round(v.hourlyRate) });
+      track({ name: 'companion_apply' });
       await refresh();
       toast('Profile created! Next: verify your ID');
       router.push('/companion/kyc');

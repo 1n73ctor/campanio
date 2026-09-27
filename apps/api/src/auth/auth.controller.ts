@@ -20,7 +20,7 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verify(@Body() dto: OtpVerifyDto) {
-    return this.auth.verifyOtp(dto.phone, dto.code);
+    return this.auth.verifyOtp(dto.phone, dto.code, dto.ref);
   }
 
   @Post('admin/login')

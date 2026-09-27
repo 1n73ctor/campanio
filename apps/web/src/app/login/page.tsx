@@ -6,10 +6,18 @@ import Link from 'next/link';
 import { Button, Callout, Card, Field, Input, Logo } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
+import { track } from '@/lib/analytics';
+import { captureRef, clearRef, getRef } from '@/lib/referral';
+import { REFERRAL_REWARD, formatINR } from '@companio/types';
 
 function LoginInner() {
   const { api, signIn, user, ready } = useAuth();
   const router = useRouter();
+  const [invited, setInvited] = useState(false);
+  useEffect(() => {
+    captureRef(window.location.search); // this page's effect runs before the layout's, so capture here too
+    setInvited(!!getRef());
+  }, []);
   const next = useSearchParams().get('next') || '/explore';
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -48,7 +56,9 @@ function LoginInner() {
     setError(null);
     setBusy(true);
     try {
-      const r = await api.auth.verifyOtp(phone, code);
+      const r = await api.auth.verifyOtp(phone, code, getRef());
+      if (r.isNew) track({ name: 'sign_up' });
+      clearRef(); // the code only applies to a brand-new account, so it's spent either way
       signIn(r.token, r.user);
       router.replace(r.user.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`);
     } catch (e) {
@@ -63,6 +73,11 @@ function LoginInner() {
         <Logo className="mb-6" />
         <h1 className="text-3xl font-extrabold">{step === 'phone' ? 'Hey there 👋' : 'Enter your code'}</h1>
         <p className="mt-1 text-ink-soft">{step === 'phone' ? 'Log in or sign up with your mobile number.' : `We sent a 6-digit code to +91 ${phone.slice(-10)}.`}</p>
+        {invited && step === 'phone' && (
+          <Callout tone="lime" title="🎁 You were invited!" className="mt-5">
+            Sign up and you and your friend both get {formatINR(REFERRAL_REWARD)} wallet credit after your first booking.
+          </Callout>
+        )}
         <form
           className="mt-6 space-y-4"
           onSubmit={(e) => {

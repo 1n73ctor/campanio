@@ -8,6 +8,7 @@ import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader } from '@/components/misc';
 import { useToast } from '@/components/toast';
 import { errMsg, fmtDateTime } from '@/lib/format';
+import { track } from '@/lib/analytics';
 
 declare global {
   interface Window {
@@ -54,6 +55,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
   const cat = CATEGORIES.find((c) => c.slug === b.category);
 
   const done = () => {
+    track({ name: 'purchase', value: b.total, bookingId: b.id, category: b.category });
     toast('Payment successful! 🎉 Request sent.');
     router.replace(`/bookings/${b.id}?paid=1`);
   };

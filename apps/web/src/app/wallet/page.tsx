@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, Field, Input, Modal, StatusBadge, cn } from '
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
 import { useToast } from '@/components/toast';
+import { InviteCard } from '@/components/invite-card';
 import { errMsg, fmtDateTime } from '@/lib/format';
 
 export default function WalletPage() {
@@ -59,6 +60,8 @@ export default function WalletPage() {
           </Button>
         )}
       </Card>
+
+      <InviteCard className="mt-6" />
 
       {payouts.length > 0 && (
         <Card className="mt-6 p-5">

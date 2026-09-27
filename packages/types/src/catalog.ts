@@ -177,6 +177,9 @@ export const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kan
 export const categoryBySlug = (slug: string) => CATEGORIES.find((c) => c.slug === slug);
 export const cityBySlug = (slug: string) => CITIES.find((c) => c.slug === slug);
 
+/** Wallet credit (₹) for both the inviter and the friend when the friend's first booking completes. */
+export const REFERRAL_REWARD = 100;
+
 export const MIN_AGE = 18;
 export const MIN_BOOKING_HOURS = 1;
 export const MAX_BOOKING_HOURS = 8;
