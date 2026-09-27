@@ -4,6 +4,8 @@ import path from 'path';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // served at <website>/admin: the website proxies /admin/* here (see ADMIN_URL in apps/web/next.config.mjs)
+  basePath: '/admin',
   // monorepo root (silences the multiple-lockfiles warning and traces workspace packages correctly)
   outputFileTracingRoot: path.join(path.dirname(fileURLToPath(import.meta.url)), '../..'),
   transpilePackages: ['@companio/ui', '@companio/api-client'],

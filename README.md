@@ -11,7 +11,7 @@ panel are done. The React Native (Expo) app plugs in later as `apps/mobile`, reu
 apps/
   api/      NestJS + Prisma + Socket.IO   → http://localhost:4000  (Swagger: /docs)
   web/      Next.js 15 website + web app  → http://localhost:3000  (PWA, SEO landing pages)
-  admin/    Next.js 15 admin panel        → http://localhost:3001
+  admin/    Next.js 15 admin panel        → http://localhost:3000/admin (proxied from :3001/admin)
 packages/
   types/        shared DTOs, enums, catalog (categories × cities), formatters
   ui/           design tokens (Tailwind preset) + React primitives (candy / neo-brutalist)
@@ -35,7 +35,7 @@ To reset the demo data later, run `npm run db:reset -w @companio/api`. This wipe
 
 | Who | Login |
 |---|---|
-| Admin | http://localhost:3001 → `admin@companio.local` / `admin12345` |
+| Admin | http://localhost:3000/admin → `admin@companio.local` / `admin12345` |
 | Member (Aarav, Jaipur, ₹500 wallet) | phone `9000000001` |
 | Companion (Priya, Jaipur, verified) | phone `9000000002` |
 | Companion (Rohan, Pune, KYC pending) | phone `9000000003` |
@@ -116,7 +116,8 @@ kept alive by PM2. Everything is in [`deploy/`](deploy/).
    schedules a daily backup.
 2. Edit `apps/api/.env` (CORS/Netlify URLs, Razorpay keys, SMS provider, admin login), then run `./deploy/deploy.sh --no-pull`
    and `npm run db:create-admin -w @companio/api`. Don't run the seed on a live server; it inserts demo data.
-3. On Netlify, set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com` for both sites and redeploy.
+3. On Netlify, set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com` for both sites. The admin is a second Netlify site
+   (base directory `apps/admin`); set `ADMIN_URL` on the website to that site's URL so it's served at `<website>/admin`. Redeploy both.
 
 Updates: `./deploy/deploy.sh` (backs up, pulls, builds, updates the schema, restarts, health-checks).
 In production the API refuses to start with the dev JWT secret, mock payments or localhost CORS origins.

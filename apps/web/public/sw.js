@@ -19,6 +19,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // never cache API calls
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return; // admin panel (proxied app): never touch
   if ((url.pathname.startsWith('/_next/static/') && HASHED.test(url.pathname)) || url.pathname.startsWith('/pwa-icon/')) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res; })));
     return;
