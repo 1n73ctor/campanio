@@ -19,7 +19,9 @@ import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser } from '../common/auth';
-import { publicUrl, storePrivateDoc, storePublicImage, uploadLimits } from '../files/uploads';
+import { Throttle } from '@nestjs/throttler';
+import { publicUrl, storePublicImage, uploadLimits } from '../files/uploads';
+import { KycService } from '../kyc/kyc.service';
 import { CompanionsService } from './companions.service';
 import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
 import { CompanionFeeService } from './companion-fee.service';
@@ -48,6 +50,7 @@ export class CompanionSelfController {
   constructor(
     private svc: CompanionsService,
     private fee: CompanionFeeService,
+    private kyc: KycService,
   ) {}
 
   /** Registration fee the caller owes before applying (due=false → no payment step). Pay via POST /payments/companion-fee. */
@@ -93,16 +96,44 @@ export class CompanionSelfController {
     return this.svc.removePhoto(user.id, index);
   }
 
+  /** Which verification routes are available (DigiLocker needs Cashfree keys on the server). */
+  @Get('kyc/options')
+  kycOptions() {
+    return this.kyc.options();
+  }
+
+  /** Starts a DigiLocker consent journey; the browser goes to the returned url and comes back to /companion/kyc. */
+  @Post('kyc/digilocker')
+  @Throttle({ default: { limit: 5, ttl: 10 * 60_000 } })
+  startDigilocker(@CurrentUser() user: User) {
+    return this.kyc.startDigilocker(user);
+  }
+
+  /** After DigiLocker: reads the shared Aadhaar record. Only ever the caller's own journey. */
+  @Post('kyc/digilocker/complete')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  completeDigilocker(@CurrentUser() user: User) {
+    return this.kyc.completeDigilocker(user);
+  }
+
+  @Get('kyc/digilocker')
+  currentDigilocker(@CurrentUser() user: User) {
+    return this.kyc.currentDigilocker(user);
+  }
+
+  @Delete('kyc/digilocker')
+  discardDigilocker(@CurrentUser() user: User) {
+    return this.kyc.discardDigilocker(user);
+  }
+
   @Post('kyc')
+  @Throttle({ default: { limit: 6, ttl: 10 * 60_000 } })
   @UseInterceptors(FileFieldsInterceptor([{ name: 'idDoc', maxCount: 1 }, { name: 'selfie', maxCount: 1 }], uploadLimits))
-  kyc(
+  submitKyc(
     @CurrentUser() user: User,
     @Body() dto: KycDto,
     @UploadedFiles() files: { idDoc?: Express.Multer.File[]; selfie?: Express.Multer.File[] },
   ) {
-    const idDoc = files?.idDoc?.[0];
-    const selfie = files?.selfie?.[0];
-    if (!idDoc || !selfie) throw new BadRequestException('Upload both your ID document and a live selfie');
-    return this.svc.submitKyc(user, dto.idType, dto.idLast4, storePrivateDoc(idDoc), storePrivateDoc(selfie));
+    return this.kyc.submit(user, { method: dto.method ?? 'MANUAL', idType: dto.idType, idLast4: dto.idLast4, idDoc: files?.idDoc?.[0], selfie: files?.selfie?.[0] });
   }
 }

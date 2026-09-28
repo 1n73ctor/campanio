@@ -14,12 +14,15 @@ import type {
   WalletTxn,
 } from '@prisma/client';
 import {
+  KYC_FLAGS,
   ageFromDob,
+  type AadhaarGender,
   type Availability,
   type BookingDto,
   type CompanionCardDto,
   type CompanionProfileDto,
   type DisputeDto,
+  type KycFlag,
   type KycSubmissionDto,
   type MessageDto,
   type NotificationDto,
@@ -216,7 +219,10 @@ export function toPayoutDto(p: Payout & { user?: User }): PayoutDto {
   };
 }
 
-export function toKycDto(k: KycSubmission & { user: User }): KycSubmissionDto {
+const AADHAAR_GENDER: Record<string, AadhaarGender> = { M: 'MALE', F: 'FEMALE', T: 'TRANSGENDER' };
+
+/** `forAdmin` adds the automatic check results — never sent to the applicant, so they can't tune a fake against them. */
+export function toKycDto(k: KycSubmission & { user: User }, forAdmin = false): KycSubmissionDto {
   return {
     id: k.id,
     userId: k.userId,
@@ -224,13 +230,43 @@ export function toKycDto(k: KycSubmission & { user: User }): KycSubmissionDto {
     userPhone: k.user.phone,
     idType: k.idType as KycSubmissionDto['idType'],
     idLast4: k.idLast4,
+    method: k.method as KycSubmissionDto['method'],
     idDocUrl: signPrivateUrl(k.idDocPath),
     selfieUrl: signPrivateUrl(k.selfiePath),
     status: k.status as KycSubmissionDto['status'],
     reviewNote: k.reviewNote,
     createdAt: k.createdAt.toISOString(),
     reviewedAt: iso(k.reviewedAt),
+    ...(forAdmin
+      ? {
+          checks: {
+            verified:
+              k.method === 'DIGILOCKER'
+                ? {
+                    name: k.verifiedName,
+                    dob: k.verifiedDob ? k.verifiedDob.toISOString().slice(0, 10) : null,
+                    gender: k.verifiedGender ? (AADHAAR_GENDER[k.verifiedGender] ?? null) : null,
+                  }
+                : null,
+            livenessPassed: k.livenessPassed,
+            livenessScore: k.livenessScore,
+            faceMatched: k.faceMatched,
+            faceMatchScore: k.faceMatchScore,
+            flags: parseFlags(k.flags),
+            autoApproved: k.autoApproved,
+          },
+        }
+      : {}),
   };
+}
+
+function parseFlags(raw: string): KycFlag[] {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? (v.filter((f) => (KYC_FLAGS as readonly string[]).includes(f)) as KycFlag[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function toReportDto(r: Report & { reporter: User; target: User; message: Message | null }): ReportDto {

@@ -68,6 +68,7 @@ model User {
   blocks            Block[]           @relation("Blocker")
   blockedBy         Block[]           @relation("Blocked")
   kycSubmissions    KycSubmission[]
+  digilocker        DigilockerSession[]
   payouts           Payout[]
   notifications     Notification[]
   sosAlerts         SosAlert[]
@@ -124,6 +125,8 @@ model KycSubmission {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   idType     String
   idLast4    String
+  // MANUAL: the companion uploaded a photo of their ID. DIGILOCKER: idDocPath is the photo on their Aadhaar record.
+  method     String    @default("MANUAL")
   idDocPath  String
   selfiePath String
   status     String    @default("PENDING")
@@ -131,8 +134,44 @@ model KycSubmission {
   reviewerId String?
   createdAt  DateTime  @default(now())
   reviewedAt DateTime?
+  // from the government record (DigiLocker only) — never the full Aadhaar number
+  verifiedName   String?
+  verifiedDob    DateTime?
+  verifiedGender String?
+  // automatic face checks: liveness (a real person, not a photo of one) and selfie ↔ ID photo similarity, scores 0–1
+  livenessScore  Float?
+  livenessPassed Boolean?
+  faceMatchScore Float?
+  faceMatched    Boolean?
+  /// JSON array of warnings for the reviewer (see KYC_FLAGS)
+  flags          String    @default("[]")
+  autoApproved   Boolean   @default(false)
+  // keyed hash of name + DOB + Aadhaar last 4 digits: the same person behind several accounts has the same hash
+  identityHash   String?
 
   @@index([status])
+  @@index([identityHash])
+}
+
+/// One DigiLocker consent journey. VERIFIED holds the Aadhaar details until a KYC submission uses them.
+model DigilockerSession {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verificationId String    @unique
+  status         String    @default("PENDING") // PENDING | VERIFIED | FAILED | USED
+  name           String?
+  dob            DateTime?
+  // some older Aadhaar records only carry the year of birth
+  birthYear      Int?
+  gender         String? // as on Aadhaar: M | F | T
+  last4          String?
+  photoPath      String?
+  failReason     String?
+  createdAt      DateTime  @default(now())
+  verifiedAt     DateTime?
+
+  @@index([userId, createdAt])
 }
 
 model Booking {

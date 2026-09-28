@@ -26,6 +26,8 @@ import { OffersModule } from './offers/offers.service';
 import { SafetyShareService } from './safety/safety-share.service';
 import { PublicSafetyShareController, SafetyShareController } from './safety/safety-share.controller';
 import { ReferralsController } from './referrals/referrals.controller';
+import { KycService } from './kyc/kyc.service';
+import { DemoDigilockerController } from './kyc/demo-digilocker';
 
 @Module({
   imports: [
@@ -55,7 +57,8 @@ import { ReferralsController } from './referrals/referrals.controller';
     ReferralsController,
     SafetyShareController,
     PublicSafetyShareController,
+    DemoDigilockerController,
   ],
-  providers: [CompanionsService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

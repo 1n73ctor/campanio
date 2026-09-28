@@ -5,6 +5,8 @@ import type {
   EscrowStatus,
   Gender,
   IdType,
+  KycFlag,
+  KycMethod,
   KycStatus,
   ModerationAction,
   PaymentStatus,
@@ -161,6 +163,8 @@ export interface KycSubmissionDto {
   userPhone: string | null;
   idType: IdType;
   idLast4: string;
+  method: KycMethod;
+  /** for DIGILOCKER, the photo on the Aadhaar record */
   idDocUrl: string;
   selfieUrl: string;
   status: KycStatus;
@@ -169,6 +173,48 @@ export interface KycSubmissionDto {
   reviewedAt: string | null;
   /** registration fee status of the applicant (admin views only) */
   fee?: CompanionFeeAdminDto;
+  /** automatic check results (admin views only — never shown to the applicant) */
+  checks?: KycChecksDto;
+}
+
+/** Gender as printed on an Aadhaar record (M / F / T). */
+export type AadhaarGender = 'FEMALE' | 'MALE' | 'TRANSGENDER';
+
+export interface KycChecksDto {
+  /** details on the government record (DigiLocker only); dob is YYYY-MM-DD */
+  verified: { name: string | null; dob: string | null; gender: AadhaarGender | null } | null;
+  /** null = the check didn't run (not configured, or the provider was unreachable) */
+  livenessPassed: boolean | null;
+  livenessScore: number | null;
+  faceMatched: boolean | null;
+  faceMatchScore: number | null;
+  flags: KycFlag[];
+  autoApproved: boolean;
+}
+
+/**
+ * live: real DigiLocker + face checks. sandbox: Cashfree's test environment — identities and scores are made up.
+ * demo: a pretend DigiLocker on a developer's computer. off: manual ID upload only.
+ */
+export type VerificationMode = 'off' | 'demo' | 'sandbox' | 'live';
+
+/** Which verification routes the API offers right now. */
+export interface KycOptionsDto {
+  mode: VerificationMode;
+  /** DigiLocker (Aadhaar) is set up; otherwise companions upload a photo of their ID */
+  digilocker: boolean;
+  /** selfies get automatic liveness + face match checks */
+  faceChecks: boolean;
+}
+
+/** Aadhaar details shared from DigiLocker, shown back to the companion before they take their selfie. */
+export interface DigilockerIdentityDto {
+  name: string;
+  /** YYYY-MM-DD; null when the record only has a year of birth */
+  dob: string | null;
+  gender: AadhaarGender | null;
+  /** last 4 digits of the Aadhaar number — the rest is never stored */
+  last4: string;
 }
 
 // ---------- bookings ----------
@@ -472,6 +518,8 @@ export interface PlatformSettings {
   cashbackPct: number;
   /** … capped at this many rupees per booking */
   cashbackMax: Rupees;
+  /** 1 = a DigiLocker verification that passes every automatic check goes live without waiting for an admin */
+  kycAutoApprove: number;
 }
 
 /** Public offer terms, for marketing copy ("₹100 off your first booking"). */

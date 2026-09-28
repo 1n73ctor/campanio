@@ -31,6 +31,10 @@ export default function SettingsPage() {
   const { api } = useAdmin();
   const toast = useToast();
   const { data, error, reload } = useLoad(() => api.admin.settings(), []);
+  // older API servers don't have this endpoint: treat as not set up
+  const { data: kycChecks } = useLoad(() => api.admin.kycChecks().catch(() => ({ mode: 'off' as const, digilocker: false, faceChecks: false })), []);
+  // sandbox approves made-up identities, so it can never switch companions on by itself
+  const canAutoApprove = kycChecks?.mode === 'live' || kycChecks?.mode === 'demo';
   const [form, setForm] = useState<PlatformSettings | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (data) setForm(data); }, [data]);
@@ -107,6 +111,53 @@ export default function SettingsPage() {
           </p>
           <Button className="mt-4" loading={busy} onClick={save}>
             Save offers
+          </Button>
+        </Card>
+        <Card className="p-6 lg:col-span-2">
+          <h2 className="font-display text-lg font-extrabold">Companion verification</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            With DigiLocker, companions share their Aadhaar straight from the government record, and their live selfie is checked against the Aadhaar photo.
+          </p>
+          <p className="mt-3 text-sm">
+            DigiLocker + face checks:{' '}
+            {kycChecks?.mode === 'live' ? (
+              <b className="text-ink">connected</b>
+            ) : kycChecks?.mode === 'sandbox' ? (
+              <>
+                <b className="text-danger">test mode (Cashfree sandbox)</b> — DigiLocker shows test identities and every face check passes, so nothing is really
+                verified. Review each submission yourself; switch to production keys before real companions sign up.
+              </>
+            ) : kycChecks?.mode === 'demo' ? (
+              <>
+                <b className="text-danger">local demo</b> — a pretend DigiLocker on this computer (CASHFREE_VRS_ENV=demo). Nothing is really checked.
+              </>
+            ) : (
+              <>
+                <b className="text-danger">not set up</b> — companions upload a photo of their ID and you check it by eye. Add the Cashfree Secure ID keys to the
+                API’s .env to switch it on.
+              </>
+            )}
+          </p>
+          <div className="mt-4">
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={form.kycAutoApprove === 1 && canAutoApprove}
+                disabled={!canAutoApprove}
+                onChange={(v) => setForm({ ...form, kycAutoApprove: v ? 1 : 0 })}
+                label="Approve automatically when every check passes"
+              />
+              <span className="font-bold">Approve automatically when every check passes</span>
+            </div>
+            <p className="mt-2 text-sm text-ink-soft">
+              {kycChecks?.mode === 'sandbox'
+                ? 'Not available in test mode — the sandbox would approve made-up identities.'
+                : form.kycAutoApprove === 1
+                ? 'DigiLocker verifications with a live selfie that matches the Aadhaar photo — and no warnings — go live immediately. Anything flagged, and every uploaded ID, still waits for you.'
+                : 'Off: you review every verification in the Verification queue, with the automatic check results shown next to each one.'}
+            </p>
+          </div>
+          <Button className="mt-4" loading={busy} onClick={save}>
+            Save verification setting
           </Button>
         </Card>
         <Card className="p-6 lg:col-span-2">

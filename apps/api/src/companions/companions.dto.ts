@@ -14,8 +14,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
-import { CATEGORIES, CITIES, GENDERS, ID_TYPES, LANGUAGES } from '@companio/types';
+import { CATEGORIES, CITIES, GENDERS, ID_TYPES, KYC_METHODS, LANGUAGES } from '@companio/types';
 
 const CAT = CATEGORIES.map((c) => c.slug);
 const CITY = CITIES.map((c) => c.slug);
@@ -64,6 +65,11 @@ export class ListingDto {
 }
 
 export class KycDto {
-  @IsIn(ID_TYPES) idType: string;
-  @IsString() @Matches(/^[A-Za-z0-9]{4}$/, { message: 'Enter the last 4 characters of your ID' }) idLast4: string;
+  /** DIGILOCKER: the Aadhaar details come from DigiLocker, so only a selfie is uploaded */
+  @IsOptional() @IsIn(KYC_METHODS) method?: 'MANUAL' | 'DIGILOCKER';
+  @ValidateIf((o: KycDto) => o.method !== 'DIGILOCKER') @IsIn(ID_TYPES) idType?: string;
+  @ValidateIf((o: KycDto) => o.method !== 'DIGILOCKER')
+  @IsString()
+  @Matches(/^[A-Za-z0-9]{4}$/, { message: 'Enter the last 4 characters of your ID' })
+  idLast4?: string;
 }

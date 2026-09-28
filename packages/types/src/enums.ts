@@ -58,5 +58,23 @@ export type Gender = (typeof GENDERS)[number];
 export const ID_TYPES = ['AADHAAR', 'PAN', 'PASSPORT', 'DRIVING_LICENCE', 'VOTER_ID'] as const;
 export type IdType = (typeof ID_TYPES)[number];
 
+/** MANUAL: photo of an ID uploaded by the companion. DIGILOCKER: Aadhaar record shared from DigiLocker. */
+export const KYC_METHODS = ['MANUAL', 'DIGILOCKER'] as const;
+export type KycMethod = (typeof KYC_METHODS)[number];
+
+/** Warnings from the automatic identity checks. Any flag means a person has to review the submission. */
+export const KYC_FLAGS = [
+  'LIVENESS_FAILED',
+  'FACE_MISMATCH',
+  'ID_PHOTO_NOT_COMPARED',
+  'CHECKS_UNAVAILABLE',
+  'GENDER_MISMATCH',
+  'NAME_MISMATCH',
+  'DOB_MISMATCH',
+  'DUPLICATE_IDENTITY',
+  'BANNED_IDENTITY',
+] as const;
+export type KycFlag = (typeof KYC_FLAGS)[number];
+
 export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type Weekday = (typeof WEEKDAYS)[number];

@@ -171,7 +171,7 @@ export class AdminService {
       wallet: u.wallet?.txns.map((t) => ({ id: t.id, type: t.type, amount: t.amount, reason: t.reason, balanceAfter: t.balanceAfter, createdAt: t.createdAt.toISOString() })) ?? [],
       bookings: bookings.map((b) => toBookingDto(b, admin)),
       reports: reports.map(toReportDto),
-      kyc: kyc.map(toKycDto),
+      kyc: kyc.map((k) => toKycDto(k, true)),
     };
   }
 
@@ -197,7 +197,7 @@ export class AdminService {
       this.prisma.kycSubmission.findMany({ where, include: { user: { include: { companion: true } } }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return {
-      items: rows.map((k) => ({ ...toKycDto(k), fee: toFeeAdminDto(k.user), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
+      items: rows.map((k) => ({ ...toKycDto(k, true), fee: toFeeAdminDto(k.user), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
       total,
       page,
       pageSize,

@@ -70,4 +70,5 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(0) @Max(5000) welcomeCredit?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(50) cashbackPct?: number;
   @IsOptional() @IsInt() @Min(0) @Max(5000) cashbackMax?: number;
+  @IsOptional() @IsIn([0, 1]) kycAutoApprove?: number;
 }

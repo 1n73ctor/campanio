@@ -2,8 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { memoryStorage } from 'multer';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { resolve } from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
+import { basename, resolve } from 'path';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { config } from '../common/config';
 import { stripImageMetadata } from './image-metadata';
 
@@ -53,11 +53,21 @@ export function storePublicImage(file: Express.Multer.File | undefined): string 
 /** KYC ID documents & selfies (private): verified type, encrypted at rest when a key is configured. */
 export function storePrivateDoc(file: Express.Multer.File | undefined): string {
   if (!file?.buffer?.length) throw new BadRequestException('Upload both your ID document and a live selfie');
-  const kind = detectKind(file.buffer);
-  if (!kind) throw new BadRequestException('Please upload a JPG, PNG, WebP or PDF file');
+  if (!detectKind(file.buffer)) throw new BadRequestException('Please upload a JPG, PNG, WebP or PDF file');
+  return storePrivateBytes(file.buffer);
+}
+
+/** Same as storePrivateDoc, for bytes we fetched ourselves (e.g. the photo on a DigiLocker Aadhaar record). */
+export function storePrivateBytes(buf: Buffer): string {
+  const kind = detectKind(buf);
+  if (!kind) throw new Error('Unrecognised document format');
   const name = newName(kind);
-  writeFileSync(resolve(PRIVATE_DIR, name), encryptDoc(file.buffer), { mode: 0o600 });
+  writeFileSync(resolve(PRIVATE_DIR, name), encryptDoc(buf), { mode: 0o600 });
   return name;
+}
+
+export function readPrivateDoc(name: string): Buffer {
+  return decryptDoc(readFileSync(resolve(PRIVATE_DIR, basename(name))));
 }
 
 // ---------- encryption at rest for private documents (AES-256-GCM) ----------

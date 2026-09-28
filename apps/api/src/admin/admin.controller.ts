@@ -4,6 +4,7 @@ import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser, Roles } from '../common/auth';
 import { AdminService } from './admin.service';
 import { AuthService } from '../auth/auth.service';
+import { kycOptions } from '../kyc/cashfree';
 import { IsString, Length } from 'class-validator';
 
 class TotpDto {
@@ -45,6 +46,8 @@ export class AdminController {
   }
 
   @Get('kyc') kyc(@Query() q: PageDto) { return this.svc.kycList(q); }
+  /** Is DigiLocker + face checking set up on this server? (shown next to the auto-approve setting) */
+  @Get('kyc/checks') kycChecks() { return kycOptions(); }
   @Post('kyc/:id/approve') kycApprove(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.kycDecide(a, id, true, dto.note);
   }

@@ -24,7 +24,9 @@ import type {
   CreateReportInput,
   DisputeDto,
   DisputeOutcome,
+  KycOptionsDto,
   KycSubmissionDto,
+  DigilockerIdentityDto,
   LocationDto,
   MessageDto,
   ModerationAction,
@@ -171,8 +173,16 @@ export function createApiClient(opts: ClientOptions) {
       setListed: (listed: boolean) => post<CompanionProfileDto>('/companion/listing', { listed }),
       addPhoto: (file: File | Blob) => request<CompanionProfileDto>('POST', '/companion/photos', form({ file })),
       removePhoto: (index: number) => del<CompanionProfileDto>(`/companion/photos/${index}`),
-      submitKyc: (input: { idType: string; idLast4: string; idDoc: File | Blob; selfie: File | Blob }) =>
+      /** manual: photo of an ID + selfie. DIGILOCKER: selfie only — the Aadhaar details come from DigiLocker. */
+      submitKyc: (input: { method?: 'MANUAL'; idType: string; idLast4: string; idDoc: File | Blob; selfie: File | Blob } | { method: 'DIGILOCKER'; selfie: File | Blob }) =>
         request<KycSubmissionDto>('POST', '/companion/kyc', form(input)),
+      kycOptions: () => get<KycOptionsDto>('/companion/kyc/options'),
+      /** go to `url`; DigiLocker sends the companion back to /companion/kyc?dl=1 */
+      startDigilocker: () => post<{ url: string }>('/companion/kyc/digilocker'),
+      completeDigilocker: () => post<DigilockerIdentityDto>('/companion/kyc/digilocker/complete'),
+      /** verified Aadhaar details still waiting for a selfie, or null */
+      currentDigilocker: () => get<DigilockerIdentityDto | null>('/companion/kyc/digilocker').then((d) => d ?? null),
+      discardDigilocker: () => del<{ ok: true }>('/companion/kyc/digilocker'),
     },
     bookings: {
       quote: (companionId: string, hours: number) => post<QuoteDto>('/bookings/quote', { companionId, hours }),
@@ -255,6 +265,7 @@ export function createApiClient(opts: ClientOptions) {
       sos: (q: AdminPage = {}) => get<AdminSos[]>('/admin/sos', q),
       resolveSos: (id: string, note?: string) => post<{ ok: true }>(`/admin/sos/${id}/resolve`, { note }),
       settings: () => get<PlatformSettings>('/admin/settings'),
+      kycChecks: () => get<KycOptionsDto>('/admin/kyc/checks'),
       updateSettings: (patch: Partial<PlatformSettings>) => put<PlatformSettings>('/admin/settings', patch),
       audit: (q: AdminPage) => get<Paginated<AuditLogDto>>('/admin/audit', q),
     },

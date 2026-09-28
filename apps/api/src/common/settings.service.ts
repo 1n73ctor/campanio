@@ -24,6 +24,8 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   welcomeCredit: 0,
   cashbackPct: 0,
   cashbackMax: 200,
+  // companion verification: an admin reviews every submission until this is switched on
+  kycAutoApprove: 0,
 };
 
 /** Platform business rules live here (and only here). Admins can edit them from the panel. */

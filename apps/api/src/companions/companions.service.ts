@@ -192,21 +192,6 @@ export class CompanionsService {
     return toCompanionProfileDto(await this.prisma.companionProfile.update({ where: { userId }, data: { photos: JSON.stringify(photos) } }));
   }
 
-  async submitKyc(user: User, idType: string, idLast4: string, idDocFile: string, selfieFile: string) {
-    const p = await this.own(user.id);
-    if (p.kycStatus === 'PENDING') throw new BadRequestException('Your verification is already under review');
-    if (p.kycStatus === 'APPROVED') throw new BadRequestException('You are already verified');
-    await this.fee.assertCanSubmitKyc(user);
-    const [k] = await this.prisma.$transaction([
-      this.prisma.kycSubmission.create({
-        data: { userId: user.id, idType, idLast4: idLast4.toUpperCase(), idDocPath: idDocFile, selfiePath: selfieFile },
-        include: { user: true },
-      }),
-      this.prisma.companionProfile.update({ where: { userId: user.id }, data: { kycStatus: 'PENDING' } }),
-    ]);
-    return toKycDto(k);
-  }
-
   async dashboard(user: User): Promise<CompanionDashboardDto> {
     const profile = await this.own(user.id);
     const monthStart = new Date();
