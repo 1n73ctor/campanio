@@ -36,7 +36,8 @@ export class OffersService {
         // claim first, so the credit can only ever be paid once per user
         const claimed = await tx.user.updateMany({ where: { id: userId, welcomeCreditAt: null }, data: { welcomeCreditAt: new Date() } });
         if (claimed.count !== 1) return false;
-        await this.wallet.credit(tx, userId, welcomeCredit, 'Welcome credit', { type: 'welcome', id: userId });
+        // spend-only: pays for bookings, never withdrawn
+        await this.wallet.credit(tx, userId, welcomeCredit, 'Welcome credit', { type: 'welcome', id: userId }, welcomeCredit);
         return true;
       });
       if (!paid) return;
@@ -65,7 +66,7 @@ export class OffersService {
       const paid = await this.prisma.$transaction(async (tx) => {
         const already = await tx.walletTxn.findFirst({ where: { refType: 'cashback', refId: booking.id } });
         if (already) return false;
-        await this.wallet.credit(tx, booking.userId, amount, `${cashbackPct}% cashback on your booking`, { type: 'cashback', id: booking.id });
+        await this.wallet.credit(tx, booking.userId, amount, `${cashbackPct}% cashback on your booking`, { type: 'cashback', id: booking.id }, amount);
         return true;
       });
       if (!paid) return;

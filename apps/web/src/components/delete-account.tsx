@@ -119,7 +119,7 @@ export function DeleteAccount() {
             </ul>
             {balance > 0 && (
               <Callout tone="sunny" title={`You have ${formatINR(balance)} in your wallet`}>
-                It will be lost when you delete your account.{user?.companion ? ' Withdraw it to UPI first from your Wallet page.' : ' Use it on a booking first.'}
+                It will be lost when you delete your account.{user?.companion ? ' Withdraw what you can to UPI first from your Wallet page (credit can only be used on bookings).' : ' Use it on a booking first.'}
               </Callout>
             )}
             {activeCount > 0 && (

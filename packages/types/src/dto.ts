@@ -61,6 +61,8 @@ export interface OtpRequestResponse {
 
 export interface UpdateMeInput {
   name?: string;
+  /** contact email (receipts, account updates); required to finish onboarding */
+  email?: string;
   dob?: string;
   gender?: Gender;
   city?: string;
@@ -326,6 +328,8 @@ export interface WalletTxnDto {
   id: string;
   type: 'CREDIT' | 'DEBIT';
   amount: Rupees;
+  /** how much of `amount` was spend-only credit */
+  promoAmount: Rupees;
   reason: string;
   balanceAfter: Rupees;
   createdAt: string;
@@ -333,6 +337,10 @@ export interface WalletTxnDto {
 
 export interface WalletDto {
   balance: Rupees;
+  /** spend-only credit inside `balance` (welcome credit, cashback, rewards, refunds of them): bookings only, never withdrawn */
+  promoBalance: Rupees;
+  /** what can be paid out: balance − promoBalance */
+  withdrawable: Rupees;
   txns: WalletTxnDto[];
 }
 

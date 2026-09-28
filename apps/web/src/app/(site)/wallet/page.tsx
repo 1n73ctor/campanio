@@ -30,6 +30,9 @@ export default function WalletPage() {
   }, [user]);
 
   if (!user || !w) return <FullLoader />;
+  // an API from before spend-only credit sends neither field
+  const credit = w.promoBalance ?? 0;
+  const withdrawable = w.withdrawable ?? w.balance;
 
   const withdraw = async () => {
     setBusy(true);
@@ -53,9 +56,14 @@ export default function WalletPage() {
         <div>
           <p className="text-sm font-bold uppercase tracking-wider">Balance</p>
           <p className="font-display text-5xl font-extrabold tabular-nums">{formatINR(w.balance)}</p>
+          {credit > 0 && (
+            <p className="mt-1 text-sm">
+              {formatINR(withdrawable)} {user.companion ? 'withdrawable' : 'money'} · <b>{formatINR(credit)} credit</b> — for bookings only, can’t be withdrawn
+            </p>
+          )}
         </div>
         {user.companion && (
-          <Button variant="dark" size="lg" onClick={() => setOpen(true)} disabled={w.balance <= 0}>
+          <Button variant="dark" size="lg" onClick={() => setOpen(true)} disabled={withdrawable <= 0}>
             Withdraw to UPI
           </Button>
         )}
@@ -89,7 +97,15 @@ export default function WalletPage() {
             <div key={t.id} className="flex items-center justify-between py-3">
               <div>
                 <p className="font-semibold">{t.reason}</p>
-                <p className="text-xs text-ink-mute">{fmtDateTime(t.createdAt)}</p>
+                <p className="text-xs text-ink-mute">
+                  {fmtDateTime(t.createdAt)}
+                  {t.promoAmount > 0 &&
+                    (t.type === 'DEBIT'
+                      ? ` · ${formatINR(t.promoAmount)} paid with credit`
+                      : t.promoAmount === t.amount
+                        ? ' · credit, for bookings only'
+                        : ` · ${formatINR(t.promoAmount)} back as credit`)}
+                </p>
               </div>
               <div className="text-right">
                 <p className={cn('font-display font-extrabold tabular-nums', t.type === 'CREDIT' ? 'text-lime-deep' : '')}>
@@ -103,8 +119,11 @@ export default function WalletPage() {
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Withdraw earnings" footer={<Button loading={busy} disabled={!amount || !upi} onClick={withdraw}>Request payout</Button>}>
-        <Field label="Amount" hint={`Available ${formatINR(w.balance)}`}>
-          <Input type="number" min={1} max={w.balance} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Field
+          label="Amount"
+          hint={credit > 0 ? `You can withdraw ${formatINR(withdrawable)}. Your ${formatINR(credit)} credit is for bookings only.` : `Available ${formatINR(withdrawable)}`}
+        >
+          <Input type="number" min={1} max={withdrawable} value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
         <Field label="UPI ID">
           <Input value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="yourname@okaxis" />

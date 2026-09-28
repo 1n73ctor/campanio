@@ -58,8 +58,9 @@ export class ReferralsService {
         const claimed = await tx.user.updateMany({ where: { id: friend.id, referralRewardedAt: null }, data: { referralRewardedAt: new Date() } });
         if (claimed.count !== 1) return false;
         const ref = { type: 'referral', id: booking.id };
-        await this.ledger.credit(tx, inviter.id, REFERRAL_REWARD, `Referral reward · ${friend.name ?? 'your friend'} completed their first booking`, ref);
-        await this.ledger.credit(tx, friend.id, REFERRAL_REWARD, 'Referral reward · first booking completed', ref);
+        // rewards are spend-only credit, like the welcome credit
+        await this.ledger.credit(tx, inviter.id, REFERRAL_REWARD, `Referral reward · ${friend.name ?? 'your friend'} completed their first booking`, ref, REFERRAL_REWARD);
+        await this.ledger.credit(tx, friend.id, REFERRAL_REWARD, 'Referral reward · first booking completed', ref, REFERRAL_REWARD);
         return true;
       });
       if (!paid) return;

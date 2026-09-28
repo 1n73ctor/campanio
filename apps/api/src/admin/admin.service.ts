@@ -99,7 +99,7 @@ export class AdminService {
     const where: Prisma.UserWhereInput = {
       ...(q.role ? { role: q.role } : { role: { not: 'ADMIN' } }),
       ...(q.status ? { status: q.status } : {}),
-      ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { deletedPhone: { contains: q.q } }, { email: { contains: q.q } }] } : {}),
+      ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { deletedPhone: { contains: q.q } }, { email: { contains: q.q } }, { contactEmail: { contains: q.q } }] } : {}),
     };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
@@ -278,9 +278,15 @@ export class AdminService {
     } else {
       if (!b.paidAt) throw new BadRequestException('Booking was never paid');
       if (amt > b.total) throw new BadRequestException('Refund exceeds booking total');
-      await this.prisma.$transaction((tx) => this.wallet.credit(tx, b.userId, amt, 'Goodwill credit from support', { type: 'booking-goodwill', id: b.id }));
+      // platform-funded, so spend-only like other credit
+      await this.prisma.$transaction((tx) => this.wallet.credit(tx, b.userId, amt, 'Goodwill credit from support', { type: 'booking-goodwill', id: b.id }, amt));
     }
-    await this.notifications.notify(b.userId, { type: 'refund', title: `₹${amt} refunded to your wallet`, body: note, link: `/bookings/${id}` });
+    await this.notifications.notify(b.userId, {
+      type: 'refund',
+      title: escrowActive ? `₹${amt} refunded to your wallet` : `₹${amt} credit added to your wallet`,
+      body: escrowActive ? note : `${note} — use it on your next booking.`,
+      link: `/bookings/${id}`,
+    });
     await this.audit.log(admin.id, escrowActive ? 'booking.refund' : 'booking.goodwill', 'booking', id, { amount: amt, note });
     return { ok: true, amount: amt };
   }

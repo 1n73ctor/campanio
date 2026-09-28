@@ -23,9 +23,10 @@ export function useCompanionFee() {
   const settle = useRef<((paid: boolean) => void) | null>(null);
 
   const reload = useCallback(async () => {
-    const [f, w] = await Promise.all([api.companion.fee(), api.wallet.get().catch(() => ({ balance: 0 }))]);
+    const [f, w] = await Promise.all([api.companion.fee(), api.wallet.get().catch(() => null)]);
     setFee(f);
-    setBalance(w.balance);
+    // only withdrawable money pays the fee — welcome credit, cashback and rewards are for bookings
+    setBalance(w ? (w.withdrawable ?? w.balance) : 0);
     return f;
   }, [api]);
 

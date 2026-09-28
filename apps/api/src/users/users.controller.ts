@@ -74,10 +74,13 @@ export class UsersController {
       guidelinesAccepted: dto.acceptGuidelines ? new Date() : user.guidelinesAccepted,
     };
     const onboarded = !!(next.name && next.dob && next.city && next.guidelinesAccepted);
+    // new sign-ups give an email to finish; people who joined before it was asked for aren't pushed back to onboarding
+    if (!user.onboarded && onboarded && !(dto.email ?? user.contactEmail)) throw new BadRequestException('Add your email address to continue');
     const u = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         name: dto.name,
+        contactEmail: dto.email,
         dob: dto.dob ? new Date(dto.dob) : undefined,
         gender: dto.gender,
         city: dto.city,

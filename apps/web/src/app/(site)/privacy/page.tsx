@@ -10,7 +10,7 @@ export default function Privacy() {
       <Prose>
         <h2>What we collect</h2>
         <ul>
-          <li>Account: mobile number, name, date of birth, city, optional gender, bio and photo.</li>
+          <li>Account: mobile number, email, name, date of birth, city, optional gender, bio and photo.</li>
           <li>
             Companions: a live selfie and either a photo of a government ID or, if you verify with DigiLocker, the name, date of birth, gender, photo and last 4
             digits from your Aadhaar record — never the full Aadhaar number or your address. Stored encrypted, access-restricted. If you don’t finish

@@ -29,7 +29,7 @@ export class WalletController {
   async get(@CurrentUser() user: User) {
     const w = await this.prisma.wallet.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} });
     const txns = await this.prisma.walletTxn.findMany({ where: { walletId: w.id }, orderBy: { createdAt: 'desc' }, take: 100 });
-    return { balance: w.balance, txns: txns.map(toWalletTxnDto) };
+    return { ...(await this.ledger.balances(user.id)), txns: txns.map(toWalletTxnDto) };
   }
 
   @Get('payouts')
@@ -48,7 +48,8 @@ export class WalletController {
     if (pending) throw new BadRequestException('You already have a payout in progress');
     const payout = await this.prisma.$transaction(async (tx) => {
       const p = await tx.payout.create({ data: { userId: user.id, amount: dto.amount, upiId: dto.upiId } });
-      await this.ledger.debit(tx, user.id, dto.amount, `Payout to ${dto.upiId}`, { type: 'payout', id: p.id });
+      // credit (welcome credit, cashback, rewards) is for bookings; only the rest can leave the platform
+      await this.ledger.withdraw(tx, user.id, dto.amount, `Payout to ${dto.upiId}`, { type: 'payout', id: p.id });
       return p;
     });
     return toPayoutDto(payout);

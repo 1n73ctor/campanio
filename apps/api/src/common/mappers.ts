@@ -72,7 +72,8 @@ export function toUserDto(u: User & { companion?: CompanionProfile | null }): Us
   return {
     id: u.id,
     phone: u.phone,
-    email: u.email,
+    // members' contact email; admins only have their sign-in email
+    email: u.contactEmail ?? u.email,
     name: u.name,
     dob: iso(u.dob),
     gender: u.gender as UserDto['gender'],
@@ -201,7 +202,7 @@ export function toNotificationDto(n: Notification): NotificationDto {
 }
 
 export function toWalletTxnDto(t: WalletTxn): WalletTxnDto {
-  return { id: t.id, type: t.type as 'CREDIT' | 'DEBIT', amount: t.amount, reason: t.reason, balanceAfter: t.balanceAfter, createdAt: t.createdAt.toISOString() };
+  return { id: t.id, type: t.type as 'CREDIT' | 'DEBIT', amount: t.amount, promoAmount: t.promoAmount, reason: t.reason, balanceAfter: t.balanceAfter, createdAt: t.createdAt.toISOString() };
 }
 
 export function toPayoutDto(p: Payout & { user?: User }): PayoutDto {

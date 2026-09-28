@@ -47,7 +47,9 @@ export class EscrowService {
     if (claimed.count !== 1) throw new BadRequestException('Escrow already settled');
 
     const ref = { type: 'booking', id: booking.id };
-    await this.wallet.credit(tx, booking.userId, refund, `Refund · ${label}`, { ...ref, type: 'booking-refund' });
+    // whatever was paid with credit comes back as credit; only money actually paid in becomes withdrawable
+    const promo = refund ? await this.wallet.bookingRefundPromo(tx, booking.id, refund) : 0;
+    await this.wallet.credit(tx, booking.userId, refund, `Refund · ${label}`, { ...ref, type: 'booking-refund' }, promo);
     await this.wallet.credit(tx, booking.companionUserId, release, `Earnings · ${label}`, { ...ref, type: 'booking-earning' });
   }
 }

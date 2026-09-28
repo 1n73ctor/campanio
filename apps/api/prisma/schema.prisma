@@ -16,7 +16,9 @@ datasource db {
 model User {
   id                 String    @id @default(cuid())
   phone              String?   @unique
+  // admin sign-in email (unique). Members' email lives in contactEmail so typing one can't collide with, or reveal, an admin login.
   email              String?   @unique
+  contactEmail       String?
   passwordHash       String?
   name               String?
   dob                DateTime?
@@ -233,6 +235,8 @@ model Payment {
   providerPaymentId String?
   amount            Int
   walletAmount      Int      @default(0)
+  /// how much of walletAmount was spend-only credit — a refund gives that part back as credit, never as cash
+  walletPromo       Int      @default(0)
   status            String   @default("CREATED")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -257,6 +261,8 @@ model Wallet {
   userId    String      @unique
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   balance   Int         @default(0)
+  /// the part of `balance` that is spend-only credit: pays for bookings, can never be withdrawn (see WalletLedger)
+  promoBalance Int      @default(0)
   updatedAt DateTime    @updatedAt
   txns      WalletTxn[]
 }
@@ -270,6 +276,8 @@ model WalletTxn {
   reason       String
   refType      String?
   refId        String?
+  /// how much of `amount` was spend-only credit
+  promoAmount  Int      @default(0)
   balanceAfter Int
   createdAt    DateTime @default(now())
 

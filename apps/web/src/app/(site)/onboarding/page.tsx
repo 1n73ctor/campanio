@@ -15,7 +15,7 @@ function OnboardingInner() {
   const { api, setUser } = useAuth();
   const router = useRouter();
   const next = safeNext(useSearchParams().get('next'));
-  const [form, setForm] = useState({ name: '', dob: '', gender: '' as Gender | '', city: '', bio: '' });
+  const [form, setForm] = useState({ name: '', email: '', dob: '', gender: '' as Gender | '', city: '', bio: '' });
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,18 +23,19 @@ function OnboardingInner() {
   useEffect(() => {
     if (!user) return;
     if (user.onboarded) router.replace(next);
-    setForm({ name: user.name ?? '', dob: user.dob?.slice(0, 10) ?? '', gender: user.gender ?? '', city: user.city ?? '', bio: user.bio ?? '' });
+    setForm({ name: user.name ?? '', email: user.email ?? '', dob: user.dob?.slice(0, 10) ?? '', gender: user.gender ?? '', city: user.city ?? '', bio: user.bio ?? '' });
   }, [user, router, next]);
 
   if (!user) return <FullLoader />;
   const age = ageFromDob(form.dob);
   const tooYoung = form.dob && (age === null || age < MIN_AGE);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim());
 
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
-      const u = await api.me.update({ name: form.name.trim(), dob: form.dob, gender: form.gender || undefined, city: form.city, bio: form.bio || undefined, acceptGuidelines: agree });
+      const u = await api.me.update({ name: form.name.trim(), email: form.email.trim(), dob: form.dob, gender: form.gender || undefined, city: form.city, bio: form.bio || undefined, acceptGuidelines: agree });
       setUser(u);
       router.replace(next);
     } catch (e) {
@@ -50,6 +51,9 @@ function OnboardingInner() {
       <Card className="mt-6 space-y-4 p-6">
         <Field label="First & last name">
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} required />
+        </Field>
+        <Field label="Email" hint="For booking receipts and important account updates. Never shown to anyone." error={form.email && !emailOk ? 'Enter a valid email address' : null}>
+          <Input type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} placeholder="you@example.com" required />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Date of birth" error={tooYoung ? `You must be ${MIN_AGE}+ to use Companio` : null} hint="Can’t be changed later">
@@ -84,7 +88,7 @@ function OnboardingInner() {
           />
         </div>
         {error && <p className="text-sm font-semibold text-danger">{error}</p>}
-        <Button size="lg" className="w-full" loading={busy} disabled={!form.name.trim() || !form.dob || !!tooYoung || !form.city || !agree} onClick={submit}>
+        <Button size="lg" className="w-full" loading={busy} disabled={!form.name.trim() || !emailOk || !form.dob || !!tooYoung || !form.city || !agree} onClick={submit}>
           Let’s go →
         </Button>
       </Card>

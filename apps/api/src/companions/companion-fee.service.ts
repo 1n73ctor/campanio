@@ -67,7 +67,8 @@ export class CompanionFeeService {
     if (!feePaid(u) || !u.companionFeePaid) throw new BadRequestException('There is no paid registration fee to refund');
     const claimed = await tx.user.updateMany({ where: { id: userId, companionFeeRefundedAt: null }, data: { companionFeeRefundedAt: new Date() } });
     if (claimed.count !== 1) throw new BadRequestException('Already refunded');
-    await this.wallet.credit(tx, userId, u.companionFeePaid, `Registration fee refund · ${reason}`, { type: 'companion-fee', id: userId });
+    const promo = await this.wallet.feeRefundPromo(tx, userId, u.companionFeePaid);
+    await this.wallet.credit(tx, userId, u.companionFeePaid, `Registration fee refund · ${reason}`, { type: 'companion-fee', id: userId }, promo);
     return u.companionFeePaid;
   }
 

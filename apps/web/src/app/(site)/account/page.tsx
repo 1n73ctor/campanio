@@ -14,23 +14,26 @@ export default function AccountPage() {
   const user = useRequireAuth();
   const { api, setUser } = useAuth();
   const toast = useToast();
-  const [form, setForm] = useState({ name: '', city: '', bio: '' });
+  const [form, setForm] = useState({ name: '', email: '', city: '', bio: '' });
   const [blocks, setBlocks] = useState<{ userId: string; name: string | null; avatarUrl: string | null }[]>([]);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
-    setForm({ name: user.name ?? '', city: user.city ?? '', bio: user.bio ?? '' });
+    setForm({ name: user.name ?? '', email: user.email ?? '', city: user.city ?? '', bio: user.bio ?? '' });
     api.me.blocks().then(setBlocks).catch(() => {});
   }, [user, api]);
 
   if (!user) return <FullLoader />;
 
+  const email = form.email.trim();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+
   const save = async () => {
     setBusy(true);
     try {
-      setUser(await api.me.update({ name: form.name, city: form.city, bio: form.bio }));
+      setUser(await api.me.update({ name: form.name, city: form.city, bio: form.bio, ...(email ? { email } : {}) }));
       toast('Profile saved');
     } catch (e) {
       toast(errMsg(e), 'error');
@@ -67,13 +70,20 @@ export default function AccountPage() {
         <Field label="Name">
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} />
         </Field>
+        <Field
+          label="Email"
+          hint={user.email ? 'For booking receipts and important account updates. Never shown to anyone.' : 'Add your email for booking receipts and important account updates.'}
+          error={email && !emailOk ? 'Enter a valid email address' : null}
+        >
+          <Input type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} placeholder="you@example.com" />
+        </Field>
         <Field label="City">
           <CityPicker value={form.city} onChange={(city) => setForm({ ...form, city })} />
         </Field>
         <Field label="Bio">
           <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={500} />
         </Field>
-        <Button loading={busy} onClick={save}>
+        <Button loading={busy} disabled={!!email && !emailOk} onClick={save}>
           Save changes
         </Button>
       </Card>

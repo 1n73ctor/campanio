@@ -28,7 +28,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
       <Link href="/admin/users" className="text-sm font-semibold underline">← Users</Link>
       <PageTitle
         title={u.name ?? 'Unnamed'}
-        subtitle={`${u.phone ?? u.deletedPhone ?? u.email ?? ''} · ${humanize(u.role)} · joined ${d(u.createdAt)}`}
+        subtitle={`${[u.phone ?? u.deletedPhone, u.email].filter(Boolean).join(' · ')} · ${humanize(u.role)} · joined ${d(u.createdAt)}`}
         actions={
           <>
             <StatusBadge status={u.status} />

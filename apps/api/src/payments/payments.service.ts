@@ -56,7 +56,8 @@ export class PaymentsService {
     const fee = await this.fee.status(user);
     if (!fee.due) throw new BadRequestException(fee.paid ? 'Your registration fee is already paid' : 'No registration fee is due');
 
-    const balance = useWallet ? await this.wallet.balance(user.id) : 0;
+    // welcome credit, cashback and rewards are for bookings only
+    const balance = useWallet ? (await this.wallet.balances(user.id)).withdrawable : 0;
     const walletAmount = Math.min(balance, fee.total);
     const external = fee.total - walletAmount;
     const base = { purpose: 'COMPANION_FEE', userId: user.id, walletAmount };
@@ -128,7 +129,9 @@ export class PaymentsService {
         await this.wallet.credit(tx, b.userId, p.amount, 'Payment for an expired booking', { type: 'payment', id: p.id });
         return { booking: b, parked: true };
       }
-      await this.wallet.debit(tx, b.userId, p.walletAmount, 'Booking payment', { type: 'booking', id: b.id });
+      const promo = await this.wallet.spend(tx, b.userId, p.walletAmount, 'Booking payment', { type: 'booking', id: b.id });
+      // remembered so a refund gives the credit part back as credit, not as withdrawable money
+      if (promo) await tx.payment.update({ where: { id: p.id }, data: { walletPromo: promo } });
       await this.escrow.hold(tx, b.id, b.total);
       const updated = await tx.booking.update({ where: { id: b.id }, data: { status: 'REQUESTED', paidAt: new Date() } });
       return { booking: updated, parked: false };
@@ -166,7 +169,8 @@ export class PaymentsService {
         await this.wallet.credit(tx, p.userId, p.amount, 'Duplicate registration fee payment', { type: 'payment', id: p.id });
         return { userId: p.userId, total, duplicate: true };
       }
-      await this.wallet.debit(tx, p.userId, p.walletAmount, 'Companion registration fee', { type: 'companion-fee', id: p.id });
+      // only withdrawable money pays the fee, so a refund (e.g. verification rejected) can never turn credit into cash
+      await this.wallet.spend(tx, p.userId, p.walletAmount, 'Companion registration fee', { type: 'companion-fee', id: p.id }, { cashOnly: true });
       return { userId: p.userId, total, duplicate: false };
     });
     if (!result) return;

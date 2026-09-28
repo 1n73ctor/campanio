@@ -36,7 +36,7 @@ export function InviteCard({ className }: { className?: string }) {
     <Card tone="lavender" className={cn('p-6', className)}>
       <p className="font-display text-xl font-extrabold">🎁 Invite friends, get {formatINR(r.reward)} each</p>
       <p className="mt-1 text-sm text-ink-soft">
-        When a friend signs up with your link and completes their first booking, you both get {formatINR(r.reward)} in your wallet.
+        When a friend signs up with your link and completes their first booking, you both get {formatINR(r.reward)} credit for your next booking.
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
