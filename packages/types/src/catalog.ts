@@ -7,19 +7,31 @@ export interface Category {
   noun: string;
   blurb: string;
   color: 'pink' | 'lime' | 'lavender' | 'sky' | 'sunny' | 'tangerine' | 'mint';
+  /** shown on the home page and pre-rendered for every featured city at build; the rest render on first visit */
+  featured?: boolean;
 }
 
 export const CATEGORIES: Category[] = [
-  { slug: 'gym-partner', name: 'Gym Partner', emoji: '🏋️', noun: 'gym partner', blurb: 'Spot, motivate, and actually show up for leg day.', color: 'lime' },
-  { slug: 'movie-buddy', name: 'Movie Buddy', emoji: '🍿', noun: 'movie buddy', blurb: 'First-day-first-show without going solo.', color: 'pink' },
-  { slug: 'city-guide', name: 'City Guide', emoji: '🗺️', noun: 'local city guide', blurb: 'Hidden cafés, old bazaars, and the best chaat in town.', color: 'sunny' },
+  { slug: 'gym-partner', name: 'Gym Partner', emoji: '🏋️', noun: 'gym partner', blurb: 'Spot, motivate, and actually show up for leg day.', color: 'lime', featured: true },
+  { slug: 'movie-buddy', name: 'Movie Buddy', emoji: '🍿', noun: 'movie buddy', blurb: 'First-day-first-show without going solo.', color: 'pink', featured: true },
+  { slug: 'city-guide', name: 'City Guide', emoji: '🗺️', noun: 'local city guide', blurb: 'Hidden cafés, old bazaars, and the best chaat in town.', color: 'sunny', featured: true },
   { slug: 'study-buddy', name: 'Study Buddy', emoji: '📚', noun: 'study buddy', blurb: 'Co-working and focus sessions that keep you accountable.', color: 'sky' },
-  { slug: 'shopping-buddy', name: 'Shopping Buddy', emoji: '🛍️', noun: 'shopping buddy', blurb: 'Honest opinions on the fit, the colour, and the price.', color: 'lavender' },
-  { slug: 'event-plus-one', name: 'Event Plus-One', emoji: '🎉', noun: 'event plus-one', blurb: 'Weddings, concerts, and networking — with a friendly face.', color: 'tangerine' },
-  { slug: 'coffee-chat', name: 'Coffee Chat', emoji: '☕', noun: 'coffee chat partner', blurb: 'Good conversation over a flat white. That\'s it.', color: 'mint' },
-  { slug: 'travel-buddy', name: 'Travel Buddy', emoji: '🧳', noun: 'travel buddy', blurb: 'Day trips and weekend getaways with a verified local.', color: 'sky' },
+  { slug: 'shopping-buddy', name: 'Shopping Buddy', emoji: '🛍️', noun: 'shopping buddy', blurb: 'Honest opinions on the fit, the colour, and the price.', color: 'lavender', featured: true },
+  { slug: 'event-plus-one', name: 'Event Plus-One', emoji: '🎉', noun: 'event plus-one', blurb: 'Weddings, concerts, and networking — with a friendly face.', color: 'tangerine', featured: true },
+  { slug: 'coffee-chat', name: 'Coffee Chat', emoji: '☕', noun: 'coffee chat partner', blurb: 'Good conversation over a flat white. That\'s it.', color: 'mint', featured: true },
+  { slug: 'travel-buddy', name: 'Travel Buddy', emoji: '🧳', noun: 'travel buddy', blurb: 'Day trips and weekend getaways with a verified local.', color: 'sky', featured: true },
   { slug: 'gaming-partner', name: 'Gaming Partner', emoji: '🎮', noun: 'gaming partner', blurb: 'Arcades, board-game cafés, and LAN nights.', color: 'lavender' },
   { slug: 'walk-and-talk', name: 'Walk & Talk', emoji: '🚶', noun: 'walking partner', blurb: 'Morning walks, park jogs, and sunset strolls.', color: 'lime' },
+  { slug: 'food-walk', name: 'Food Walk', emoji: '🍛', noun: 'food walk buddy', blurb: 'Street-food trails, thali hunts and late-night dessert runs.', color: 'tangerine', featured: true },
+  { slug: 'festival-buddy', name: 'Festival Buddy', emoji: '🪔', noun: 'festival buddy', blurb: 'Garba nights, Holi, Durga Puja pandals and Diwali melas.', color: 'sunny', featured: true },
+  { slug: 'sports-partner', name: 'Sports Partner', emoji: '🏸', noun: 'sports partner', blurb: 'Badminton, cricket nets, football or pickleball — someone who plays.', color: 'mint' },
+  { slug: 'heritage-walk', name: 'Heritage & Museums', emoji: '🏛️', noun: 'heritage walk companion', blurb: 'Forts, museums, galleries and old-city walks.', color: 'sunny' },
+  { slug: 'photo-walk', name: 'Photo Walk', emoji: '📸', noun: 'photo walk partner', blurb: 'Photogenic spots — and someone to take great pictures of you.', color: 'pink' },
+  { slug: 'comedy-and-shows', name: 'Comedy & Shows', emoji: '🎭', noun: 'comedy show buddy', blurb: 'Stand-up nights, plays and open mics — laugh with company.', color: 'lavender' },
+  { slug: 'language-exchange', name: 'Language Exchange', emoji: '🗣️', noun: 'language exchange partner', blurb: 'Practise English, Hindi or a new language over chai.', color: 'sky' },
+  { slug: 'career-chat', name: 'Career Chat', emoji: '💼', noun: 'career chat partner', blurb: 'Jobs, college and interview tips from someone who’s been there.', color: 'mint' },
+  { slug: 'settle-in-buddy', name: 'New in Town', emoji: '🏙️', noun: 'settle-in buddy', blurb: 'Markets, metro, SIM cards and the best local spots when you’ve just moved.', color: 'tangerine' },
+  { slug: 'senior-company', name: 'Senior Company', emoji: '👵', noun: 'companion for seniors', blurb: 'Warm, patient company for parents and grandparents — walks, temples, chats.', color: 'pink' },
 ];
 
 export interface City {
@@ -174,6 +186,7 @@ export function searchCities(query: string, limit = 8): City[] {
 
 export const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Gujarati', 'Punjabi', 'Rajasthani'];
 
+export const FEATURED_CATEGORIES = CATEGORIES.filter((c) => c.featured);
 export const categoryBySlug = (slug: string) => CATEGORIES.find((c) => c.slug === slug);
 export const cityBySlug = (slug: string) => CITIES.find((c) => c.slug === slug);
 

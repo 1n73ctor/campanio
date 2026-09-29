@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CATEGORIES, CITIES, POPULAR_CITIES, formatINR } from '@companio/types';
+import { CATEGORIES, CITIES, POPULAR_CITIES, formatINR, FEATURED_CATEGORIES } from '@companio/types';
 import { Avatar, Badge, Card, buttonClass, cn, toneSolid } from '@companio/ui';
 import { CompanionCard } from '@/components/companion-card';
 import { SearchBar } from '@/components/search-bar';
@@ -142,7 +142,7 @@ export default async function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {CATEGORIES.map((c, i) => (
+          {FEATURED_CATEGORIES.map((c, i) => (
             <Link key={c.slug} href={`/explore/${c.slug}`} className="group">
               <div className={cn('brutal brutal-press flex h-full flex-col gap-2 rounded-blob p-4', toneSolid[c.color], i % 2 ? 'rotate-1' : '-rotate-1', 'hover:rotate-0')}>
                 <span className="text-4xl">{c.emoji}</span>
@@ -151,6 +151,19 @@ export default async function Home() {
               </div>
             </Link>
           ))}
+          <Link href="/explore" className="group">
+            <div className="brutal brutal-press flex h-full flex-col gap-2 rounded-blob bg-white p-4 rotate-1 hover:rotate-0">
+              <span className="text-4xl">✨</span>
+              <span className="font-display text-lg font-extrabold leading-tight">+{CATEGORIES.length - FEATURED_CATEGORIES.length} more</span>
+              <span className="text-xs font-medium text-ink-soft">
+                {CATEGORIES.filter((c) => !c.featured)
+                  .slice(0, 4)
+                  .map((c) => c.name)
+                  .join(', ')}{' '}
+                and more →
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 

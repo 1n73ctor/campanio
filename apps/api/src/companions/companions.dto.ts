@@ -38,7 +38,7 @@ export class SearchDto {
 
 export class ApplyDto {
   @IsString() @Length(8, 90) headline: string;
-  @IsString() @Length(40, 1500) about: string;
+  @IsString() @Length(10, 1500) about: string;
   @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate: number;
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CAT, { each: true }) categories: string[];
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages: string[];
@@ -47,7 +47,7 @@ export class ApplyDto {
 
 export class UpdateProfileDto {
   @IsOptional() @IsString() @Length(8, 90) headline?: string;
-  @IsOptional() @IsString() @Length(40, 1500) about?: string;
+  @IsOptional() @IsString() @Length(10, 1500) about?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate?: number;
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CAT, { each: true }) categories?: string[];
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages?: string[];

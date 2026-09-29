@@ -15,7 +15,7 @@ export function CompanionProfileFields({ value, onChange }: { value: ApplyCompan
       <Field label="Headline" hint={`${value.headline.length}/90 · one line that sums up your vibe`}>
         <Input value={value.headline} onChange={(e) => onChange({ ...value, headline: e.target.value })} maxLength={90} placeholder="Born-and-raised local who knows every hidden café" />
       </Field>
-      <Field label="About you" hint={`${value.about.length}/1500 · min 40 characters. What do you love doing? What’s a session with you like?`}>
+      <Field label="About you" hint={`${value.about.length}/1500 · min 10 characters. What do you love doing? What’s a session with you like?`}>
         <Textarea value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} maxLength={1500} className="min-h-[140px]" />
       </Field>
       <Field label="Activities (up to 5)">
@@ -49,4 +49,4 @@ export function CompanionProfileFields({ value, onChange }: { value: ApplyCompan
 }
 
 export const profileValid = (v: ApplyCompanionInput) =>
-  v.headline.trim().length >= 8 && v.about.trim().length >= 40 && v.categories.length > 0 && v.languages.length > 0 && !!v.city && v.hourlyRate >= 199 && v.hourlyRate <= 10000;
+  v.headline.trim().length >= 8 && v.about.trim().length >= 10 && v.categories.length > 0 && v.languages.length > 0 && !!v.city && v.hourlyRate >= 199 && v.hourlyRate <= 10000;
