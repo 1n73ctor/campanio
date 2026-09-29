@@ -14,7 +14,7 @@ export function SiteFooter() {
           <p className="mt-4 max-w-xs text-sm text-paper/70">
             Rent a friend, not a date. Verified companions for the things that are better together — 100% platonic, 18+, safety-first.
           </p>
-          <p className="mt-6 text-xs text-paper/50">Emergency? Call 112. Safety team: safety@companio.app</p>
+          <p className="mt-6 text-xs text-paper/50">Emergency? Call 112. Safety team: safety@getcompanio.in</p>
         </div>
         <FooterCol title="Activities" links={CATEGORIES.slice(0, 6).map((c) => ({ href: `/explore/${c.slug}`, label: c.name }))} />
         <FooterCol title="Cities" links={CITIES.slice(0, 6).map((c) => ({ href: `/explore/city-guide/${c.slug}`, label: c.name }))} />

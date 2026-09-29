@@ -43,8 +43,26 @@ const securityHeaders = [
   ...(isProd ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' }] : []),
 ];
 
+/**
+ * Every domain we own shows the one site at NEXT_PUBLIC_SITE_URL: the others answer with a permanent redirect that keeps
+ * the path and query (old links, shared booking links and ads keep working, and Google indexes one address).
+ * Only custom domains are listed, so Netlify deploy previews (*.netlify.app) are never redirected.
+ */
+const OUR_DOMAINS = ['getcompanio.in', 'www.getcompanio.in', 'getcompanio.app', 'www.getcompanio.app', 'campanio.co.in', 'www.campanio.co.in'];
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const siteHost = siteUrl.startsWith('https://') ? new URL(siteUrl).host : null;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    if (!siteHost) return []; // local development
+    return OUR_DOMAINS.filter((host) => host !== siteHost).map((host) => ({
+      source: '/:path*',
+      has: [{ type: 'host', value: host }],
+      destination: `${siteUrl}/:path*`,
+      statusCode: 301,
+    }));
+  },
   reactStrictMode: true,
   // monorepo root (silences the multiple-lockfiles warning and traces workspace packages correctly)
   outputFileTracingRoot: path.join(path.dirname(fileURLToPath(import.meta.url)), '../..'),
