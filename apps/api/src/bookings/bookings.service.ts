@@ -71,7 +71,8 @@ export class BookingsService {
     const c = await this.prisma.companionProfile.findUnique({ where: { id: companionProfileId } });
     if (!c || !c.isListed) throw new NotFoundException('Companion not available');
     const q = await this.settings.quote(c.hourlyRate, hours);
-    return { hourlyRate: q.hourlyRate, hours: q.hours, subtotal: q.subtotal, connectionFee: q.connectionFee, gst: q.gst, total: q.total };
+    const { gstPct } = await this.settings.get();
+    return { hourlyRate: q.hourlyRate, hours: q.hours, subtotal: q.subtotal, connectionFee: q.connectionFee, gst: q.gst, gstPct, total: q.total };
   }
 
   async create(user: User, dto: CreateBookingDto) {
@@ -191,7 +192,7 @@ export class BookingsService {
     await this.notifications.notify(b.userId, {
       type: 'booking.declined',
       title: 'Booking declined',
-      body: `${viewer.name} can't make it. ₹${b.total} has been refunded to your wallet.`,
+      body: `${viewer.name} can't make it. The full ₹${b.total}, including GST, has been refunded to your wallet.`,
       link: this.link(id),
     });
     return this.dto(await this.emit(id), viewer);
@@ -265,13 +266,14 @@ export class BookingsService {
     let release = 0;
     let summary = '';
     if (b.status === 'REQUESTED' || !byUser) {
+      // before acceptance, or whenever the companion cancels: everything back, connection fee and GST included
       refund = b.total;
-      summary = `Full refund of ₹${refund}`;
+      summary = `Full refund of ₹${refund} (including GST)`;
     } else if (b.status === 'ACCEPTED') {
       const hoursLeft = (b.startAt.getTime() - Date.now()) / HOUR;
       if (hoursLeft >= s.freeCancelHours) {
         refund = b.subtotal;
-        summary = `₹${refund} refunded (connection fee is non-refundable after acceptance)`;
+        summary = `₹${refund} refunded (the connection fee and GST are non-refundable after acceptance)`;
       } else {
         refund = Math.round((b.subtotal * s.lateCancelRefundPct) / 100);
         const remaining = b.subtotal - refund;

@@ -217,9 +217,9 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
         <p className="text-sm text-ink-soft">
           {isUser
             ? b.status === 'ACCEPTED'
-              ? 'Cancelling 24h+ before start refunds the booking amount (the connection fee is non-refundable after acceptance). Later cancellations refund 50%.'
+              ? 'Cancelling 24h+ before start refunds the companion’s fee (the connection fee and GST are non-refundable after acceptance). Later cancellations refund 50% of the companion’s fee.'
               : 'You’ll get a full refund to your wallet.'
-            : 'The member gets a full refund. Late cancellations affect your standing.'}
+            : 'The member gets a full 100% refund, including GST. Cancellations after accepting affect your standing.'}
         </p>
         <Field label="Reason (optional)">
           <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} />

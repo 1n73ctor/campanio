@@ -230,7 +230,9 @@ export interface QuoteDto {
   hours: number;
   subtotal: Rupees;
   connectionFee: Rupees;
+  /** GST at gstPct on subtotal + connection fee */
   gst: Rupees;
+  gstPct: number;
   total: Rupees;
 }
 

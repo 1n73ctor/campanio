@@ -18,7 +18,7 @@ const FEE_GENDERS: { gender: Gender; label: string }[] = [
 
 const FIELDS: { key: keyof PlatformSettings; label: string; hint: string; suffix: string }[] = [
   { key: 'connectionFee', label: 'Connection fee', hint: 'Flat fee per booking, charged to the member', suffix: '₹' },
-  { key: 'gstPct', label: 'GST on connection fee', hint: 'Applied to the connection fee only', suffix: '%' },
+  { key: 'gstPct', label: 'GST', hint: 'On the whole booking: companion’s fee + connection fee', suffix: '%' },
   { key: 'commissionPct', label: 'Platform commission', hint: 'Taken from the companion’s booking value', suffix: '%' },
   { key: 'freeCancelHours', label: 'Free cancellation window', hint: 'Hours before start for a full subtotal refund after acceptance', suffix: 'h' },
   { key: 'lateCancelRefundPct', label: 'Late cancellation refund', hint: '% of subtotal refunded when the member cancels late', suffix: '%' },
@@ -58,7 +58,7 @@ export default function SettingsPage() {
     }
   };
   const exampleSubtotal = 499 * 2;
-  const gst = Math.round((form.connectionFee * form.gstPct) / 100);
+  const gst = Math.round(((exampleSubtotal + form.connectionFee) * form.gstPct) / 100);
   const commission = Math.round((exampleSubtotal * form.commissionPct) / 100);
 
   return (

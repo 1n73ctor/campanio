@@ -36,11 +36,11 @@ export default function HowItWorks() {
       <h2 className="mb-4 mt-14 text-2xl font-extrabold">Refunds & cancellations</h2>
       <Faq
         items={[
-          { q: 'The companion declined or never replied', a: 'Full refund — including the connection fee — straight to your Companio wallet.' },
+          { q: 'The companion declined or never replied', a: 'Full 100% refund — including the connection fee and GST — straight to your Companio wallet.' },
           { q: 'I cancel before the companion accepts', a: 'Full refund.' },
-          { q: 'I cancel 24h+ before the start time', a: 'The booking amount is refunded; the connection fee (which covers verification and safety) is non-refundable after acceptance.' },
-          { q: 'I cancel less than 24h before', a: '50% of the booking amount is refunded. The rest compensates the companion for holding the slot.' },
-          { q: 'The companion cancels', a: 'Always a full refund, and it counts against their standing.' },
+          { q: 'I cancel 24h+ before the start time', a: 'The companion’s fee is refunded; the connection fee (which covers verification and safety) and GST are non-refundable after acceptance.' },
+          { q: 'I cancel less than 24h before', a: '50% of the companion’s fee is refunded. The rest compensates the companion for holding the slot.' },
+          { q: 'The companion cancels', a: 'Always a full 100% refund — including the connection fee and GST — and it counts against their standing.' },
           { q: 'Something went wrong during the session', a: 'Tap “Report a problem” within 24 hours. Payment is frozen and our team reviews the chat and details, then decides on a full, partial or no refund.' },
         ]}
       />

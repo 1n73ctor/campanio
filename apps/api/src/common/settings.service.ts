@@ -57,7 +57,8 @@ export class SettingsService {
     const s = await this.get();
     const subtotal = hourlyRate * hours;
     const connectionFee = s.connectionFee;
-    const gst = Math.round((connectionFee * s.gstPct) / 100);
+    // GST on the whole booking: the companion's fee plus the connection fee
+    const gst = Math.round(((subtotal + connectionFee) * s.gstPct) / 100);
     const commission = Math.round((subtotal * s.commissionPct) / 100);
     return {
       hourlyRate,

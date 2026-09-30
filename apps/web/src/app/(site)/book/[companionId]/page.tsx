@@ -171,7 +171,7 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
               <>
                 <Row label={`${formatINR(quote.hourlyRate)} × ${quote.hours}h`} value={formatINR(quote.subtotal)} />
                 <Row label="Connection fee" value={formatINR(quote.connectionFee)} hint="Covers verification, escrow & 24/7 safety" />
-                <Row label="GST on fee" value={formatINR(quote.gst)} />
+                <Row label={`GST (${quote.gstPct ?? 18}%)`} value={formatINR(quote.gst)} />
                 <div className="!mt-3 flex justify-between border-t-3 border-ink pt-3 font-display text-lg font-extrabold">
                   <span>Total</span>
                   <span>{formatINR(quote.total)}</span>
