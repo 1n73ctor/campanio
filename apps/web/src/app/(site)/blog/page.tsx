@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/misc';
 import { POSTS } from '@/lib/blog';
 import { fmtDate } from '@/lib/format';
 
-export const metadata: Metadata = { title: 'Blog', description: 'Guides on making friends in a new city, safety, and earning as a companion.', alternates: { canonical: '/blog' } };
+export const metadata: Metadata = { title: 'Blog', description: 'Guides on making friends in a new city, safety, and earning as a host.', alternates: { canonical: '/blog' } };
 
 export default function Blog() {
   return (

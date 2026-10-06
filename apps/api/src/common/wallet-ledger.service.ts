@@ -62,7 +62,7 @@ export class WalletLedger implements OnModuleInit {
     return this.take(tx, userId, amount, reason, ref, (w) => {
       const cash = w.balance - promoOf(w);
       if (opts.cashOnly) {
-        if (cash < amount) throw new BadRequestException(`Only ${formatINR(Math.max(0, cash))} of your wallet can pay for this — credit is for bookings only`);
+        if (cash < amount) throw new BadRequestException(`Only ${formatINR(Math.max(0, cash))} of your wallet can pay for this — credit is for meetups only`);
         return 0;
       }
       if (w.balance < amount) throw new BadRequestException('Insufficient wallet balance');
@@ -77,7 +77,7 @@ export class WalletLedger implements OnModuleInit {
       if (cash < amount)
         throw new BadRequestException(
           promoOf(w) > 0
-            ? `You can withdraw up to ${formatINR(Math.max(0, cash))}. The other ${formatINR(promoOf(w))} is credit (welcome credit, cashback, rewards) — use it on bookings.`
+            ? `You can withdraw up to ${formatINR(Math.max(0, cash))}. The other ${formatINR(promoOf(w))} is credit (welcome credit, cashback, rewards) — use it on meetups.`
             : 'Insufficient wallet balance',
         );
       return 0;

@@ -25,13 +25,13 @@ export const CATEGORIES: Category[] = [
   { slug: 'food-walk', name: 'Food Walk', emoji: '🍛', noun: 'food walk buddy', blurb: 'Street-food trails, thali hunts and late-night dessert runs.', color: 'tangerine', featured: true },
   { slug: 'festival-buddy', name: 'Festival Buddy', emoji: '🪔', noun: 'festival buddy', blurb: 'Garba nights, Holi, Durga Puja pandals and Diwali melas.', color: 'sunny', featured: true },
   { slug: 'sports-partner', name: 'Sports Partner', emoji: '🏸', noun: 'sports partner', blurb: 'Badminton, cricket nets, football or pickleball — someone who plays.', color: 'mint' },
-  { slug: 'heritage-walk', name: 'Heritage & Museums', emoji: '🏛️', noun: 'heritage walk companion', blurb: 'Forts, museums, galleries and old-city walks.', color: 'sunny' },
+  { slug: 'heritage-walk', name: 'Heritage & Museums', emoji: '🏛️', noun: 'heritage walk host', blurb: 'Forts, museums, galleries and old-city walks.', color: 'sunny' },
   { slug: 'photo-walk', name: 'Photo Walk', emoji: '📸', noun: 'photo walk partner', blurb: 'Photogenic spots — and someone to take great pictures of you.', color: 'pink' },
   { slug: 'comedy-and-shows', name: 'Comedy & Shows', emoji: '🎭', noun: 'comedy show buddy', blurb: 'Stand-up nights, plays and open mics — laugh with company.', color: 'lavender' },
   { slug: 'language-exchange', name: 'Language Exchange', emoji: '🗣️', noun: 'language exchange partner', blurb: 'Practise English, Hindi or a new language over chai.', color: 'sky' },
   { slug: 'career-chat', name: 'Career Chat', emoji: '💼', noun: 'career chat partner', blurb: 'Jobs, college and interview tips from someone who’s been there.', color: 'mint' },
   { slug: 'settle-in-buddy', name: 'New in Town', emoji: '🏙️', noun: 'settle-in buddy', blurb: 'Markets, metro, SIM cards and the best local spots when you’ve just moved.', color: 'tangerine' },
-  { slug: 'senior-company', name: 'Senior Company', emoji: '👵', noun: 'companion for seniors', blurb: 'Warm, patient company for parents and grandparents — walks, temples, chats.', color: 'pink' },
+  { slug: 'senior-company', name: 'Senior Company', emoji: '👵', noun: 'host for seniors', blurb: 'Warm, patient company for parents and grandparents — walks, temples, chats.', color: 'pink' },
 ];
 
 export interface City {

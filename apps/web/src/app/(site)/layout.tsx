@@ -8,8 +8,8 @@ import { SITE_NAME, SITE_URL } from '@/lib/env';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${SITE_NAME} — Rent a friend, not a date`, template: `%s · ${SITE_NAME}` },
-  description: 'Book verified, ID-checked companions for the gym, movies, city walks, events and more. 100% platonic, 18+, safety-first — with escrow payments and SOS.',
+  title: { default: `${SITE_NAME} — Find a buddy, not a date`, template: `%s · ${SITE_NAME}` },
+  description: 'Meet verified, ID-checked local hosts for the gym, movies, city walks, events and more. 100% platonic, 18+, safety-first — with escrow payments and SOS.',
   applicationName: SITE_NAME,
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'default' },
   openGraph: { type: 'website', siteName: SITE_NAME, locale: 'en_IN' },

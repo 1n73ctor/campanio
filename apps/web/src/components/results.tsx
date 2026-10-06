@@ -14,8 +14,8 @@ export function Results({ data, basePath, params }: { data: Paginated<CompanionC
     return (
       <EmptyState
         emoji="🔍"
-        title="No companions match (yet)"
-        body="Try widening your filters or another city. We’re onboarding new companions every week."
+        title="No hosts match (yet)"
+        body="Try widening your filters or another city. We’re onboarding new hosts every week."
         action={
           <Link href="/explore" className={buttonClass('primary')}>
             Reset filters
@@ -27,7 +27,7 @@ export function Results({ data, basePath, params }: { data: Paginated<CompanionC
   return (
     <>
       <p className="mb-4 text-sm font-semibold text-ink-soft">
-        {data.total} companion{data.total === 1 ? '' : 's'}
+        {data.total} host{data.total === 1 ? '' : 's'}
       </p>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data.items.map((c) => (

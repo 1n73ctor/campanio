@@ -137,7 +137,7 @@ export class UsersController {
     const active = await this.prisma.booking.count({
       where: { OR: [{ userId }, { companionUserId: userId }], status: { in: ACTIVE_BOOKING } },
     });
-    if (active) throw new BadRequestException('Finish or cancel your active bookings before deleting your account');
+    if (active) throw new BadRequestException('Finish or cancel your active meetups before deleting your account');
   }
 
   // ---- blocks ----

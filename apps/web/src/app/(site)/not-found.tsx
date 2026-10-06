@@ -8,7 +8,7 @@ export default function NotFound() {
       <h1 className="text-4xl font-extrabold">Page not found</h1>
       <p className="text-ink-soft">This page wandered off. Let’s find you some company instead.</p>
       <Link href="/explore" className={buttonClass('primary', 'lg')}>
-        Explore companions
+        Explore hosts
       </Link>
     </div>
   );

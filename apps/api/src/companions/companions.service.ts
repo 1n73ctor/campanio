@@ -81,7 +81,7 @@ export class CompanionsService {
 
   async detail(id: string): Promise<CompanionDetailDto> {
     const c = await this.prisma.companionProfile.findUnique({ where: { id }, include: { user: true } });
-    if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Companion not found');
+    if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Host not found');
     const reviews = await this.prisma.review.findMany({
       where: { targetId: c.userId, hidden: false },
       include: { author: true },
@@ -104,7 +104,7 @@ export class CompanionsService {
   async apply(user: User, dto: ApplyDto) {
     if (!user.onboarded) throw new BadRequestException('Complete your profile first');
     const existing = await this.prisma.companionProfile.findUnique({ where: { userId: user.id } });
-    if (existing) throw new BadRequestException('You already have a companion profile');
+    if (existing) throw new BadRequestException('You already have a host profile');
     await this.fee.assertCanApply(user);
     const [profile] = await this.prisma.$transaction([
       this.prisma.companionProfile.create({
@@ -132,7 +132,7 @@ export class CompanionsService {
 
   private async own(userId: string) {
     const p = await this.prisma.companionProfile.findUnique({ where: { userId } });
-    if (!p) throw new ForbiddenException('You are not a companion yet');
+    if (!p) throw new ForbiddenException('You are not a host yet');
     return p;
   }
 
@@ -140,7 +140,7 @@ export class CompanionsService {
     await this.own(userId);
     if (dto.womenOnly) {
       const u = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-      if (u.gender !== 'FEMALE') throw new BadRequestException('Women-only bookings are available to women companions');
+      if (u.gender !== 'FEMALE') throw new BadRequestException('Women-only meetups are available to women hosts');
     }
     const p = await this.prisma.companionProfile.update({
       where: { userId },

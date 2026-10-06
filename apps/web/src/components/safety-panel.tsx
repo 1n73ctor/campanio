@@ -97,7 +97,7 @@ export function SafetyPanel({ booking }: { booking: BookingDto }) {
           </Button>
         </>
       ) : (
-        <p className="text-sm text-ink-soft">Live location and SOS turn on once the booking is confirmed.</p>
+        <p className="text-sm text-ink-soft">Live location and SOS turn on once the meetup is confirmed.</p>
       )}
       <a href="tel:112" className="block text-center text-sm font-bold underline">
         Emergency? Call 112
@@ -109,7 +109,7 @@ export function SafetyPanel({ booking }: { booking: BookingDto }) {
             {guidance}
           </Callout>
         ) : (
-          <p>This alerts the Companio safety team immediately with your location and booking details. Use it whenever you feel unsafe — no questions asked.</p>
+          <p>This alerts the Companio safety team immediately with your location and meetup details. Use it whenever you feel unsafe — no questions asked.</p>
         )}
         <div className="flex flex-col gap-2">
           {!guidance && (

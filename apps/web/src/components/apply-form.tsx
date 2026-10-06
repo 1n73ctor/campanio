@@ -49,7 +49,7 @@ export function ApplyForm() {
   if (user.companion)
     return (
       <Card tone="lime" className="p-6 text-center">
-        <p className="font-display text-xl font-extrabold">You’re already a companion 🎉</p>
+        <p className="font-display text-xl font-extrabold">You’re already a host 🎉</p>
         <Link href="/companion/dashboard" className={buttonClass('dark', 'lg', 'mt-4')}>
           Go to dashboard
         </Link>
@@ -77,13 +77,13 @@ export function ApplyForm() {
 
   return (
     <Card className="space-y-5 p-6">
-      <h2 className="text-2xl font-extrabold">Create your companion profile</h2>
+      <h2 className="text-2xl font-extrabold">Create your host profile</h2>
       <CompanionProfileFields value={v} onChange={setV} />
       <div className="rounded-chunky border-3 border-ink bg-sunny-soft p-4">
         <Checkbox
           checked={agree}
           onChange={(e) => setAgree(e.target.checked)}
-          label={<>I’ll keep every booking <b>platonic and in public places</b>, never ask for off-platform payment, and follow the community guidelines.</>}
+          label={<>I’ll keep every meetup <b>platonic and in public places</b>, never ask for off-platform payment, and follow the community guidelines.</>}
         />
       </div>
       <CompanionFeeSummary fee={fee} balance={feePay.balance} useWallet={feePay.useWallet} setUseWallet={feePay.setUseWallet} />

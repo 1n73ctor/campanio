@@ -3,8 +3,10 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.companio",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_SIGNING_CERT_SHA256"]
+      "package_name": "in.getcompanio.app",
+      "sha256_cert_fingerprints": [
+        "91:65:67:7E:9F:97:55:49:EE:B1:A1:B7:2B:DC:57:8B:50:E5:3D:DC:9D:19:FD:94:B6:94:19:30:CF:14:56:FC"
+      ]
     }
   }
 ]

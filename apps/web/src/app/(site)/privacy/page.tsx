@@ -12,19 +12,19 @@ export default function Privacy() {
         <ul>
           <li>Account: mobile number, email, name, date of birth, city, optional gender, bio and photo.</li>
           <li>
-            Companions: a live selfie and either a photo of a government ID or, if you verify with DigiLocker, the name, date of birth, gender, photo and last 4
+            Hosts: a live selfie and either a photo of a government ID or, if you verify with DigiLocker, the name, date of birth, gender, photo and last 4
             digits from your Aadhaar record — never the full Aadhaar number or your address. Stored encrypted, access-restricted. If you don’t finish
             verifying, the Aadhaar details are deleted within a few hours.
           </li>
-          <li>Bookings, chat messages, reviews, reports and payment records.</li>
-          <li>Location — only when you choose to share it during an active booking or trigger SOS.</li>
+          <li>Meetups, chat messages, reviews, reports and payment records.</li>
+          <li>Location — only when you choose to share it during an active meetup or trigger SOS.</li>
         </ul>
         <h2>Why</h2>
         <p>To run bookings and payments, keep users safe (verification, moderation, SOS), prevent fraud, and meet legal obligations.</p>
         <h2>Who sees what</h2>
         <p>Other users see your first name, photo, city and reviews. Phone numbers are never shown. ID documents are visible only to our verification team via short-lived links.</p>
         <p>
-          Identity checks for companions (DigiLocker, and checking that the selfie is a live person matching the ID photo) are run for us by Cashfree Payments, a
+          Identity checks for hosts (DigiLocker, and checking that the selfie is a live person matching the ID photo) are run for us by Cashfree Payments, a
           verification provider regulated in India. DigiLocker only shares your Aadhaar after you sign in and allow it.
         </p>
         <h2>Cookies & advertising</h2>

@@ -12,7 +12,7 @@ export function SiteFooter() {
             <Logo />
           </div>
           <p className="mt-4 max-w-xs text-sm text-paper/70">
-            Rent a friend, not a date. Verified companions for the things that are better together — 100% platonic, 18+, safety-first.
+            Find a buddy, not a date. Verified local hosts for the things that are better together — 100% platonic, 18+, safety-first.
           </p>
           <p className="mt-6 text-xs text-paper/50">Emergency? Call 112. Safety team: safety@getcompanio.in</p>
         </div>
@@ -23,7 +23,7 @@ export function SiteFooter() {
           links={[
             { href: '/how-it-works', label: 'How it works' },
             { href: '/safety', label: 'Safety' },
-            { href: '/become-a-companion', label: 'Become a companion' },
+            { href: '/become-a-companion', label: 'Become a host' },
             { href: '/blog', label: 'Blog' },
             { href: '/community-guidelines', label: 'Community guidelines' },
             { href: '/terms', label: 'Terms' },

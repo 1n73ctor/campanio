@@ -51,7 +51,7 @@ export default function WalletPage() {
 
   return (
     <div className="container-x max-w-3xl pb-10">
-      <PageHeader title="Wallet" subtitle="Refunds land here instantly and can be used on your next booking." />
+      <PageHeader title="Wallet" subtitle="Refunds land here instantly and can be used on your next meetup." />
       <Card tone="lime" className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-wider">Balance</p>
@@ -103,7 +103,7 @@ export default function WalletPage() {
                     (t.type === 'DEBIT'
                       ? ` · ${formatINR(t.promoAmount)} paid with credit`
                       : t.promoAmount === t.amount
-                        ? ' · credit, for bookings only'
+                        ? ' · credit, for meetups only'
                         : ` · ${formatINR(t.promoAmount)} back as credit`)}
                 </p>
               </div>
@@ -121,7 +121,7 @@ export default function WalletPage() {
       <Modal open={open} onClose={() => setOpen(false)} title="Withdraw earnings" footer={<Button loading={busy} disabled={!amount || !upi} onClick={withdraw}>Request payout</Button>}>
         <Field
           label="Amount"
-          hint={credit > 0 ? `You can withdraw ${formatINR(withdrawable)}. Your ${formatINR(credit)} credit is for bookings only.` : `Available ${formatINR(withdrawable)}`}
+          hint={credit > 0 ? `You can withdraw ${formatINR(withdrawable)}. Your ${formatINR(credit)} credit is for meetups only.` : `Available ${formatINR(withdrawable)}`}
         >
           <Input type="number" min={1} max={withdrawable} value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>

@@ -77,7 +77,7 @@ export default function NotificationsPage() {
         }
       />
       {items.length === 0 ? (
-        <EmptyState emoji="🔔" title="All caught up" body="Booking updates, payments and safety alerts will show up here." />
+        <EmptyState emoji="🔔" title="All caught up" body="Meetup updates, payments and safety alerts will show up here." />
       ) : (
         <div className="space-y-7">
           {groupByDay(items).map((g) => (

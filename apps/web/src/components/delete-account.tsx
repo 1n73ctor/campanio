@@ -112,18 +112,18 @@ export function DeleteAccount() {
           <>
             <ul className="space-y-2 text-sm">
               <li>🙈 Your profile disappears and you’ll be signed out everywhere.</li>
-              <li>💬 Your chats and booking history close for good.</li>
-              {user?.companion && <li>📉 Your companion listing, ratings and earnings history go with it.</li>}
-              <li>🛡️ For everyone’s safety, we keep a private record of your account, bookings and reports. Only our trust & safety team can see it.</li>
+              <li>💬 Your chats and meetup history close for good.</li>
+              {user?.companion && <li>📉 Your host listing, ratings and earnings history go with it.</li>}
+              <li>🛡️ For everyone’s safety, we keep a private record of your account, meetups and reports. Only our trust & safety team can see it.</li>
               <li>📱 You can sign up again later with the same number, but as a brand-new account.</li>
             </ul>
             {balance > 0 && (
               <Callout tone="sunny" title={`You have ${formatINR(balance)} in your wallet`}>
-                It will be lost when you delete your account.{user?.companion ? ' Withdraw what you can to UPI first from your Wallet page (credit can only be used on bookings).' : ' Use it on a booking first.'}
+                It will be lost when you delete your account.{user?.companion ? ' Withdraw what you can to UPI first from your Wallet page (credit can only be used on meetups).' : ' Use it on a meetup first.'}
               </Callout>
             )}
             {activeCount > 0 && (
-              <Callout tone="pink" title={`You have ${activeCount} active booking${activeCount > 1 ? 's' : ''}`}>
+              <Callout tone="pink" title={`You have ${activeCount} active meetup${activeCount > 1 ? 's' : ''}`}>
                 Finish or cancel your active bookings before deleting your account.
               </Callout>
             )}

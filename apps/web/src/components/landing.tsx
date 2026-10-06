@@ -41,7 +41,7 @@ export function Landing({ cat, city, data }: { cat: Category; city?: City; data:
           <div className="mt-5 flex flex-wrap gap-2">
             <Badge tone="white">🪪 ID-verified</Badge>
             <Badge tone="white">🔐 Escrow payments</Badge>
-            <Badge tone="white">🚨 SOS on every booking</Badge>
+            <Badge tone="white">🚨 SOS on every meetup</Badge>
           </div>
         </div>
       </section>

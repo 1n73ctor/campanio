@@ -35,8 +35,8 @@ export class BookingsService {
   // ---------- read ----------
   async load(id: string, viewer: Viewer): Promise<BookingWithRelations> {
     const b = await this.prisma.booking.findUnique({ where: { id }, include: bookingInclude });
-    if (!b) throw new NotFoundException('Booking not found');
-    if (viewer.role !== 'ADMIN' && b.userId !== viewer.id && b.companionUserId !== viewer.id) throw new NotFoundException('Booking not found');
+    if (!b) throw new NotFoundException('Meetup not found');
+    if (viewer.role !== 'ADMIN' && b.userId !== viewer.id && b.companionUserId !== viewer.id) throw new NotFoundException('Meetup not found');
     return b;
   }
 
@@ -69,29 +69,29 @@ export class BookingsService {
   // ---------- create ----------
   async quote(companionProfileId: string, hours: number) {
     const c = await this.prisma.companionProfile.findUnique({ where: { id: companionProfileId } });
-    if (!c || !c.isListed) throw new NotFoundException('Companion not available');
+    if (!c || !c.isListed) throw new NotFoundException('Host not available');
     const q = await this.settings.quote(c.hourlyRate, hours);
     const { gstPct } = await this.settings.get();
     return { hourlyRate: q.hourlyRate, hours: q.hours, subtotal: q.subtotal, connectionFee: q.connectionFee, gst: q.gst, gstPct, total: q.total };
   }
 
   async create(user: User, dto: CreateBookingDto) {
-    if (!user.onboarded) throw new BadRequestException('Complete your profile before booking');
+    if (!user.onboarded) throw new BadRequestException('Complete your profile before meetup');
     const c = await this.prisma.companionProfile.findUnique({ where: { id: dto.companionId }, include: { user: true } });
-    if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Companion not available');
-    if (c.userId === user.id) throw new BadRequestException("You can't book yourself");
-    if (c.womenOnly && user.gender !== 'FEMALE') throw new ForbiddenException(`${c.user.name?.split(' ')[0] ?? 'This companion'} only accepts bookings from women`);
+    if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Host not available');
+    if (c.userId === user.id) throw new BadRequestException("You can't send a meetup request to yourself");
+    if (c.womenOnly && user.gender !== 'FEMALE') throw new ForbiddenException(`${c.user.name?.split(' ')[0] ?? 'This host'} only accepts meetups from women`);
     if (!c.categories.split(',').includes(dto.category)) throw new BadRequestException(`${c.user.name} doesn't offer ${categoryBySlug(dto.category)?.name ?? dto.category}`);
 
     const blocked = await this.prisma.block.count({
       where: { OR: [{ blockerId: user.id, blockedId: c.userId }, { blockerId: c.userId, blockedId: user.id }] },
     });
-    if (blocked) throw new ForbiddenException('You cannot book this companion');
+    if (blocked) throw new ForbiddenException('You cannot send requests to this host');
 
     const startAt = new Date(dto.startAt);
     const endAt = new Date(startAt.getTime() + dto.hours * HOUR);
-    if (startAt.getTime() < Date.now() + 2 * HOUR) throw new BadRequestException('Bookings must start at least 2 hours from now');
-    if (startAt.getTime() > Date.now() + 60 * 24 * HOUR) throw new BadRequestException('You can book up to 60 days ahead');
+    if (startAt.getTime() < Date.now() + 2 * HOUR) throw new BadRequestException('Meetups must start at least 2 hours from now');
+    if (startAt.getTime() > Date.now() + 60 * 24 * HOUR) throw new BadRequestException('You can plan meetups up to 60 days ahead');
     if (!this.fitsAvailability(JSON.parse(c.availability) as Availability, startAt, endAt)) {
       throw new BadRequestException(`${c.user.name} isn't available at that time — check their weekly availability`);
     }
@@ -152,7 +152,7 @@ export class BookingsService {
 
   // ---------- transitions ----------
   private assertStatus(b: Booking, ...allowed: string[]) {
-    if (!allowed.includes(b.status)) throw new BadRequestException(`Not possible while booking is ${b.status.toLowerCase().replace('_', ' ')}`);
+    if (!allowed.includes(b.status)) throw new BadRequestException(`Not possible while meetup is ${b.status.toLowerCase().replace('_', ' ')}`);
   }
 
   private async emit(bookingId: string) {
@@ -168,13 +168,13 @@ export class BookingsService {
 
   async accept(viewer: User, id: string) {
     const b = await this.load(id, viewer);
-    if (b.companionUserId !== viewer.id) throw new ForbiddenException('Only the companion can accept');
+    if (b.companionUserId !== viewer.id) throw new ForbiddenException('Only the host can accept');
     this.assertStatus(b, 'REQUESTED');
     await this.assertNoOverlap(b.companionUserId, b.startAt, b.endAt, b.id);
     await this.prisma.booking.update({ where: { id }, data: { status: 'ACCEPTED', acceptedAt: new Date() } });
     await this.notifications.notify(b.userId, {
       type: 'booking.accepted',
-      title: `${viewer.name} accepted your booking ✅`,
+      title: `${viewer.name} accepted your meetup ✅`,
       body: `See you on ${fmt(b.startAt)} at ${b.meetingPoint}.`,
       link: this.link(id),
     });
@@ -183,15 +183,15 @@ export class BookingsService {
 
   async decline(viewer: User, id: string, reason?: string) {
     const b = await this.load(id, viewer);
-    if (b.companionUserId !== viewer.id) throw new ForbiddenException('Only the companion can decline');
+    if (b.companionUserId !== viewer.id) throw new ForbiddenException('Only the host can decline');
     this.assertStatus(b, 'REQUESTED');
     await this.prisma.$transaction(async (tx) => {
       await tx.booking.update({ where: { id }, data: { status: 'DECLINED', cancelReason: reason ?? null, cancelledBy: 'COMPANION', cancelledAt: new Date() } });
-      await this.escrow.settle(tx, b, b.total, 0, 'declined booking');
+      await this.escrow.settle(tx, b, b.total, 0, 'declined meetup');
     });
     await this.notifications.notify(b.userId, {
       type: 'booking.declined',
-      title: 'Booking declined',
+      title: 'Meetup declined',
       body: `${viewer.name} can't make it. The full ₹${b.total}, including GST, has been refunded to your wallet.`,
       link: this.link(id),
     });
@@ -200,9 +200,9 @@ export class BookingsService {
 
   async start(viewer: User, id: string, code: string) {
     const b = await this.load(id, viewer);
-    if (b.companionUserId !== viewer.id) throw new ForbiddenException('The companion starts the session with the member\'s code');
+    if (b.companionUserId !== viewer.id) throw new ForbiddenException('The host starts the session with the member\'s code');
     this.assertStatus(b, 'ACCEPTED');
-    if (Date.now() < b.startAt.getTime() - 30 * 60_000) throw new BadRequestException('You can start up to 30 minutes before the booking time');
+    if (Date.now() < b.startAt.getTime() - 30 * 60_000) throw new BadRequestException('You can start up to 30 minutes before the meetup time');
     if (code !== b.startCode) throw new BadRequestException('Incorrect start code');
     await this.prisma.booking.update({ where: { id }, data: { status: 'IN_PROGRESS', startedAt: new Date() } });
     await this.notifications.notify(b.userId, {
@@ -233,7 +233,7 @@ export class BookingsService {
         await tx.booking.update({ where: { id }, data: { status: 'COMPLETED', completedAt: new Date() } });
         await tx.companionProfile.update({ where: { userId: b.companionUserId }, data: { completedBookings: { increment: 1 } } });
       }
-      if (isUser) await this.escrow.settle(tx, b, 0, b.companionPayout, 'completed booking');
+      if (isUser) await this.escrow.settle(tx, b, 0, b.companionPayout, 'completed meetup');
     });
     if (isUser) {
       await this.referrals.onBookingReleased(b);
@@ -287,7 +287,7 @@ export class BookingsService {
         where: { id },
         data: { status: 'CANCELLED', cancelReason: reason ?? null, cancelledBy: byUser ? 'USER' : 'COMPANION', cancelledAt: new Date() },
       });
-      if (b.status !== 'PENDING_PAYMENT') await this.escrow.settle(tx, b, refund, release, 'cancelled booking');
+      if (b.status !== 'PENDING_PAYMENT') await this.escrow.settle(tx, b, refund, release, 'cancelled meetup');
       if (!byUser && b.status === 'ACCEPTED') {
         // late companion cancellations count against them
         await tx.user.update({ where: { id: viewer.id }, data: { warnings: { increment: 1 } } });
@@ -297,7 +297,7 @@ export class BookingsService {
       const other = byUser ? b.companionUserId : b.userId;
       await this.notifications.notify(other, {
         type: 'booking.cancelled',
-        title: 'Booking cancelled',
+        title: 'Meetup cancelled',
         body: byUser ? `${viewer.name} cancelled.${release ? ` ₹${release} late-cancellation fee credited to you.` : ''}` : `${viewer.name} cancelled. ${summary} to your wallet.`,
         link: this.link(id),
       });
@@ -308,8 +308,8 @@ export class BookingsService {
   async dispute(viewer: User, id: string, dto: DisputeDto) {
     const b = await this.load(id, viewer);
     this.assertStatus(b, 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED');
-    if (b.dispute) throw new BadRequestException('A dispute already exists for this booking');
-    if (b.escrow?.status !== 'HELD') throw new BadRequestException('The dispute window for this booking has closed');
+    if (b.dispute) throw new BadRequestException('A dispute already exists for this meetup');
+    if (b.escrow?.status !== 'HELD') throw new BadRequestException('The dispute window for this meetup has closed');
     await this.prisma.$transaction(async (tx) => {
       await tx.dispute.create({ data: { bookingId: id, raisedById: viewer.id, reason: dto.reason, details: dto.details, previousStatus: b.status } });
       await tx.booking.update({ where: { id }, data: { status: 'DISPUTED' } });
@@ -328,7 +328,7 @@ export class BookingsService {
 
   async review(viewer: User, id: string, dto: ReviewDto) {
     const b = await this.load(id, viewer);
-    if (b.userId !== viewer.id) throw new ForbiddenException('Only the member can review this booking');
+    if (b.userId !== viewer.id) throw new ForbiddenException('Only the member can review this meetup');
     this.assertStatus(b, 'COMPLETED');
     if (b.review) throw new BadRequestException('Already reviewed');
     await this.prisma.$transaction(async (tx) => {
@@ -356,7 +356,7 @@ export class BookingsService {
     const admins = await this.prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
     await Promise.all(
       admins.map((a) =>
-        this.notifications.notify(a.id, { type: 'sos', title: '🚨 SOS alert', body: `${viewer.name} triggered SOS on booking ${id.slice(-6)}`, link: `/admin/sos` }),
+        this.notifications.notify(a.id, { type: 'sos', title: '🚨 SOS alert', body: `${viewer.name} triggered SOS on meetup ${id.slice(-6)}`, link: `/admin/sos` }),
       ),
     );
     return { alert: toSosDto(alert), guidance: 'Our safety team has been alerted. If you are in immediate danger, call 112 now.' };
@@ -392,7 +392,7 @@ export class BookingsService {
   async sendMessage(viewer: Viewer, id: string, body: string) {
     const b = await this.load(id, viewer);
     if (viewer.role === 'ADMIN') throw new ForbiddenException('Admins cannot post in member chats');
-    if (!CHAT_OPEN.includes(b.status)) throw new BadRequestException('Chat opens once the booking is paid');
+    if (!CHAT_OPEN.includes(b.status)) throw new BadRequestException('Chat opens once the meetup is paid');
     if (b.status === 'COMPLETED' && b.completedAt && Date.now() - b.completedAt.getTime() > 48 * HOUR) {
       throw new BadRequestException('This chat is now closed');
     }

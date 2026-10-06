@@ -10,25 +10,25 @@ import { SITE_URL } from '@/lib/env';
 export const revalidate = 300;
 
 const STEPS = [
-  { n: '01', title: 'Pick your vibe', body: 'Browse verified companions by activity, city, price and language. Read real reviews.', tone: 'pink' as const },
-  { n: '02', title: 'Book & pay safely', body: 'Choose a time and a public meeting spot. Your payment waits in escrow — UPI, cards, or wallet.', tone: 'lime' as const },
+  { n: '01', title: 'Pick your vibe', body: 'Browse verified hosts by activity, city, price and language. Read real reviews.', tone: 'pink' as const },
+  { n: '02', title: 'Request & pay safely', body: 'Choose a time and a public meeting spot. Your payment waits in escrow — UPI, cards, or wallet.', tone: 'lime' as const },
   { n: '03', title: 'Meet & enjoy', body: 'Share your 4-digit start code in person. Live location + SOS are one tap away the whole time.', tone: 'sky' as const },
 ];
 
 const SAFETY = [
-  { icon: '🪪', title: 'ID + selfie verified', body: 'Government ID and a live-selfie liveness check for every companion.' },
+  { icon: '🪪', title: 'ID + selfie verified', body: 'Government ID and a live-selfie liveness check for every host.' },
   { icon: '🔐', title: 'Escrow payments', body: 'Money is released only after your session. No-show? Automatic refund.' },
-  { icon: '📍', title: 'Live location sharing', body: 'Share your live location during a booking with someone you trust.' },
+  { icon: '📍', title: 'Live location sharing', body: 'Share your live location during a meetup with someone you trust.' },
   { icon: '🚨', title: 'One-tap SOS', body: 'Alerts our 24/7 safety team with your location instantly.' },
   { icon: '🙈', title: 'Private by default', body: 'Numbers, UPI IDs and links are hidden in chat. No off-platform pressure.' },
   { icon: '🤝', title: 'Strictly platonic', body: 'Zero tolerance for sexual or romantic solicitation. 18+ only.' },
 ];
 
 const FAQS = [
-  { q: 'What is Companio?', a: 'A platform to book friendly, verified people for activities — a gym partner, a movie buddy, a local guide, a plus-one for an event. It’s companionship, not dating.' },
-  { q: 'How much does it cost?', a: 'Companions set their own hourly rates (typically ₹299–₹999/hr). Each booking has a small connection fee plus GST. You always see the full breakdown before paying.' },
-  { q: 'How do I know it’s safe?', a: 'Every companion is ID-verified with a liveness check, meetups are in public places, payments sit in escrow, and you get live location sharing and SOS during every booking.' },
-  { q: 'Can I become a companion?', a: 'Yes! If you’re 18+, friendly and reliable, apply in minutes. Set your own rate and hours, and withdraw earnings to UPI.' },
+  { q: 'What is Companio?', a: 'A platform to meet friendly, verified local hosts for activities — a gym partner, a movie buddy, a local guide, a plus-one for an event. It’s companionship, not dating.' },
+  { q: 'How much does it cost?', a: 'Hosts set their own hourly rates (typically ₹299–₹999/hr). Each meetup has a small connection fee plus GST. You always see the full breakdown before paying.' },
+  { q: 'How do I know it’s safe?', a: 'Every host is ID-verified with a liveness check, meetups are in public places, payments sit in escrow, and you get live location sharing and SOS during every meetup.' },
+  { q: 'Can I become a host?', a: 'Yes! If you’re 18+, friendly and reliable, apply in minutes. Set your own rate and hours, and withdraw earnings to UPI.' },
 ];
 
 export default async function Home() {
@@ -40,8 +40,8 @@ export default async function Home() {
   ]);
   const hero = featured.items.slice(0, 3);
   const offerLine = [
-    offers.welcomeCredit > 0 && `🎁 ${formatINR(offers.welcomeCredit)} off your first booking`,
-    offers.cashbackPct > 0 && `💸 ${offers.cashbackPct}% cashback on every booking`,
+    offers.welcomeCredit > 0 && `🎁 ${formatINR(offers.welcomeCredit)} off your first meetup`,
+    offers.cashbackPct > 0 && `💸 ${offers.cashbackPct}% cashback on every meetup`,
   ].filter(Boolean);
 
   return (
@@ -64,7 +64,7 @@ export default async function Home() {
               ✨ 100% platonic · 18+ · ID-verified
             </Badge>
             <h1 className="text-[44px] font-extrabold leading-[0.95] sm:text-6xl lg:text-7xl">
-              Rent a friend,
+              Find a buddy,
               <br />
               <span className="relative inline-block">
                 <span className="relative z-10">not a date.</span>
@@ -72,7 +72,7 @@ export default async function Home() {
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-ink-soft">
-              Gym partners, movie buddies, city guides and event plus-ones — verified humans for the things that are better together. Book in minutes, pay safely, have fun.
+              Gym partners, movie buddies, city guides and event plus-ones — verified local hosts for the things that are better together. Plan in minutes, pay safely, have fun.
             </p>
             {offerLine.length > 0 && (
               <Link href="/login" className="mt-6 inline-block rounded-chunky border-3 border-ink bg-sunny px-4 py-2 font-display font-extrabold shadow-brutal-sm">
@@ -189,7 +189,7 @@ export default async function Home() {
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-3xl font-extrabold sm:text-4xl">🟢 Free today</h2>
-              <p className="mt-1 text-ink-soft">{freeToday.total} companion{freeToday.total === 1 ? ' has' : 's have'} time later today. Book now, meet in a couple of hours.</p>
+              <p className="mt-1 text-ink-soft">{freeToday.total} host{freeToday.total === 1 ? ' has' : 's have'} time later today. Send a request now, meet in a couple of hours.</p>
             </div>
             <Link href="/explore?when=today" className={buttonClass('white', 'sm')}>
               See all
@@ -271,8 +271,8 @@ export default async function Home() {
           </div>
           <div className="grid grid-cols-2 gap-3 text-center">
             {[
-              ['₹30k+', 'monthly, top companions'],
-              ['85%', 'of every booking is yours'],
+              ['₹30k+', 'monthly, top hosts'],
+              ['85%', 'of every meetup is yours'],
               ['24h', 'to your wallet after a session'],
               ['0', 'joining fees'],
             ].map(([a, b]) => (

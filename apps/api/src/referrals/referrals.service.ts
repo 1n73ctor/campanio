@@ -59,8 +59,8 @@ export class ReferralsService {
         if (claimed.count !== 1) return false;
         const ref = { type: 'referral', id: booking.id };
         // rewards are spend-only credit, like the welcome credit
-        await this.ledger.credit(tx, inviter.id, REFERRAL_REWARD, `Referral reward · ${friend.name ?? 'your friend'} completed their first booking`, ref, REFERRAL_REWARD);
-        await this.ledger.credit(tx, friend.id, REFERRAL_REWARD, 'Referral reward · first booking completed', ref, REFERRAL_REWARD);
+        await this.ledger.credit(tx, inviter.id, REFERRAL_REWARD, `Referral reward · ${friend.name ?? 'your friend'} completed their first meetup`, ref, REFERRAL_REWARD);
+        await this.ledger.credit(tx, friend.id, REFERRAL_REWARD, 'Referral reward · first meetup completed', ref, REFERRAL_REWARD);
         return true;
       });
       if (!paid) return;
@@ -68,17 +68,17 @@ export class ReferralsService {
       await this.notifications.notify(inviter.id, {
         type: 'wallet.referral',
         title: `₹${REFERRAL_REWARD} referral reward 🎉`,
-        body: `${friend.name?.split(' ')[0] ?? 'Your friend'} completed their first booking. Keep inviting!`,
+        body: `${friend.name?.split(' ')[0] ?? 'Your friend'} completed their first meetup. Keep inviting!`,
         link: '/wallet',
       });
       await this.notifications.notify(friend.id, {
         type: 'wallet.referral',
         title: `₹${REFERRAL_REWARD} added to your wallet 🎁`,
-        body: `Thanks for joining through ${inviter.name?.split(' ')[0] ?? 'a friend'}’s invite. Use it on your next booking.`,
+        body: `Thanks for joining through ${inviter.name?.split(' ')[0] ?? 'a friend'}’s invite. Use it on your next meetup.`,
         link: '/wallet',
       });
     } catch (e) {
-      this.log.error(`referral reward for booking ${booking.id} failed`, e as Error);
+      this.log.error(`referral reward for meetup ${booking.id} failed`, e as Error);
     }
   }
 

@@ -28,10 +28,10 @@ export default function BookingsPage() {
   if (!user) return <FullLoader />;
   return (
     <div className="container-x max-w-3xl pb-10">
-      <PageHeader title="Your bookings" />
+      <PageHeader title="Your meetups" />
       <div className="mb-6 flex flex-wrap gap-3">
         <Tabs value={scope} onChange={setScope} items={[{ value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} />
-        {user.companion && <Tabs value={as} onChange={setAs} items={[{ value: 'user', label: 'I booked' }, { value: 'companion', label: 'Booked me' }]} />}
+        {user.companion && <Tabs value={as} onChange={setAs} items={[{ value: 'user', label: 'My requests' }, { value: 'companion', label: 'As host' }]} />}
       </div>
       {!items ? (
         <div className="flex justify-center py-16">
@@ -40,11 +40,11 @@ export default function BookingsPage() {
       ) : items.length === 0 ? (
         <EmptyState
           emoji={scope === 'upcoming' ? '📅' : '🗂️'}
-          title={scope === 'upcoming' ? 'Nothing planned yet' : 'No past bookings'}
+          title={scope === 'upcoming' ? 'Nothing planned yet' : 'No past meetups'}
           body="Find someone to hang out with — gym, movies, a city walk, anything."
           action={
             <Link href="/explore" className={buttonClass('primary')}>
-              Explore companions
+              Explore hosts
             </Link>
           }
         />

@@ -4,7 +4,7 @@ import { ApplyForm } from '@/components/apply-form';
 import { Faq } from '@/components/misc';
 
 export const metadata: Metadata = {
-  title: 'Become a companion — earn doing what you love',
+  title: 'Become a host — earn doing what you love',
   description: 'Get paid to be good company. Set your own rate and hours, get verified, and withdraw earnings to UPI. 18+, platonic-only.',
   alternates: { canonical: '/become-a-companion' },
 };
@@ -43,12 +43,12 @@ export default function BecomePage() {
               <li>🏦 Withdraw to any UPI ID, usually within 24h</li>
               <li>🛡️ Members are phone-verified, 18+, and bound by the same guidelines</li>
               <li>🚫 Platonic only. No private residences, no hotel rooms, no exceptions</li>
-              <li>🚨 SOS & live location protect you on every booking too</li>
+              <li>🚨 SOS & live location protect you on every meetup too</li>
             </ul>
           </Card>
           <Faq
             items={[
-              { q: 'Who can become a companion?', a: 'Anyone 18+ with a valid government ID, a friendly attitude and reliability. We review every application.' },
+              { q: 'Who can become a host?', a: 'Anyone 18+ with a valid government ID, a friendly attitude and reliability. We review every application.' },
               { q: 'How do payouts work?', a: 'The member’s payment is held in escrow. After the session (or the 24h review window), your earnings move to your Companio wallet. Withdraw to UPI anytime above ₹500.' },
               { q: 'What if a member makes me uncomfortable?', a: 'Leave, hit SOS if needed, and report them. We take every report seriously and ban people who break the rules.' },
             ]}

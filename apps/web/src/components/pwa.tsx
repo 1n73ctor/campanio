@@ -33,7 +33,7 @@ export function PwaRegister() {
   return (
     <div className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-md items-center gap-3 rounded-blob border-3 border-ink bg-sunny p-3 shadow-brutal sm:bottom-6">
       <span className="text-2xl">📲</span>
-      <p className="flex-1 text-sm font-semibold">Add Companio to your home screen for faster bookings & alerts.</p>
+      <p className="flex-1 text-sm font-semibold">Add Companio to your home screen for faster meetups & alerts.</p>
       <Button size="sm" variant="dark" onClick={() => evt.prompt().finally(() => setHidden(true))}>
         Install
       </Button>

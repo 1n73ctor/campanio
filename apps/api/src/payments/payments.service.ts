@@ -27,8 +27,8 @@ export class PaymentsService {
 
   async checkout(user: User, bookingId: string, useWallet: boolean): Promise<CheckoutResponse> {
     const b = await this.prisma.booking.findUnique({ where: { id: bookingId } });
-    if (!b || b.userId !== user.id) throw new NotFoundException('Booking not found');
-    if (b.status !== 'PENDING_PAYMENT') throw new BadRequestException('This booking is already paid');
+    if (!b || b.userId !== user.id) throw new NotFoundException('Meetup not found');
+    if (b.status !== 'PENDING_PAYMENT') throw new BadRequestException('This meetup is already paid');
 
     const balance = useWallet ? await this.wallet.balance(user.id) : 0;
     const walletAmount = Math.min(balance, b.total);
@@ -126,10 +126,10 @@ export class PaymentsService {
       const b = await tx.booking.findUniqueOrThrow({ where: { id: p.bookingId! } });
       if (b.status !== 'PENDING_PAYMENT') {
         // booking expired/cancelled while the user was paying → park the money in their wallet
-        await this.wallet.credit(tx, b.userId, p.amount, 'Payment for an expired booking', { type: 'payment', id: p.id });
+        await this.wallet.credit(tx, b.userId, p.amount, 'Payment for an expired meetup', { type: 'payment', id: p.id });
         return { booking: b, parked: true };
       }
-      const promo = await this.wallet.spend(tx, b.userId, p.walletAmount, 'Booking payment', { type: 'booking', id: b.id });
+      const promo = await this.wallet.spend(tx, b.userId, p.walletAmount, 'Meetup payment', { type: 'booking', id: b.id });
       // remembered so a refund gives the credit part back as credit, not as withdrawable money
       if (promo) await tx.payment.update({ where: { id: p.id }, data: { walletPromo: promo } });
       await this.escrow.hold(tx, b.id, b.total);
@@ -139,11 +139,11 @@ export class PaymentsService {
     if (!result) return;
     const { booking, parked } = result;
     if (parked) {
-      this.log.warn(`payment ${orderId} arrived for non-pending booking ${booking.id}; credited to wallet`);
+      this.log.warn(`payment ${orderId} arrived for non-pending meetup ${booking.id}; credited to wallet`);
       await this.notifications.notify(booking.userId, {
         type: 'payment.parked',
         title: 'Payment moved to your wallet',
-        body: 'That booking had expired, so we added the amount to your Companio wallet.',
+        body: 'That meetup had expired, so we added the amount to your Companio wallet.',
         link: '/wallet',
       });
       return;
@@ -151,7 +151,7 @@ export class PaymentsService {
     const full = await this.prisma.booking.findUniqueOrThrow({ where: { id: booking.id }, include: bookingInclude });
     await this.notifications.notify(booking.companionUserId, {
       type: 'booking.requested',
-      title: `New booking request from ${full.user.name ?? 'a member'} 🔔`,
+      title: `New meetup request from ${full.user.name ?? 'a member'} 🔔`,
       body: `${booking.hours}h · ₹${booking.companionPayout} for you. Accept within a few hours.`,
       link: `/bookings/${booking.id}`,
     });
@@ -170,7 +170,7 @@ export class PaymentsService {
         return { userId: p.userId, total, duplicate: true };
       }
       // only withdrawable money pays the fee, so a refund (e.g. verification rejected) can never turn credit into cash
-      await this.wallet.spend(tx, p.userId, p.walletAmount, 'Companion registration fee', { type: 'companion-fee', id: p.id }, { cashOnly: true });
+      await this.wallet.spend(tx, p.userId, p.walletAmount, 'Host registration fee', { type: 'companion-fee', id: p.id }, { cashOnly: true });
       return { userId: p.userId, total, duplicate: false };
     });
     if (!result) return;
@@ -178,7 +178,7 @@ export class PaymentsService {
       result.userId,
       result.duplicate
         ? { type: 'payment.parked', title: 'Payment moved to your wallet', body: 'Your registration fee was already paid, so we added this payment to your Companio wallet.', link: '/wallet' }
-        : { type: 'payment.captured', title: `Registration fee received ✅`, body: `${formatINR(result.total)} paid. Finish your companion application and verify your ID.`, link: '/become-a-companion' },
+        : { type: 'payment.captured', title: `Registration fee received ✅`, body: `${formatINR(result.total)} paid. Finish your host application and verify your ID.`, link: '/become-a-companion' },
     );
   }
 }

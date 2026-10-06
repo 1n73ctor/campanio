@@ -64,7 +64,7 @@ export function ExploreFilters({ lockCategory, lockCity, preset }: { lockCategor
         ))}
         <span className="mx-1 hidden w-[3px] self-stretch bg-ink/10 sm:block" aria-hidden />
         <Chip active={sp.get('gender') === 'FEMALE'} onClick={() => set('gender', sp.get('gender') === 'FEMALE' ? null : 'FEMALE')}>
-          👩 Women companions
+          👩 Women hosts
         </Chip>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">

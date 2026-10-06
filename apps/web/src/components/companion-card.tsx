@@ -32,7 +32,7 @@ export function CompanionCard({ c }: { c: CompanionCardDto }) {
               </span>
             )}
             {c.womenOnly && (
-              <span title="Only accepts bookings from women" className="rounded-full border-2 border-ink bg-pink-soft px-2.5 py-0.5 text-xs font-extrabold">
+              <span title="Only accepts meetups from women" className="rounded-full border-2 border-ink bg-pink-soft px-2.5 py-0.5 text-xs font-extrabold">
                 👩 Women only
               </span>
             )}

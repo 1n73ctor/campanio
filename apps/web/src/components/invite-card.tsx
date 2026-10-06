@@ -21,7 +21,7 @@ export function InviteCard({ className }: { className?: string }) {
 
   if (!r) return null;
   const link = `${SITE_URL}/?ref=${r.code}`;
-  const message = `Join me on Companio — find verified buddies for the gym, movies, city walks and more. Sign up with my link and we both get ${formatINR(r.reward)} after your first booking: ${link}`;
+  const message = `Join me on Companio — find verified buddies for the gym, movies, city walks and more. Sign up with my link and we both get ${formatINR(r.reward)} after your first meetup: ${link}`;
 
   const copy = async () => {
     try {

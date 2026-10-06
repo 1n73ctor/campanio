@@ -100,7 +100,7 @@ export function Chat({ booking }: { booking: BookingDto }) {
           </Button>
         </form>
       ) : (
-        <p className="border-t-3 border-ink p-3 text-center text-sm text-ink-mute">Chat is closed for this booking.</p>
+        <p className="border-t-3 border-ink p-3 text-center text-sm text-ink-mute">Chat is closed for this meetup.</p>
       )}
       {reportMsg && <ReportDialog open onClose={() => setReportMsg(null)} targetUserId={other.id} bookingId={booking.id} messageId={reportMsg.id} name={other.name} />}
     </div>

@@ -7,8 +7,8 @@ import { Results } from '@/components/results';
 import { serverApi, safe } from '@/lib/server-api';
 
 export const metadata: Metadata = {
-  title: 'Explore companions',
-  description: 'Browse verified companions by activity, city, price and language.',
+  title: 'Explore hosts',
+  description: 'Browse verified hosts by activity, city, price and language.',
   alternates: { canonical: '/explore' },
 };
 
@@ -31,7 +31,7 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
   const data = await safe(serverApi(60).companions.search(q), { items: [], total: 0, page: 1, pageSize: 12 });
   return (
     <div className="container-x">
-      <PageHeader eyebrow="Explore" title="Find your kind of company" subtitle="Every companion is ID-verified and reviewed by real members." />
+      <PageHeader eyebrow="Explore" title="Find your kind of company" subtitle="Every host is ID-verified and reviewed by real members." />
       <Suspense>
         <ExploreFilters />
       </Suspense>

@@ -46,7 +46,7 @@ export default function CompanionDashboard() {
 
       {kyc !== 'APPROVED' && (
         <Callout tone={kyc === 'REJECTED' ? 'pink' : 'sunny'} title={kyc === 'PENDING' ? 'Verification under review ⏳' : kyc === 'REJECTED' ? 'Verification needs attention' : 'Verify your ID to go live'} className="mb-6">
-          {kyc === 'PENDING' ? 'We usually review within 24 hours. You’ll get a notification.' : kyc === 'REJECTED' ? d.latestKyc?.reviewNote ?? 'Please re-submit.' : 'Members can only book verified companions.'}{' '}
+          {kyc === 'PENDING' ? 'We usually review within 24 hours. You’ll get a notification.' : kyc === 'REJECTED' ? d.latestKyc?.reviewNote ?? 'Please re-submit.' : 'Members can only book verified hosts.'}{' '}
           {kyc !== 'PENDING' && (
             <Link href="/companion/kyc" className="font-bold underline">
               Verify now →
@@ -66,7 +66,7 @@ export default function CompanionDashboard() {
         <div className="space-y-6">
           <section>
             <h2 className="mb-3 font-display text-xl font-extrabold">Requests {d.pendingRequests.length > 0 && <span className="text-pink-deep">({d.pendingRequests.length})</span>}</h2>
-            {d.pendingRequests.length === 0 ? <EmptyState emoji="📭" title="No pending requests" body="Keep your availability fresh to get more bookings." /> : <div className="space-y-3">{d.pendingRequests.map((b) => <BookingRow key={b.id} b={b} />)}</div>}
+            {d.pendingRequests.length === 0 ? <EmptyState emoji="📭" title="No pending requests" body="Keep your availability fresh to get more meetups." /> : <div className="space-y-3">{d.pendingRequests.map((b) => <BookingRow key={b.id} b={b} />)}</div>}
           </section>
           <section>
             <h2 className="mb-3 font-display text-xl font-extrabold">Upcoming</h2>
@@ -77,7 +77,7 @@ export default function CompanionDashboard() {
           <Card className="flex items-center justify-between gap-3 p-5">
             <div>
               <p className="font-display font-extrabold">{d.profile.isListed ? 'You’re live 🟢' : 'Profile paused'}</p>
-              <p className="text-xs text-ink-soft">{d.profile.isListed ? 'Members can find and book you.' : 'Hidden from search.'}</p>
+              <p className="text-xs text-ink-soft">{d.profile.isListed ? 'Members can find you and send meetup requests.' : 'Hidden from search.'}</p>
             </div>
             <Toggle
               checked={d.profile.isListed}
@@ -97,16 +97,16 @@ export default function CompanionDashboard() {
             <Card className="space-y-2 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-display font-extrabold">👩 Women-only bookings</p>
-                  <p className="text-xs text-ink-soft">{d.profile.womenOnly ? 'Only women members can book you.' : 'Anyone can book you.'}</p>
+                  <p className="font-display font-extrabold">👩 Women-only meetups</p>
+                  <p className="text-xs text-ink-soft">{d.profile.womenOnly ? 'Only women members can send you requests.' : 'Anyone can send you requests.'}</p>
                 </div>
                 <Toggle
                   checked={d.profile.womenOnly}
-                  label="Only accept bookings from women"
+                  label="Only accept meetups from women"
                   onChange={async (v) => {
                     try {
                       await api.companion.updateProfile({ womenOnly: v });
-                      toast(v ? 'Only women can book you now' : 'Anyone can book you now');
+                      toast(v ? 'Only women can send you requests now' : 'Anyone can send you requests now');
                       load();
                     } catch (e) {
                       toast(errMsg(e), 'error');

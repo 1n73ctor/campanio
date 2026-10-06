@@ -62,13 +62,13 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
       });
       for (const b of staleRequests) {
         await this.prisma.$transaction(async (tx) => {
-          await tx.booking.update({ where: { id: b.id }, data: { status: 'EXPIRED', cancelledAt: new Date(), cancelReason: 'Companion did not respond' } });
+          await tx.booking.update({ where: { id: b.id }, data: { status: 'EXPIRED', cancelledAt: new Date(), cancelReason: 'Host did not respond' } });
           await this.escrow.settle(tx, b, b.total, 0, 'expired request');
         });
         await this.notifications.notify(b.userId, {
           type: 'booking.expired',
           title: 'Request expired',
-          body: `No response in time — ₹${b.total} is back in your wallet. Try another companion?`,
+          body: `No response in time — ₹${b.total} is back in your wallet. Try another host?`,
           link: `/bookings/${b.id}`,
         });
       }
@@ -95,7 +95,7 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
         where: { status: 'COMPLETED', completedAt: { lt: new Date(now - s.autoReleaseHours * HOUR) }, escrow: { status: 'HELD' } },
       });
       for (const b of releasable) {
-        await this.prisma.$transaction((tx) => this.escrow.settle(tx, b, 0, b.companionPayout, 'completed booking'));
+        await this.prisma.$transaction((tx) => this.escrow.settle(tx, b, 0, b.companionPayout, 'completed meetup'));
         await this.referrals.onBookingReleased(b);
         await this.offers.onBookingReleased(b); // cashback (only for fully released bookings)
         await this.notifications.notify(b.companionUserId, {
@@ -106,7 +106,7 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
         });
       }
       const n = staleRequests.length + noShows.length + overdue.length + releasable.length;
-      if (n) this.log.log(`processed ${n} booking transitions`);
+      if (n) this.log.log(`processed ${n} meetup transitions`);
     } catch (e) {
       this.log.error(e);
     } finally {

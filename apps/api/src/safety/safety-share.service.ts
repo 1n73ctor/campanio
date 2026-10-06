@@ -29,7 +29,7 @@ export class SafetyShareService {
 
   private async participantBooking(viewer: User, bookingId: string) {
     const b = await this.prisma.booking.findUnique({ where: { id: bookingId } });
-    if (!b || (b.userId !== viewer.id && b.companionUserId !== viewer.id)) throw new NotFoundException('Booking not found');
+    if (!b || (b.userId !== viewer.id && b.companionUserId !== viewer.id)) throw new NotFoundException('Meetup not found');
     return b;
   }
 
@@ -50,7 +50,7 @@ export class SafetyShareService {
   /** Returns the existing active link if there is one, so re-tapping "share" never multiplies links. */
   async create(viewer: User, bookingId: string): Promise<SafetyShareDto> {
     const b = await this.participantBooking(viewer, bookingId);
-    if (!SHAREABLE.includes(b.status) || b.endAt.getTime() < Date.now()) throw new BadRequestException('You can share a booking until its session ends');
+    if (!SHAREABLE.includes(b.status) || b.endAt.getTime() < Date.now()) throw new BadRequestException('You can share a meetup until its session ends');
     const existing = await this.active(bookingId, viewer.id);
     if (existing) return this.dto(existing);
     const s = await this.prisma.safetyShare.create({
@@ -95,7 +95,7 @@ export class SafetyShareService {
         firstName: first(other.name),
         avatarUrl: other.avatarUrl,
         verified: otherVerified,
-        verifiedLabel: sharerIsMember ? (otherVerified ? 'ID-verified companion' : 'Companion') : 'Phone-verified member',
+        verifiedLabel: sharerIsMember ? (otherVerified ? 'ID-verified host' : 'Companion') : 'Phone-verified member',
       },
       activity: categoryBySlug(b.category)?.name ?? b.category,
       meetingPoint: b.meetingPoint,
@@ -113,7 +113,7 @@ export class SafetyShareService {
   async alert(token: string, note?: string) {
     const s = await this.byToken(token);
     const b = s.booking;
-    if (!['REQUESTED', 'ACCEPTED', 'IN_PROGRESS', 'DISPUTED', 'COMPLETED'].includes(b.status)) throw new ForbiddenException('This booking isn’t active');
+    if (!['REQUESTED', 'ACCEPTED', 'IN_PROGRESS', 'DISPUTED', 'COMPLETED'].includes(b.status)) throw new ForbiddenException('This meetup isn’t active');
     const guidance = 'The Companio safety team has been alerted and will contact them now. If you believe they are in immediate danger, call 112.';
     const existing = await this.prisma.sosAlert.findFirst({ where: { bookingId: b.id, status: 'ACTIVE', source: 'TRUSTED_CONTACT' } });
     if (existing) return { ok: true, guidance }; // one open alert per booking is enough — avoids alarm floods
@@ -135,7 +135,7 @@ export class SafetyShareService {
     const who = s.userId === b.userId ? b.user.name : b.companion.name;
     await Promise.all(
       admins.map((a) =>
-        this.notifications.notify(a.id, { type: 'sos', title: '🚨 Safety alert from a trusted contact', body: `About ${who} on booking ${b.id.slice(-6)}`, link: '/admin/sos' }),
+        this.notifications.notify(a.id, { type: 'sos', title: '🚨 Safety alert from a trusted contact', body: `About ${who} on meetup ${b.id.slice(-6)}`, link: '/admin/sos' }),
       ),
     );
     await this.notifications.notify(s.userId, {

@@ -44,7 +44,7 @@ export class OffersService {
       await this.notifications.notify(userId, {
         type: 'wallet.welcome',
         title: `🎁 ${formatINR(welcomeCredit)} welcome credit added`,
-        body: 'It’s in your wallet and comes off your first booking automatically at checkout.',
+        body: 'It’s in your wallet and comes off your first meetup automatically at checkout.',
         link: '/explore',
       });
     } catch (e) {
@@ -66,18 +66,18 @@ export class OffersService {
       const paid = await this.prisma.$transaction(async (tx) => {
         const already = await tx.walletTxn.findFirst({ where: { refType: 'cashback', refId: booking.id } });
         if (already) return false;
-        await this.wallet.credit(tx, booking.userId, amount, `${cashbackPct}% cashback on your booking`, { type: 'cashback', id: booking.id }, amount);
+        await this.wallet.credit(tx, booking.userId, amount, `${cashbackPct}% cashback on your meetup`, { type: 'cashback', id: booking.id }, amount);
         return true;
       });
       if (!paid) return;
       await this.notifications.notify(booking.userId, {
         type: 'wallet.cashback',
         title: `💸 ${formatINR(amount)} cashback added`,
-        body: 'Thanks for booking with Companio. It’s in your wallet for your next plan.',
+        body: 'Thanks for meetup with Companio. It’s in your wallet for your next plan.',
         link: '/wallet',
       });
     } catch (e) {
-      this.log.error(`cashback for booking ${booking.id} failed`, e as Error);
+      this.log.error(`cashback for meetup ${booking.id} failed`, e as Error);
     }
   }
 }

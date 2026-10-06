@@ -113,7 +113,7 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
                   <span className="rounded-chunky border-3 border-ink bg-white px-4 py-2 font-display text-3xl font-extrabold tracking-[0.3em]">{b.startCode}</span>
                 </Card>
               )}
-              {!isUser && b.status === 'REQUESTED' && <Callout tone="sunny" title="New request">You’ll earn {formatINR(b.companionPayout)} for this booking. Accept to lock the slot.</Callout>}
+              {!isUser && b.status === 'REQUESTED' && <Callout tone="sunny" title="New request">You’ll earn {formatINR(b.companionPayout)} for this meetup. Accept to lock the slot.</Callout>}
               {!isUser && b.status === 'ACCEPTED' && <Callout tone="sky" title="At the meetup">Ask {other.name?.split(' ')[0]} for their 4-digit start code to begin the session.</Callout>}
               {b.status === 'COMPLETED' && b.escrow?.status === 'HELD' && isUser && <Callout tone="mint" title="How did it go?">Confirm to release payment now. Something wrong? Raise an issue — payment stays on hold until we review.</Callout>}
               {b.status === 'DISPUTED' && <Callout tone="pink" title="Under review">Our team is reviewing “{b.dispute?.reason}”. Payment is frozen until it’s resolved — we’ll notify you both.</Callout>}
@@ -122,7 +122,7 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
               <div className="flex flex-wrap gap-2">
                 {!isUser && b.status === 'REQUESTED' && (
                   <>
-                    <Button variant="lime" loading={busy === 'accept'} onClick={() => act('accept', () => api.bookings.accept(b.id), 'Booking accepted ✅')}>
+                    <Button variant="lime" loading={busy === 'accept'} onClick={() => act('accept', () => api.bookings.accept(b.id), 'Meetup accepted ✅')}>
                       Accept
                     </Button>
                     <Button variant="white" onClick={() => setModal('decline')}>
@@ -185,7 +185,7 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
               </>
             ) : (
               <>
-                <Row l="Booking value" r={formatINR(b.subtotal)} />
+                <Row l="Meetup value" r={formatINR(b.subtotal)} />
                 <Row l="Platform commission" r={`− ${formatINR(b.commission)}`} />
                 <Row l="Your earnings" r={formatINR(b.companionPayout)} bold />
               </>
@@ -197,9 +197,9 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
               </div>
             )}
             {b.escrow && b.escrow.refunded > 0 && <Row l="Refunded to wallet" r={formatINR(b.escrow.refunded)} />}
-            {b.escrow && b.escrow.released > 0 && <Row l="Released to companion" r={formatINR(b.escrow.released)} />}
+            {b.escrow && b.escrow.released > 0 && <Row l="Released to host" r={formatINR(b.escrow.released)} />}
           </Card>
-          <p className="px-2 text-xs text-ink-mute">Booking ID {b.id}</p>
+          <p className="px-2 text-xs text-ink-mute">Meetup ID {b.id}</p>
         </aside>
       </div>
 
@@ -207,9 +207,9 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
       <Modal
         open={modal === 'cancel'}
         onClose={closeModal}
-        title="Cancel booking?"
+        title="Cancel meetup?"
         footer={
-          <Button variant="danger" loading={busy === 'cancel'} onClick={() => act('cancel', () => api.bookings.cancel(b.id, text || undefined), 'Booking cancelled')}>
+          <Button variant="danger" loading={busy === 'cancel'} onClick={() => act('cancel', () => api.bookings.cancel(b.id, text || undefined), 'Meetup cancelled')}>
             Yes, cancel
           </Button>
         }
@@ -217,7 +217,7 @@ export default function BookingDetail({ params }: { params: Promise<{ id: string
         <p className="text-sm text-ink-soft">
           {isUser
             ? b.status === 'ACCEPTED'
-              ? 'Cancelling 24h+ before start refunds the companion’s fee (the connection fee and GST are non-refundable after acceptance). Later cancellations refund 50% of the companion’s fee.'
+              ? 'Cancelling 24h+ before start refunds the host’s fee (the connection fee and GST are non-refundable after acceptance). Later cancellations refund 50% of the host’s fee.'
               : 'You’ll get a full refund to your wallet.'
             : 'The member gets a full 100% refund, including GST. Cancellations after accepting affect your standing.'}
         </p>

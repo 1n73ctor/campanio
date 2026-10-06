@@ -66,11 +66,11 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
   if (c.womenOnly && user.gender !== 'FEMALE') {
     return (
       <div className="container-x max-w-xl py-16">
-        <Callout tone="pink" title={`${first} only accepts bookings from women`}>
-          {first} has chosen to meet women members only, for their safety. There are plenty of other verified companions to explore.
+        <Callout tone="pink" title={`${first} only accepts meetups from women`}>
+          {first} has chosen to meet women members only, for their safety. There are plenty of other verified hosts to explore.
         </Callout>
         <Link href="/explore" className="mt-4 inline-block font-semibold underline">
-          ← Explore other companions
+          ← Explore other hosts
         </Link>
       </div>
     );
@@ -101,7 +101,7 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
       <Link href={`/companions/${c.id}`} className="text-sm font-semibold underline">
         ← Back to {first}
       </Link>
-      <h1 className="mt-3 text-3xl font-extrabold">Book {first}</h1>
+      <h1 className="mt-3 text-3xl font-extrabold">Meet {first}</h1>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         <Card className="space-y-5 p-6">
           <Field label="Activity">

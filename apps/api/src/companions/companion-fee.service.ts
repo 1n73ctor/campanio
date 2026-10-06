@@ -76,7 +76,7 @@ export class CompanionFeeService {
     await this.notifications.notify(userId, {
       type: 'wallet.refund',
       title: `${formatINR(amount)} registration fee refunded 💸`,
-      body: 'Your companion registration fee was returned to your Companio wallet.',
+      body: 'Your host registration fee was returned to your Companio wallet.',
       link: '/wallet',
     });
   }

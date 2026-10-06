@@ -12,9 +12,9 @@ export default function Terms() {
         <h2>Eligibility</h2>
         <p>You must be 18 or older and able to form a binding contract under Indian law.</p>
         <h2>What Companio is</h2>
-        <p>Companio is a marketplace connecting members with independent companions for platonic, in-person activities in public places. Companions are not our employees. We are not a dating, escort or adult service and prohibit any such use.</p>
+        <p>Companio is a marketplace connecting members with independent hosts for platonic, in-person activities in public places. Hosts are not our employees. We are not a dating, escort or adult service and prohibit any such use.</p>
         <h2>Payments & fees</h2>
-        <p>Members pay the companion’s rate plus a connection fee and applicable GST. Payments are held in escrow and released per the cancellation and dispute policy described on the How it works page. Companions receive their rate minus the platform commission.</p>
+        <p>Members pay the host’s rate plus a connection fee and applicable GST. Payments are held in escrow and released per the cancellation and dispute policy described on the How it works page. Hosts receive their rate minus the platform commission.</p>
         <h2>Cancellations, refunds & disputes</h2>
         <p>Refunds are credited to your Companio wallet. Disputes must be raised within 24 hours of a session. Our decision on disputes is final within the platform.</p>
         <h2>Conduct</h2>

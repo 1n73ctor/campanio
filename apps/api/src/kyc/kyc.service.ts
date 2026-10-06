@@ -151,7 +151,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
     if (age < 18) {
       await this.fail(s, 'UNDER_18');
       throw new ForbiddenException(
-        dob ? 'Companions must be 18 or older, and your Aadhaar shows you’re under 18.' : 'Your Aadhaar only shows your year of birth, so we can’t confirm you’re 18 — please upload your ID instead.',
+        dob ? 'Hosts must be 18 or older, and your Aadhaar shows you’re under 18.' : 'Your Aadhaar only shows your year of birth, so we can’t confirm you’re 18 — please upload your ID instead.',
       );
     }
     const photo = doc.photo_link ? Buffer.from(doc.photo_link, 'base64') : null;
@@ -246,7 +246,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
         await this.notifications.notify(user.id, {
           type: 'kyc.approved',
           title: "You're verified ✅ and live!",
-          body: 'Your profile is now visible to members. Set your availability to get bookings.',
+          body: 'Your profile is now visible to members. Set your availability to get meetups.',
           link: '/companion/dashboard',
         });
       return toKycDto(k);
@@ -349,7 +349,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
 
   private async assertCanSubmit(user: User) {
     const p = await this.prisma.companionProfile.findUnique({ where: { userId: user.id } });
-    if (!p) throw new NotFoundException('Apply as a companion first');
+    if (!p) throw new NotFoundException('Apply as a host first');
     if (p.kycStatus === 'PENDING') throw new BadRequestException('Your verification is already under review');
     if (p.kycStatus === 'APPROVED') throw new BadRequestException('You are already verified');
     await this.fee.assertCanSubmitKyc(user);

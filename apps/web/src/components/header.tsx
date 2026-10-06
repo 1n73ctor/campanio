@@ -13,7 +13,7 @@ const NAV = [
   { href: '/explore', label: 'Explore' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/safety', label: 'Safety' },
-  { href: '/become-a-companion', label: 'Become a companion' },
+  { href: '/become-a-companion', label: 'Become a host' },
 ];
 
 /** Fired after notifications are marked read elsewhere, so the bell badge refreshes. */
@@ -78,8 +78,8 @@ export function SiteHeader() {
                   <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-chunky border-3 border-ink bg-white shadow-brutal">
                     <p className="border-b-2 border-ink/10 px-4 py-2 text-xs text-ink-mute">Signed in as <b className="text-ink">{user.name ?? user.phone}</b></p>
                     {[
-                      ...(user.companion ? [{ href: '/companion/dashboard', label: '💼 Companion dashboard' }] : []),
-                      { href: '/bookings', label: '📅 My bookings' },
+                      ...(user.companion ? [{ href: '/companion/dashboard', label: '💼 Host dashboard' }] : []),
+                      { href: '/bookings', label: '📅 My meetups' },
                       { href: '/wallet', label: '👛 Wallet' },
                       { href: '/account', label: '⚙️ Account' },
                     ].map((l) => (
@@ -114,7 +114,7 @@ export function SiteHeader() {
       {open && (
         <nav className="border-t-3 border-ink bg-paper lg:hidden">
           <div className="container-x flex flex-col py-2">
-            {[...NAV, ...(user ? [{ href: '/bookings', label: 'My bookings' }] : [])].map((n) => (
+            {[...NAV, ...(user ? [{ href: '/bookings', label: 'My meetups' }] : [])].map((n) => (
               <Link key={n.href} href={n.href} className="rounded-lg px-2 py-3 font-bold hover:bg-ink/5">
                 {n.label}
               </Link>

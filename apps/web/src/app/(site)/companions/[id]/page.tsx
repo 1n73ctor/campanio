@@ -23,12 +23,12 @@ async function load(id: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const c = await load((await params).id);
-  if (!c) return { title: 'Companion not found' };
+  if (!c) return { title: 'Host not found' };
   const first = c.name.split(' ')[0];
   const city = cityBySlug(c.city)?.name;
   return {
     title: `${first} — ${c.headline}`,
-    description: `Book ${first}, a verified companion in ${city}, from ${formatINR(c.hourlyRate)}/hr. ${c.ratingCount} reviews, ${c.ratingAvg.toFixed(1)}★.`,
+    description: `Meet ${first}, a verified local host in ${city}, from ${formatINR(c.hourlyRate)}/hr. ${c.ratingCount} reviews, ${c.ratingAvg.toFixed(1)}★.`,
     alternates: { canonical: `/companions/${c.id}` },
     openGraph: { title: `${first} on Companio`, description: c.headline, images: c.avatarUrl ? [c.avatarUrl] : undefined },
   };
@@ -148,10 +148,10 @@ export default async function CompanionPage({ params }: { params: Promise<{ id: 
             </p>
             <p className="text-sm text-ink-soft">+ a small connection fee & GST. Full breakdown before you pay.</p>
             {c.womenOnly && (
-              <p className="rounded-chunky border-2 border-ink bg-pink-soft px-3 py-2 text-sm font-semibold">👩 {first} only accepts bookings from women.</p>
+              <p className="rounded-chunky border-2 border-ink bg-pink-soft px-3 py-2 text-sm font-semibold">👩 {first} only accepts meetups from women.</p>
             )}
             <Link href={`/book/${c.id}`} className={buttonClass('primary', 'lg', 'w-full')}>
-              Book {first}
+              Request a meetup with {first}
             </Link>
             <ul className="space-y-1.5 text-sm">
               <li>🔐 Paid into escrow — released after the meetup</li>

@@ -72,7 +72,7 @@ export default function AccountPage() {
         </Field>
         <Field
           label="Email"
-          hint={user.email ? 'For booking receipts and important account updates. Never shown to anyone.' : 'Add your email for booking receipts and important account updates.'}
+          hint={user.email ? 'For meetup receipts and important account updates. Never shown to anyone.' : 'Add your email for meetup receipts and important account updates.'}
           error={email && !emailOk ? 'Enter a valid email address' : null}
         >
           <Input type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} placeholder="you@example.com" />

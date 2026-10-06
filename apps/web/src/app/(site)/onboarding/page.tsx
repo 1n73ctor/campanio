@@ -47,12 +47,12 @@ function OnboardingInner() {
   return (
     <div className="container-x max-w-xl py-10">
       <h1 className="text-3xl font-extrabold">Let’s set you up ✨</h1>
-      <p className="mt-1 text-ink-soft">This takes 30 seconds. Companions see your first name and city only.</p>
+      <p className="mt-1 text-ink-soft">This takes 30 seconds. Hosts see your first name and city only.</p>
       <Card className="mt-6 space-y-4 p-6">
         <Field label="First & last name">
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} required />
         </Field>
-        <Field label="Email" hint="For booking receipts and important account updates. Never shown to anyone." error={form.email && !emailOk ? 'Enter a valid email address' : null}>
+        <Field label="Email" hint="For meetup receipts and important account updates. Never shown to anyone." error={form.email && !emailOk ? 'Enter a valid email address' : null}>
           <Input type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} placeholder="you@example.com" required />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">

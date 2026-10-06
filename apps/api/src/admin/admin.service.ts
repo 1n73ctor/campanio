@@ -220,7 +220,7 @@ export class AdminService {
       await this.audit.log(admin.id, 'companion_fee.refund', 'user', k.userId, { amount: refunded, via: 'kyc.reject', kycId: id });
     }
     await this.notifications.notify(k.userId, approve
-      ? { type: 'kyc.approved', title: "You're verified ✅ and live!", body: 'Your profile is now visible to members. Set your availability to get bookings.', link: '/companion/dashboard' }
+      ? { type: 'kyc.approved', title: "You're verified ✅ and live!", body: 'Your profile is now visible to members. Set your availability to get meetups.', link: '/companion/dashboard' }
       : { type: 'kyc.rejected', title: 'Verification needs another look', body: note ?? 'Please re-submit clearer documents.', link: '/companion/kyc' });
     await this.audit.log(admin.id, `kyc.${status.toLowerCase()}`, 'kyc', id, { note });
     return { ok: true };
@@ -270,21 +270,21 @@ export class AdminService {
     const escrowActive = b.escrow && ['HELD', 'FROZEN'].includes(b.escrow.status);
     const amt = amount ?? (escrowActive ? b.total : b.subtotal);
     if (escrowActive) {
-      if (amt > b.total) throw new BadRequestException('Refund exceeds booking total');
+      if (amt > b.total) throw new BadRequestException('Refund exceeds meetup total');
       await this.prisma.$transaction(async (tx) => {
         await tx.booking.update({ where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelledBy: 'ADMIN', cancelReason: note } });
         await this.escrow.settle(tx, b, amt, 0, 'refund by support');
       });
     } else {
-      if (!b.paidAt) throw new BadRequestException('Booking was never paid');
-      if (amt > b.total) throw new BadRequestException('Refund exceeds booking total');
+      if (!b.paidAt) throw new BadRequestException('Meetup was never paid');
+      if (amt > b.total) throw new BadRequestException('Refund exceeds meetup total');
       // platform-funded, so spend-only like other credit
       await this.prisma.$transaction((tx) => this.wallet.credit(tx, b.userId, amt, 'Goodwill credit from support', { type: 'booking-goodwill', id: b.id }, amt));
     }
     await this.notifications.notify(b.userId, {
       type: 'refund',
       title: escrowActive ? `₹${amt} refunded to your wallet` : `₹${amt} credit added to your wallet`,
-      body: escrowActive ? note : `${note} — use it on your next booking.`,
+      body: escrowActive ? note : `${note} — use it on your next meetup.`,
       link: `/bookings/${id}`,
     });
     await this.audit.log(admin.id, escrowActive ? 'booking.refund' : 'booking.goodwill', 'booking', id, { amount: amt, note });

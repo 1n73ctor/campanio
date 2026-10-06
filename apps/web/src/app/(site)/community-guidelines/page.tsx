@@ -11,7 +11,7 @@ export default function Guidelines() {
         <h2>1. Strictly platonic</h2>
         <p>Companio is for friendship and activities. <strong>Any sexual, romantic or intimate request — explicit or implied — is banned.</strong> So is sexual content in photos, profiles or chat. Violations lead to a permanent ban and, where required, reporting to authorities.</p>
         <h2>2. 18+ only</h2>
-        <p>You must be at least 18 years old. We verify companions’ age via government ID.</p>
+        <p>You must be at least 18 years old. We verify hosts’ age via government ID.</p>
         <h2>3. Public places only</h2>
         <p>Meet at cafés, malls, gyms, parks, monuments, venues. Never at private residences or hotel rooms.</p>
         <h2>4. Keep it on Companio</h2>

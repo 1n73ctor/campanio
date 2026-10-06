@@ -18,7 +18,7 @@ export function ProfileActions({ companionUserId, name }: { companionUserId: str
       <button
         className="hover:underline"
         onClick={async () => {
-          if (!confirm(`Block ${name}? They won't be able to book or message you.`)) return;
+          if (!confirm(`Block ${name}? They won't be able to send you requests or messages.`)) return;
           await api.me.block(companionUserId);
           toast(`${name} blocked`);
         }}

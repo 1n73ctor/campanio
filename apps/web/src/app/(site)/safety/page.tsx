@@ -2,14 +2,14 @@ import type { Metadata } from 'next';
 import { Card, Callout } from '@companio/ui';
 import { PageHeader } from '@/components/misc';
 
-export const metadata: Metadata = { title: 'Safety', description: 'ID verification, escrow, live location, SOS and moderation — how Companio keeps members and companions safe.', alternates: { canonical: '/safety' } };
+export const metadata: Metadata = { title: 'Safety', description: 'ID verification, escrow, live location, SOS and moderation — how Companio keeps members and hosts safe.', alternates: { canonical: '/safety' } };
 
 const BLOCKS = [
-  { e: '🪪', t: 'Verified companions', b: 'Government ID + live-selfie liveness check before any companion is listed. Our team reviews every submission manually.' },
+  { e: '🪪', t: 'Verified hosts', b: 'Government ID + live-selfie liveness check before any host is listed. Our team reviews every submission manually.' },
   { e: '📱', t: 'Verified members', b: 'Every member signs up with an OTP-verified mobile number and confirms they’re 18+.' },
   { e: '🔢', t: 'Start codes', b: 'Sessions only begin when the member shares their 4-digit code in person — so both sides know they met the right person.' },
-  { e: '📍', t: 'Live location', b: 'Share your live location during a booking. Our safety team can see it if you trigger SOS.' },
-  { e: '🚨', t: 'SOS button', b: 'Visible on every active booking. It alerts our 24/7 safety team instantly with your location. Always call 112 in an emergency.' },
+  { e: '📍', t: 'Live location', b: 'Share your live location during a meetup. Our safety team can see it if you trigger SOS.' },
+  { e: '🚨', t: 'SOS button', b: 'Visible on every active meetup. It alerts our 24/7 safety team instantly with your location. Always call 112 in an emergency.' },
   { e: '🔐', t: 'Escrow', b: 'Payments are held until the session happens. No cash, no off-platform deals, automatic refunds for no-shows.' },
   { e: '🙈', t: 'Private chat', b: 'Phone numbers, emails, UPI IDs and links are automatically hidden in chat until you’re comfortable.' },
   { e: '🚩', t: 'Report & block', b: 'Report any person or message in two taps. Blocking stops all contact. Our moderators act fast — up to permanent bans.' },

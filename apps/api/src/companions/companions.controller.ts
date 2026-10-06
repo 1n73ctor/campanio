@@ -42,7 +42,7 @@ export class CompanionsController {
   }
 }
 
-@ApiTags('companion (self)')
+@ApiTags('host (self)')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('companion')
