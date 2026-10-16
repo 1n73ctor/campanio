@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Waits (up to 3 days) for each domain to point at this server, then gets its HTTPS certificate. Run by setup-web.sh.
 LOG=/var/log/companio-certs.log
-ME=$(curl -s -m 10 ifconfig.me)
+ME=$(curl -4 -s -m 10 ifconfig.me)
 pending=("$@")
 for _ in $(seq 1 4320); do
   next=()

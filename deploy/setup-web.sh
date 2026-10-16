@@ -33,4 +33,4 @@ step "Certificates: requested automatically when each domain's DNS points here"
 sudo install -m 755 "$ROOT/deploy/web-certs.sh" /usr/local/bin/companio-web-certs
 sudo systemd-run --unit=companio-web-certs --collect /usr/local/bin/companio-web-certs $SITE $REDIRECTS >/dev/null 2>&1 \
   || echo "(already waiting for DNS)"
-echo "Point the domains' A records to $(curl -s -m 5 ifconfig.me) — watch progress: sudo tail -f /var/log/companio-certs.log"
+echo "Point the domains' A records to $(curl -4 -s -m 5 ifconfig.me) — watch progress: sudo tail -f /var/log/companio-certs.log"
