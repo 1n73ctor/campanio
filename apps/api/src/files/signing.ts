@@ -5,7 +5,7 @@ import { config } from '../common/config';
 export function signPrivateUrl(fileName: string, ttlSeconds = 15 * 60) {
   const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
   const sig = sign(fileName, exp);
-  return `${config.publicApiUrl}/files/private/${encodeURIComponent(fileName)}?exp=${exp}&sig=${sig}`;
+  return `${config.filesBaseUrl}/files/private/${encodeURIComponent(fileName)}?exp=${exp}&sig=${sig}`;
 }
 
 export function verifyPrivateSig(fileName: string, exp: number, sig: string) {

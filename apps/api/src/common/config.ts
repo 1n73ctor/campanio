@@ -7,6 +7,11 @@ export const config = {
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:3000').split(',').map((s) => s.trim()),
   publicApiUrl: (process.env.PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/$/, ''),
   webUrl: (process.env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
+  /**
+   * Base of file links (photos, signed ID-document links). Defaults to this API's URL; set it to the website (e.g.
+   * https://getcompanio.in) when the website's nginx passes /files/ and /uploads/ through to this API.
+   */
+  filesBaseUrl: (process.env.FILES_BASE_URL || process.env.PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, ''),
   otpDevEcho: bool(process.env.OTP_DEV_ECHO) && process.env.NODE_ENV !== 'production',
   smsProvider: process.env.SMS_PROVIDER ?? 'console',
   /** Firebase project whose phone sign-ins we accept (web sends the SMS through Firebase). Empty = disabled. */
@@ -80,6 +85,7 @@ export function productionProblems(): string[] {
   if (config.corsOrigins.some((o) => o.includes('localhost'))) p.push('CORS_ORIGINS still lists localhost — set it to your live website and admin URLs');
   // upload links (KYC documents, photos) are built from PUBLIC_API_URL, and photo links are saved in the database
   if (/localhost|127\.0\.0\.1/.test(config.publicApiUrl)) p.push('PUBLIC_API_URL points to localhost — set it to this API\'s public https:// address');
+  if (/localhost|127\.0\.0\.1/.test(config.filesBaseUrl)) p.push('FILES_BASE_URL points to localhost — set it to your website\'s https:// address (or leave it empty)');
   if (/localhost|127\.0\.0\.1/.test(config.webUrl)) p.push('WEB_URL points to localhost — set it to your website\'s https:// address');
   if (Buffer.from(config.kycEncryptionKey, 'base64').length !== 32) p.push('KYC_ENCRYPTION_KEY must be 32 random bytes in base64 (openssl rand -base64 32) — it encrypts ID documents on disk');
   const cf = config.cashfree;

@@ -97,4 +97,4 @@ export function decryptDoc(data: Buffer): Buffer {
 
 export const isEncryptedDoc = (data: Buffer) => data.subarray(0, MAGIC.length).equals(MAGIC);
 
-export const publicUrl = (fileName: string) => `${config.publicApiUrl}/uploads/public/${fileName}`;
+export const publicUrl = (fileName: string) => `${config.filesBaseUrl}/uploads/public/${fileName}`;

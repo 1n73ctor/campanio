@@ -15,11 +15,11 @@ export default function Dashboard() {
   const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   const queues = [
-    { href: '/sos', label: 'Active SOS', n: data.activeSos, tone: 'pink' as const },
-    { href: '/kyc', label: 'KYC to review', n: data.pendingKyc, tone: 'sunny' as const },
-    { href: '/disputes', label: 'Open disputes', n: data.openDisputes, tone: 'tangerine' as const },
-    { href: '/moderation', label: 'Open reports', n: data.openReports, tone: 'lavender' as const },
-    { href: '/payouts', label: 'Payouts pending', n: data.pendingPayouts, tone: 'sky' as const },
+    { href: '/admin/sos', label: 'Active SOS', n: data.activeSos, tone: 'pink' as const },
+    { href: '/admin/kyc', label: 'KYC to review', n: data.pendingKyc, tone: 'sunny' as const },
+    { href: '/admin/disputes', label: 'Open disputes', n: data.openDisputes, tone: 'tangerine' as const },
+    { href: '/admin/moderation', label: 'Open reports', n: data.openReports, tone: 'lavender' as const },
+    { href: '/admin/payouts', label: 'Payouts pending', n: data.pendingPayouts, tone: 'sky' as const },
   ];
 
   return (
