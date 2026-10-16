@@ -13,6 +13,8 @@ class TotpDto {
 }
 import {
   AdminMessageDto,
+  BroadcastAudienceDto,
+  BroadcastDto,
   HiddenDto,
   NoteDto,
   PageDto,
@@ -45,6 +47,10 @@ export class AdminController {
   }
   @Post('users/:id/message') @Throttle({ default: { limit: 30, ttl: 60_000 } }) messageUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminMessageDto) {
     return this.svc.messageUser(a, id, dto);
+  }
+  @Get('broadcast/audience') broadcastAudience(@Query() q: BroadcastAudienceDto) { return this.svc.broadcastAudience(q.audience, q.city); }
+  @Post('broadcast') @Throttle({ default: { limit: 5, ttl: 60 * 60_000 } }) broadcast(@CurrentUser() a: User, @Body() dto: BroadcastDto) {
+    return this.svc.broadcast(a, dto);
   }
   @Post('users/:id/status') userStatus(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: UserStatusDto) {
     return this.svc.setUserStatus(a, id, dto.status, dto.reason);

@@ -132,6 +132,37 @@ export class AdminService {
     return { ok: true, id: n.id };
   }
 
+  // ---------- broadcasts ----------
+  /** Active, non-admin accounts in the chosen audience (hosts = anyone with a host profile). */
+  private broadcastWhere(audience: 'ALL' | 'MEMBERS' | 'HOSTS', city?: string): Prisma.UserWhereInput {
+    return {
+      status: 'ACTIVE',
+      role: { not: 'ADMIN' },
+      ...(audience === 'HOSTS' ? { companion: { isNot: null } } : audience === 'MEMBERS' ? { companion: { is: null } } : {}),
+      ...(city ? { city } : {}),
+    };
+  }
+
+  async broadcastAudience(audience: 'ALL' | 'MEMBERS' | 'HOSTS', city?: string) {
+    return { count: await this.prisma.user.count({ where: this.broadcastWhere(audience, city) }) };
+  }
+
+  /** Same message to many people's notifications (live for anyone online). Recorded once in the audit log. */
+  async broadcast(admin: User, dto: { title: string; body: string; link?: string; audience: 'ALL' | 'MEMBERS' | 'HOSTS'; city?: string; expectedCount: number }) {
+    const users = await this.prisma.user.findMany({ where: this.broadcastWhere(dto.audience, dto.city), select: { id: true } });
+    // the admin confirmed a number; if it has moved a lot since, make them look again rather than surprise anyone
+    if (Math.abs(users.length - dto.expectedCount) > Math.max(5, dto.expectedCount * 0.05))
+      throw new BadRequestException(`The audience is now ${users.length} people — check it and send again`);
+    const msg = { type: 'admin.broadcast', title: dto.title.trim(), body: dto.body.trim(), link: dto.link || undefined };
+    let sent = 0;
+    for (let i = 0; i < users.length; i += 50) {
+      await Promise.all(users.slice(i, i + 50).map((u) => this.notifications.notify(u.id, msg)));
+      sent += Math.min(50, users.length - i);
+    }
+    await this.audit.log(admin.id, 'broadcast.send', 'broadcast', dto.audience, { ...msg, city: dto.city ?? null, sent });
+    return { ok: true, sent };
+  }
+
   async refundCompanionFee(admin: User, userId: string, note?: string) {
     const amount = await this.prisma.$transaction((tx) => this.fee.refund(tx, userId, note || 'refunded by admin'));
     await this.fee.notifyRefunded(userId, amount);

@@ -23,6 +23,20 @@ export class AdminMessageDto {
   @IsOptional() @IsString() @MaxLength(200) @Matches(/^\/(?![\/\\])[\w\-\/?=&#.%]*$/, { message: 'Link must be a page on this site, like /wallet' }) link?: string;
 }
 
+export const BROADCAST_AUDIENCES = ['ALL', 'MEMBERS', 'HOSTS'] as const;
+
+export class BroadcastAudienceDto {
+  @IsIn(BROADCAST_AUDIENCES) audience: (typeof BROADCAST_AUDIENCES)[number];
+  @IsOptional() @IsString() @MaxLength(60) city?: string;
+}
+
+export class BroadcastDto extends AdminMessageDto {
+  @IsIn(BROADCAST_AUDIENCES) audience: (typeof BROADCAST_AUDIENCES)[number];
+  @IsOptional() @IsString() @MaxLength(60) city?: string;
+  /** the number the admin confirmed — if the audience changed meanwhile, nothing is sent */
+  @IsInt() @Min(1) expectedCount: number;
+}
+
 export class NoteDto {
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }

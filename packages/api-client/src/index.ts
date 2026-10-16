@@ -238,6 +238,9 @@ export function createApiClient(opts: ClientOptions) {
       stats: () => get<AdminStatsDto>('/admin/stats'),
       users: (q: AdminPage) => get<Paginated<AdminUserDto>>('/admin/users', q),
       user: (id: string) => get<AdminUserDetail>(`/admin/users/${id}`),
+      broadcastAudience: (audience: 'ALL' | 'MEMBERS' | 'HOSTS', city?: string) => get<{ count: number }>('/admin/broadcast/audience', { audience, city }),
+      broadcast: (msg: { title: string; body: string; link?: string; audience: 'ALL' | 'MEMBERS' | 'HOSTS'; city?: string; expectedCount: number }) =>
+        post<{ ok: true; sent: number }>('/admin/broadcast', msg),
       /** message shown in the person's notifications */
       messageUser: (id: string, msg: { title: string; body: string; link?: string }) => post<{ ok: true; id: string }>(`/admin/users/${id}/message`, msg),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),

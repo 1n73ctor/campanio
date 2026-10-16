@@ -6,6 +6,7 @@ import { ageFromDob, cityBySlug, type UserStatus } from '@companio/types';
 import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
+import { USER_TEMPLATES } from '@/admin/lib/message-templates';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, d, dt, formatINR, humanize } from '@/admin/lib/format';
 
@@ -90,11 +91,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
           <h2 className="font-display text-lg font-extrabold">📣 Send a message</h2>
           <p className="mt-1 text-ink-soft">Appears in {u.name?.split(' ')[0] ?? 'their'}’s notifications straight away (live if they’re online), marked “From the Companio team”.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { label: 'Profile photo', title: 'Please update your profile photo', body: 'Hi! A clear face photo helps members trust you. Please upload one from your Account page.', link: '/account' },
-              { label: 'Verification', title: 'Your verification needs attention', body: 'Hi! Please check your ID verification and re-submit if anything is unclear.', link: '/companion/kyc' },
-              { label: 'Warning', title: 'A reminder about our guidelines', body: 'Hi! We received a concern about a recent meetup. Please keep every meetup platonic, in public places, and all payments on Companio. Repeated issues can lead to suspension.', link: '/community-guidelines' },
-            ].map((tpl) => (
+            {USER_TEMPLATES.map((tpl) => (
               <Button key={tpl.label} size="sm" variant="white" onClick={() => setMsg({ title: tpl.title, body: tpl.body, link: tpl.link })}>
                 {tpl.label}
               </Button>
