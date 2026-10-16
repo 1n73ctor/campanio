@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:create-admin": "tsx prisma/create-admin.ts",
     "kyc:encrypt": "tsx prisma/encrypt-kyc-docs.ts",
+    "db:reset-activity": "tsx prisma/reset-activity.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "prisma studio"
