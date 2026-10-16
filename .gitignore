@@ -21,3 +21,8 @@ android/*.aab
 android/*.idsig
 *.jks
 *.keystore
+
+# server-only website settings and the deploy script's build copy
+apps/web/.env.production.local
+.web-build/
+apps/web/.next.previous/

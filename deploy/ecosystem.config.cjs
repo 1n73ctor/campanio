@@ -1,4 +1,4 @@
-// PM2 process file for the API (the website and admin are hosted on Netlify).
+// PM2 process file: the API and (when apps/web/.env.production.local exists) the website.
 //   pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 const path = require('path');
 
@@ -17,5 +17,22 @@ module.exports = {
       kill_timeout: 10_000,
       time: true,
     },
+    // website (Next.js), behind nginx; only started once the server has the website's settings file
+    ...(require('fs').existsSync(path.resolve(__dirname, '../apps/web/.env.production.local'))
+      ? [
+          {
+            name: 'companio-web',
+            cwd: path.resolve(__dirname, '../apps/web'),
+            script: path.resolve(__dirname, '../node_modules/next/dist/bin/next'),
+            args: 'start -p 3001 -H 127.0.0.1',
+            env: { NODE_ENV: 'production' },
+            instances: 1,
+            exec_mode: 'fork',
+            max_memory_restart: '600M',
+            kill_timeout: 10_000,
+            time: true,
+          },
+        ]
+      : []),
   ],
 };
