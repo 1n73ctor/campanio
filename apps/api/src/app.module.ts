@@ -8,7 +8,7 @@ import { AuditModule } from './common/audit.service';
 import { NotificationsCoreModule } from './notifications/notifications.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { AuthModule } from './auth/auth.module';
-import { UsersController } from './users/users.controller';
+import { EmailVerifyController, UsersController } from './users/users.controller';
 import { CompanionSelfController, CompanionsController } from './companions/companions.controller';
 import { CompanionsService } from './companions/companions.service';
 import { BookingsModule } from './bookings/bookings.module';
@@ -49,6 +49,7 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
   controllers: [
     MetaController,
     UsersController,
+    EmailVerifyController,
     CompanionsController,
     CompanionSelfController,
     WalletController,

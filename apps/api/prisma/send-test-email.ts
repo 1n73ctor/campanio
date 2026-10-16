@@ -13,7 +13,7 @@ async function main() {
   const mail = new MailService();
   if (!mail.enabled) throw new Error('Email is off — set SMTP_HOST, SMTP_USER and SMTP_PASS in apps/api/.env');
   console.log(`Sending via ${config.mail.host}:${config.mail.port} as ${config.mail.from} …`);
-  if (!(await mail.sendWelcome(to, 'Test', 0))) throw new Error('Not sent — see the error above (wrong password, or the mail server blocked it)');
+  if (!(await mail.sendWelcome({ id: 'test', name: 'Test', contactEmail: to }, 0))) throw new Error('Not sent — see the error above (wrong password, or the mail server blocked it)');
   console.log(`✅ Sent to ${to} — check the inbox (and spam folder)`);
 }
 main().catch((e) => {

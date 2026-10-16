@@ -17,6 +17,8 @@ export default function AccountPage() {
   const [form, setForm] = useState({ name: '', email: '', city: '', bio: '' });
   const [blocks, setBlocks] = useState<{ userId: string; name: string | null; avatarUrl: string | null }[]>([]);
   const [busy, setBusy] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [sending, setSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,12 +35,28 @@ export default function AccountPage() {
   const save = async () => {
     setBusy(true);
     try {
+      const changed = !!email && email.toLowerCase() !== (user.email ?? '').toLowerCase();
       setUser(await api.me.update({ name: form.name, city: form.city, bio: form.bio, ...(email ? { email } : {}) }));
-      toast('Profile saved');
+      toast(changed ? 'Saved — check your inbox to verify your new email' : 'Profile saved');
+      if (changed) setResent(true);
     } catch (e) {
       toast(errMsg(e), 'error');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const resend = async () => {
+    setSending(true);
+    try {
+      const r = await api.me.resendEmailVerification();
+      if (r.verified) setUser(await api.me.get());
+      else setResent(true);
+      toast(r.verified ? 'Your email is already verified' : 'Verification link sent — check your inbox (and spam folder)');
+    } catch (e) {
+      toast(errMsg(e), 'error');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -77,6 +95,18 @@ export default function AccountPage() {
         >
           <Input type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} placeholder="you@example.com" />
         </Field>
+        {user.email && email.toLowerCase() === user.email.toLowerCase() &&
+          (user.emailVerified ? (
+            <p className="-mt-2 text-sm font-semibold text-ink-soft">✓ Email verified</p>
+          ) : (
+            <div className="-mt-2 rounded-2xl border-2 border-ink bg-sunny p-3 text-sm">
+              <p className="font-semibold">⚠️ Your email isn’t verified yet</p>
+              <p className="mt-1 text-ink-soft">We can’t send meetup emails, reminders or receipts until you verify it.{resent ? ' We sent you a link — check your inbox and spam folder.' : ''}</p>
+              <Button size="sm" className="mt-3" loading={sending} onClick={resend}>
+                {resent ? 'Send the link again' : 'Verify email'}
+              </Button>
+            </div>
+          ))}
         <Field label="City">
           <CityPicker value={form.city} onChange={(city) => setForm({ ...form, city })} />
         </Field>

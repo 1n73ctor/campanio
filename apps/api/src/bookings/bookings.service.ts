@@ -7,6 +7,7 @@ import { SettingsService } from '../common/settings.service';
 import { bookingInclude, toBookingDto, toMessageDto, toSosDto, type BookingWithRelations } from '../common/mappers';
 import { filterMessage } from '../common/content-filter';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { OffersService } from '../offers/offers.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -30,6 +31,7 @@ export class BookingsService {
     private rt: RealtimeService,
     private referrals: ReferralsService,
     private offers: OffersService,
+    private mail: MailService,
   ) {}
 
   // ---------- read ----------
@@ -323,6 +325,11 @@ export class BookingsService {
       link: this.link(id),
     });
     this.rt.toAdmins('dispute:new', { bookingId: id });
+    void this.mail.toAdmins(
+      `New dispute on meetup ${id.slice(-6)}`,
+      `${viewer.name ?? 'Someone'} (${b.userId === viewer.id ? 'member' : 'host'}) raised a dispute: ${dto.reason}.${dto.details ? `\n\n“${dto.details}”` : ''}\n\nThe payment is frozen until it’s resolved.`,
+      '/admin/disputes',
+    );
     return this.dto(await this.emit(id), viewer);
   }
 

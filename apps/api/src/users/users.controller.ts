@@ -25,12 +25,17 @@ import { UpdateMeDto } from './users.dto';
 import { OffersService } from '../offers/offers.service';
 import { AuthService } from '../auth/auth.service';
 import { IsOptional, IsString, Length } from 'class-validator';
+import { Throttle } from '@nestjs/throttler';
+import { readEmailVerifyToken } from '../mail/email-verify';
 
 class ConfirmDeleteDto {
   /** code from our own OTP flow (local/dev) … */
   @IsOptional() @IsString() @Length(6, 6) code?: string;
   /** … or a fresh Firebase phone sign-in token (production) */
   @IsOptional() @IsString() @Length(20, 4096) idToken?: string;
+}
+class VerifyEmailDto {
+  @IsString() @Length(20, 1024) token: string;
 }
 class DeleteDto {
   @IsString() @Length(20, 2048) deleteToken: string;
@@ -80,11 +85,14 @@ export class UsersController {
     const onboarded = !!(next.name && next.dob && next.city && next.guidelinesAccepted);
     // new sign-ups give an email to finish; people who joined before it was asked for aren't pushed back to onboarding
     if (!user.onboarded && onboarded && !(dto.email ?? user.contactEmail)) throw new BadRequestException('Add your email address to continue');
+    // a new address has to be confirmed again before we email it
+    const emailChanged = !!dto.email && dto.email.toLowerCase() !== (user.contactEmail ?? '').toLowerCase();
     const u = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         name: dto.name,
         contactEmail: dto.email,
+        ...(emailChanged ? { contactEmailVerifiedAt: null } : {}),
         dob: dto.dob ? new Date(dto.dob) : undefined,
         gender: dto.gender,
         city: dto.city,
@@ -99,10 +107,20 @@ export class UsersController {
       await this.offers.grantWelcomeCredit(u.id);
       if (u.contactEmail) {
         const { welcomeCredit } = await this.settings.get();
-        void this.mail.sendWelcome(u.contactEmail, u.name, welcomeCredit); // in the background: never slows sign-up
+        void this.mail.sendWelcome(u, welcomeCredit); // carries the confirm-email link; in the background: never slows sign-up
       }
-    }
+    } else if (emailChanged && u.onboarded) void this.mail.sendVerification(u);
     return toUserDto(u);
+  }
+
+  /** "Resend the confirmation link" for the contact email. */
+  @Post('email/resend')
+  @Throttle({ default: { limit: 3, ttl: 10 * 60_000 } })
+  async resendVerification(@CurrentUser() user: User) {
+    if (!user.contactEmail) throw new BadRequestException('Add your email address first');
+    if (user.contactEmailVerifiedAt) return { sent: false, verified: true };
+    if (!(await this.mail.sendVerification(user))) throw new BadRequestException('Couldn’t send the email right now — please try again in a few minutes');
+    return { sent: true, verified: false };
   }
 
   @Post('avatar')
@@ -175,5 +193,25 @@ export class UsersController {
   async unblock(@CurrentUser() user: User, @Param('userId') userId: string) {
     await this.prisma.block.deleteMany({ where: { blockerId: user.id, blockedId: userId } });
     return { blocked: false };
+  }
+}
+
+/** Opening the link from "Confirm your email" (no sign-in needed: the signed token is the proof). */
+@ApiTags('me')
+@Controller('email')
+export class EmailVerifyController {
+  constructor(private prisma: PrismaService) {}
+
+  @Post('verify')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async verify(@Body() dto: VerifyEmailDto) {
+    const t = readEmailVerifyToken(dto.token);
+    if (!t) throw new BadRequestException('This link is invalid or has expired — open your profile and tap “Resend link”.');
+    const u = await this.prisma.user.findUnique({ where: { id: t.userId } });
+    // the address may have changed since the email was sent: only the current one can be confirmed
+    if (!u || u.status === 'DELETED' || (u.contactEmail ?? '').toLowerCase() !== t.email)
+      throw new BadRequestException('This link is for an email address that’s no longer on your account — open your profile and tap “Resend link”.');
+    if (!u.contactEmailVerifiedAt) await this.prisma.user.update({ where: { id: u.id }, data: { contactEmailVerifiedAt: new Date() } });
+    return { verified: true, email: u.contactEmail };
   }
 }

@@ -74,6 +74,7 @@ export function toUserDto(u: User & { companion?: CompanionProfile | null }): Us
     phone: u.phone,
     // members' contact email; admins only have their sign-in email
     email: u.contactEmail ?? u.email,
+    emailVerified: u.contactEmail ? !!u.contactEmailVerifiedAt : !!u.email,
     name: u.name,
     dob: iso(u.dob),
     gender: u.gender as UserDto['gender'],

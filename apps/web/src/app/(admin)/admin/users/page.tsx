@@ -6,7 +6,7 @@ import { ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
 import { Avatar, Input, Select, StatusBadge } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useAdmin, useLoad } from '@/admin/lib/api';
-import { d, formatINR, humanize } from '@/admin/lib/format';
+import { dtIST, formatINR, humanize } from '@/admin/lib/format';
 
 export default function UsersPage() {
   const { api } = useAdmin();
@@ -36,7 +36,7 @@ export default function UsersPage() {
         <Loading />
       ) : (
         <>
-          <Table head={['User', 'Role', 'City', 'Bookings', 'Reports', 'Wallet', 'Joined', 'Status']} empty={data.items.length === 0}>
+          <Table head={['User', 'Role', 'City', 'Bookings', 'Reports', 'Wallet', 'Joined (IST)', 'Status']} empty={data.items.length === 0}>
             {data.items.map((u) => (
               <tr key={u.id} className="hover:bg-paper">
                 <Td>
@@ -56,7 +56,7 @@ export default function UsersPage() {
                 <Td className="tabular-nums">{u.bookingsCount}</Td>
                 <Td className={u.reportsAgainst ? 'font-bold text-danger' : ''}>{u.reportsAgainst}</Td>
                 <Td className="tabular-nums">{formatINR(u.walletBalance)}</Td>
-                <Td className="text-xs">{d(u.createdAt)}</Td>
+                <Td className="whitespace-nowrap text-xs">{dtIST(u.createdAt)}</Td>
                 <Td><StatusBadge status={u.status} /></Td>
               </tr>
             ))}

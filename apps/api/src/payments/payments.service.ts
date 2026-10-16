@@ -12,6 +12,7 @@ import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
 import { CashfreeProvider } from './providers/cashfree.provider';
 import { CompanionFeeService } from '../companions/companion-fee.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class PaymentsService {
@@ -23,6 +24,7 @@ export class PaymentsService {
     private notifications: NotificationsService,
     private rt: RealtimeService,
     private fee: CompanionFeeService,
+    private mail: MailService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
 
@@ -175,6 +177,7 @@ export class PaymentsService {
       });
       return;
     }
+    void this.mail.sendReceipt(p0.id); // receipt with the GST breakdown, in the background
     const full = await this.prisma.booking.findUniqueOrThrow({ where: { id: booking.id }, include: bookingInclude });
     await this.notifications.notify(booking.companionUserId, {
       type: 'booking.requested',
@@ -201,6 +204,7 @@ export class PaymentsService {
       return { userId: p.userId, total, duplicate: false };
     });
     if (!result) return;
+    if (!result.duplicate) void this.mail.sendReceipt(paymentId);
     await this.notifications.notify(
       result.userId,
       result.duplicate

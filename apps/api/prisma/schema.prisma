@@ -19,6 +19,8 @@ model User {
   // admin sign-in email (unique). Members' email lives in contactEmail so typing one can't collide with, or reveal, an admin login.
   email              String?   @unique
   contactEmail       String?
+  // set when they click the link we emailed to contactEmail; cleared when the address changes. Only verified addresses get our emails.
+  contactEmailVerifiedAt DateTime?
   passwordHash       String?
   name               String?
   dob                DateTime?
@@ -206,6 +208,9 @@ model Booking {
   startedAt       DateTime?
   completedAt     DateTime?
   cancelledAt     DateTime?
+  // meetup reminders already sent (the day before, and ~2h before)
+  remindedDayAt   DateTime?
+  remindedSoonAt  DateTime?
 
   escrow    Escrow?
   payments  Payment[]

@@ -34,6 +34,8 @@ export interface UserDto {
   id: string;
   phone: string | null;
   email: string | null;
+  /** they've opened the confirmation link we emailed; we only send email to confirmed addresses */
+  emailVerified: boolean;
   name: string | null;
   dob: string | null;
   gender: Gender | null;

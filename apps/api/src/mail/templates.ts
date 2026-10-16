@@ -3,7 +3,7 @@ import { formatINR } from '@companio/types';
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Branded, table-based HTML (works in Gmail/Outlook) + a plain-text version. */
-export function welcomeEmail({ name, welcomeCredit, siteUrl }: { name: string | null; welcomeCredit: number; siteUrl: string }) {
+export function welcomeEmail({ name, welcomeCredit, siteUrl, verifyUrl }: { name: string | null; welcomeCredit: number; siteUrl: string; verifyUrl: string }) {
   const first = (name ?? '').trim().split(/\s+/)[0] || 'there';
   const credit = welcomeCredit > 0 ? `Your ${formatINR(welcomeCredit)} welcome credit is already in your wallet — it comes off your first meetup automatically.` : '';
   const btn = (href: string, label: string, bg: string, color = '#141414') =>
@@ -14,6 +14,7 @@ export function welcomeEmail({ name, welcomeCredit, siteUrl }: { name: string | 
 <tr><td style="background:#FF7AC6;border-radius:20px 20px 0 0;padding:22px 28px;font-weight:800;font-size:22px">Companio</td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 12px;font-size:28px;line-height:1.15">Welcome, ${esc(first)}! 👋</h1>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;background:#FFF8EE;border:2px solid #141414;border-radius:14px;padding:12px 14px"><b>One quick thing:</b> confirm this is your email so we can send your meetup confirmations and receipts.<br><br>${btn(verifyUrl, 'Confirm my email', '#FF7AC6')}</p>
 <p style="margin:0 0 16px;font-size:16px;line-height:1.55">You’re in. Companio is the safe way to meet a verified local host for the things that are better together — coffee chats, city walks, food walks, festivals and more.</p>
 ${credit ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;background:#EDFBC0;border:2px solid #141414;border-radius:14px;padding:12px 14px">🎁 ${esc(credit)}</p>` : ''}
 <p style="margin:0 0 20px">${btn(`${siteUrl}/explore`, 'Find your buddy →', '#C6F432')}</p>
@@ -26,6 +27,8 @@ ${credit ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;background
 <tr><td style="padding:18px 28px;border-top:2px solid #eee;font-size:12px;color:#6b6b6b;line-height:1.6">Companio is strictly platonic and 18+. You’re receiving this because you just created an account at ${esc(siteUrl.replace(/^https?:\/\//, ''))}. Questions? Just reply to this email.</td></tr>
 </table></td></tr></table></body></html>`;
   const text = `Welcome, ${first}!
+
+One quick thing: confirm this is your email so we can send your meetup confirmations and receipts: ${verifyUrl}
 
 You're in. Companio is the safe way to meet a verified local host for the things that are better together — coffee chats, city walks, food walks, festivals and more.
 ${credit ? `\n${credit}\n` : ''}
@@ -70,4 +73,16 @@ ${button ? `<p style="margin:0"><a href="${button.url}" style="display:inline-bl
 </table></td></tr></table></body></html>`;
   const text = `Hi ${firstName},\n\n${title}\n\n${body}\n${(details ?? []).map(([k, v]) => `\n${k}: ${v}`).join('')}${button ? `\n\n${button.label}: ${button.url}` : ''}\n\n— Companio (${siteUrl.replace(/^https?:\/\//, '')}). Feel unsafe during a meetup? Use SOS in the app or call 112.`;
   return { subject: title, html, text };
+}
+
+/** "Confirm your email" — the link proves the address is theirs (and has no typo) before we send anything else there. */
+export function verifyEmail({ firstName, verifyUrl, siteUrl }: { firstName: string; verifyUrl: string; siteUrl: string }) {
+  const m = notificationEmail({
+    firstName,
+    title: 'Confirm your email address',
+    body: 'Tap the button to confirm this is your email. We’ll use it for meetup confirmations, receipts and important account updates — never for spam, and it’s never shown to anyone.\n\nThe link works for 7 days. Didn’t add this email to Companio? Just ignore this message.',
+    button: { url: verifyUrl, label: 'Confirm my email' },
+    siteUrl,
+  });
+  return { ...m, subject: 'Confirm your email for Companio' };
 }

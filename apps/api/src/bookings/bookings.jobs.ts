@@ -15,6 +15,7 @@ const HOUR = 3600_000;
  *  - accepted bookings that never started (no start code) expire after the end time + window → full refund
  *  - in-progress sessions auto-complete 2h after end
  *  - completed sessions release escrow to the companion after the dispute window
+ *  - reminders to both people the day before and ~2h before an accepted meetup
  * In production, move this to a queue worker (BullMQ on Redis) so it runs on exactly one instance.
  */
 @Injectable()
@@ -40,6 +41,55 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
+  }
+
+  /**
+   * Accepted meetups: a reminder ~24h before (skipped if accepted less than a day ahead — they just heard from us)
+   * and ~2h before (skipped if accepted in the last 3h). Claimed with updateMany first, so each goes out once.
+   */
+  private async remind(now: number) {
+    const due = await this.prisma.booking.findMany({
+      where: {
+        status: 'ACCEPTED',
+        startAt: { gt: new Date(now), lte: new Date(now + 24 * HOUR) },
+        OR: [{ remindedDayAt: null }, { remindedSoonAt: null }],
+      },
+      include: { user: true, companion: true },
+    });
+    let sent = 0;
+    for (const b of due) {
+      const left = b.startAt.getTime() - now;
+      const sinceAccepted = now - (b.acceptedAt ?? b.createdAt).getTime();
+      const soon = left <= 2 * HOUR;
+      if (soon ? b.remindedSoonAt : b.remindedDayAt) continue;
+      // the "tomorrow" reminder only makes sense if there's time left before the 2h one
+      if (!soon && left <= 3 * HOUR) continue;
+      const claimed = await this.prisma.booking.updateMany({
+        where: { id: b.id, ...(soon ? { remindedSoonAt: null } : { remindedDayAt: null }) },
+        // the 2h reminder also covers the day-before one
+        data: soon ? { remindedSoonAt: new Date(), remindedDayAt: b.remindedDayAt ?? new Date() } : { remindedDayAt: new Date() },
+      });
+      if (!claimed.count || sinceAccepted < (soon ? 3 * HOUR : 2 * HOUR)) continue;
+      const time = b.startAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
+      const ist = (d: Date | number) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const day = ist(b.startAt) === ist(now) ? 'today' : ist(b.startAt) === ist(now + 24 * HOUR) ? 'tomorrow' : 'soon';
+      const first = (name: string | null) => name?.trim().split(/\s+/)[0] ?? 'your buddy';
+      for (const [to, other, isHost] of [
+        [b.userId, b.companion.name, false],
+        [b.companionUserId, b.user.name, true],
+      ] as const) {
+        await this.notifications.notify(to, {
+          type: 'booking.reminder',
+          title: soon ? `Your meetup with ${first(other)} is at ${time} ⏰` : `Reminder: meetup with ${first(other)} ${day} at ${time}`,
+          body: isHost
+            ? `At ${b.meetingPoint}. Ask ${first(other)} for their start code when you meet to begin the meetup. Running late or can’t make it? Message them in the app.`
+            : `At ${b.meetingPoint}. Share your start code with ${first(other)} when you meet — only then does the meetup begin. Turn on live location sharing for a trusted contact before you go.`,
+          link: `/bookings/${b.id}`,
+        });
+      }
+      sent++;
+    }
+    return sent;
   }
 
   async tick() {
@@ -105,7 +155,8 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
           link: '/companion/dashboard',
         });
       }
-      const n = staleRequests.length + noShows.length + overdue.length + releasable.length;
+      const reminded = await this.remind(now);
+      const n = staleRequests.length + noShows.length + overdue.length + releasable.length + reminded;
       if (n) this.log.log(`processed ${n} meetup transitions`);
     } catch (e) {
       this.log.error(e);

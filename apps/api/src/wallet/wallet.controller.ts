@@ -9,6 +9,8 @@ import { SettingsService } from '../common/settings.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
 import { toPayoutDto, toWalletTxnDto } from '../common/mappers';
 import { testPayments } from '../common/config';
+import { NotificationsService } from '../notifications/notifications.service';
+import { formatINR } from '@companio/types';
 
 class PayoutRequestDto {
   @Type(() => Number) @IsInt() @Min(1) amount: number;
@@ -24,6 +26,7 @@ export class WalletController {
     private prisma: PrismaService,
     private ledger: WalletLedger,
     private settings: SettingsService,
+    private notifications: NotificationsService,
   ) {}
 
   @Get()
@@ -54,6 +57,12 @@ export class WalletController {
       // credit (welcome credit, cashback, rewards) is for bookings; only the rest can leave the platform
       await this.ledger.withdraw(tx, user.id, dto.amount, `Payout to ${dto.upiId}`, { type: 'payout', id: p.id });
       return p;
+    });
+    await this.notifications.notify(user.id, {
+      type: 'payout.requested',
+      title: `Payout of ${formatINR(payout.amount)} requested`,
+      body: `We’ll send ${formatINR(payout.amount)} to ${payout.upiId}, usually within 1–2 working days. We’ll let you know when it’s on its way.`,
+      link: '/wallet',
     });
     return toPayoutDto(payout);
   }

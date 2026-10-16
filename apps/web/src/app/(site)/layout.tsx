@@ -4,6 +4,7 @@ import { fontVars } from '@/lib/fonts';
 import { Providers } from '@/components/providers';
 import { SiteHeader } from '@/components/header';
 import { SiteFooter } from '@/components/footer';
+import { VerifyEmailBanner } from '@/components/verify-email-banner';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen">
         <Providers>
           <SiteHeader />
+          <VerifyEmailBanner />
           <main>{children}</main>
           <SiteFooter />
         </Providers>

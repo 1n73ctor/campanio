@@ -14,6 +14,7 @@
     "kyc:encrypt": "tsx prisma/encrypt-kyc-docs.ts",
     "db:reset-activity": "tsx prisma/reset-activity.ts",
     "mail:test": "tsx prisma/send-test-email.ts",
+    "db:verify-existing-emails": "tsx prisma/verify-existing-emails.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "prisma studio"

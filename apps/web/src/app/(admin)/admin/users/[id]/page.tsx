@@ -8,7 +8,7 @@ import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { USER_TEMPLATES } from '@/admin/lib/message-templates';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
-import { BOOKING_STATUS_LABEL, d, dt, formatINR, humanize } from '@/admin/lib/format';
+import { BOOKING_STATUS_LABEL, d, dt, dtIST, formatINR, humanize } from '@/admin/lib/format';
 
 export default function UserDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -31,7 +31,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
       <Link href="/admin/users" className="text-sm font-semibold underline">← Users</Link>
       <PageTitle
         title={u.name ?? 'Unnamed'}
-        subtitle={`${[u.phone ?? u.deletedPhone, u.email].filter(Boolean).join(' · ')} · ${humanize(u.role)} · joined ${d(u.createdAt)}`}
+        subtitle={`${[u.phone ?? u.deletedPhone, u.email].filter(Boolean).join(' · ')} · ${humanize(u.role)} · joined ${dtIST(u.createdAt)}`}
         actions={
           <>
             <StatusBadge status={u.status} />
@@ -71,7 +71,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
                 <Link href={`/admin/users/${l.id}`} className="font-bold underline">
                   {l.name ?? 'Unnamed'}
                 </Link>{' '}
-                · joined {d(l.createdAt)} · <StatusBadge status={l.status} />
+                · joined {dtIST(l.createdAt)} · <StatusBadge status={l.status} />
                 {l.deletedAt && <> · deleted {d(l.deletedAt)}</>}
               </li>
             ))}

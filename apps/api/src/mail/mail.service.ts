@@ -1,9 +1,12 @@
 import { Global, Injectable, Logger, Module } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { config } from '../common/config';
+import type { User } from '@prisma/client';
 import { CATEGORIES, formatINR } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
-import { notificationEmail, welcomeEmail } from './templates';
+import { SettingsService } from '../common/settings.service';
+import { notificationEmail, verifyEmail, welcomeEmail } from './templates';
+import { emailVerifyUrl } from './email-verify';
 
 /**
  * Notifications that also go out by email — things people need even when the app is closed. Chat, location and
@@ -22,12 +25,14 @@ const EMAIL_TYPES: Record<string, string> = {
   'booking.expired': 'View meetup',
   'booking.completed': 'Leave a review',
   'booking.paid_out': 'Open wallet',
+  'booking.reminder': 'View meetup',
   'booking.disputed': 'View meetup',
   'dispute.resolved': 'View meetup',
   'payment.captured': 'Continue',
   'payment.parked': 'Open wallet',
   refund: 'Open wallet',
   'wallet.refund': 'Open wallet',
+  'payout.requested': 'Open wallet',
   'payout.paid': 'Open wallet',
   'payout.rejected': 'Open wallet',
   'moderation.warning': 'Read the guidelines',
@@ -37,6 +42,18 @@ const EMAIL_TYPES: Record<string, string> = {
   sos: 'Open SOS alerts',
 };
 const IST = { timeZone: 'Asia/Kolkata' } as const;
+const firstName = (name: string | null | undefined) => (name ?? '').trim().split(/\s+/)[0] || 'there';
+const when = (d: Date) => `${d.toLocaleDateString('en-IN', { ...IST, day: 'numeric', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString('en-IN', { ...IST, hour: 'numeric', minute: '2-digit' })}`;
+
+/**
+ * Where we may email someone: admins at their sign-in address; members only once they've confirmed their address
+ * (a typo or someone else's address never gets meetup details).
+ */
+export function mailTo(u: Pick<User, 'role' | 'status' | 'email' | 'contactEmail' | 'contactEmailVerifiedAt'> | null) {
+  if (!u || u.status === 'DELETED') return null;
+  if (u.contactEmail && u.contactEmailVerifiedAt) return u.contactEmail;
+  return u.role === 'ADMIN' ? u.email : null;
+}
 
 /**
  * Outgoing email through the mailbox's SMTP server (Hostinger: smtp.hostinger.com:465).
@@ -45,7 +62,10 @@ const IST = { timeZone: 'Asia/Kolkata' } as const;
 @Injectable()
 export class MailService {
   private log = new Logger('Mail');
-  constructor(private prisma?: PrismaService) {}
+  constructor(
+    private prisma?: PrismaService,
+    private settings?: SettingsService,
+  ) {}
   private transport: Transporter | null = null;
 
   get enabled() {
@@ -81,13 +101,13 @@ export class MailService {
     if (!label || !this.enabled || !this.prisma) return;
     try {
       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-      const to = u?.contactEmail ?? u?.email;
-      if (!u || !to || u.status === 'DELETED') return;
+      const to = mailTo(u);
+      if (!u || !to) return;
       const url = n.link ? `${config.webUrl}${n.link.startsWith('/') ? n.link : `/${n.link}`}` : config.webUrl;
       const details = await this.meetupDetails(n.link, userId);
       await this.send(
         to,
-        notificationEmail({ firstName: (u.name ?? '').trim().split(/\s+/)[0] || 'there', title: n.title, body: n.body, details, button: { url, label }, siteUrl: config.webUrl }),
+        notificationEmail({ firstName: firstName(u.name), title: n.title, body: n.body, details, button: { url, label }, siteUrl: config.webUrl }),
       );
     } catch (e) {
       this.log.error(`notification email failed: ${(e as Error).message}`);
@@ -112,9 +132,81 @@ export class MailService {
     ];
   }
 
-  /** Once, when someone finishes signing up. */
-  sendWelcome(to: string, name: string | null, welcomeCredit: number) {
-    return this.send(to, welcomeEmail({ name, welcomeCredit, siteUrl: config.webUrl }));
+  /** Once, when someone finishes signing up. Carries the "confirm your email" button. */
+  sendWelcome(u: Pick<User, 'id' | 'name' | 'contactEmail'>, welcomeCredit: number) {
+    if (!u.contactEmail) return Promise.resolve(false);
+    return this.send(u.contactEmail, welcomeEmail({ name: u.name, welcomeCredit, siteUrl: config.webUrl, verifyUrl: emailVerifyUrl(u.id, u.contactEmail) }));
+  }
+
+  /** "Confirm your email" (after changing it, or "resend link"). */
+  sendVerification(u: Pick<User, 'id' | 'name' | 'contactEmail'>) {
+    if (!u.contactEmail) return Promise.resolve(false);
+    return this.send(u.contactEmail, verifyEmail({ firstName: firstName(u.name), verifyUrl: emailVerifyUrl(u.id, u.contactEmail), siteUrl: config.webUrl }));
+  }
+
+  /** Payment receipt with the GST breakdown, for a meetup or the host registration fee. Never throws. */
+  async sendReceipt(paymentId: string) {
+    if (!this.enabled || !this.prisma) return;
+    try {
+      const p = await this.prisma.payment.findUnique({ where: { id: paymentId }, include: { user: true, booking: { include: { companion: true } } } });
+      const to = mailTo(p?.user ?? null);
+      if (!p || p.status !== 'PAID' || !to) return;
+      const paid: [string, string][] = [
+        ...(p.walletAmount - p.walletPromo > 0 ? [['Paid from wallet', formatINR(p.walletAmount - p.walletPromo)] as [string, string]] : []),
+        ...(p.walletPromo > 0 ? [['Paid with credit', formatINR(p.walletPromo)] as [string, string]] : []),
+        ...(p.amount > 0 ? [['Paid online', formatINR(p.amount)] as [string, string]] : []),
+      ];
+      const ref: [string, string][] = [
+        ['Receipt no.', p.id.slice(-10).toUpperCase()],
+        ['Date', when(p.updatedAt)],
+        ...(p.providerPaymentId && p.amount > 0 ? [['Payment ID', p.providerPaymentId] as [string, string]] : []),
+      ];
+      let title: string, body: string, details: [string, string][], link: string;
+      const b = p.booking;
+      if (b) {
+        const category = CATEGORIES.find((c) => c.slug === b.category)?.name ?? b.category;
+        title = `Receipt: ${category} with ${firstName(b.companion.name)}`;
+        body = `Thanks — your payment is held safely until your meetup happens. ${firstName(b.companion.name)} has been asked to confirm; we’ll email you as soon as they do. If the host declines or cancels, you get it all back.`;
+        details = [
+          ['Meetup', `${category}, ${when(b.startAt)} (${b.hours}h)`],
+          [`Host time (${b.hours}h × ${formatINR(b.hourlyRate)})`, formatINR(b.subtotal)],
+          ['Connection fee', formatINR(b.connectionFee)],
+          [`GST (${b.subtotal + b.connectionFee ? Math.round((b.gst * 100) / (b.subtotal + b.connectionFee)) : 18}%)`, formatINR(b.gst)],
+          ['Total', formatINR(b.total)],
+          ...paid,
+          ...ref,
+        ];
+        link = `/bookings/${b.id}`;
+      } else {
+        const total = p.amount + p.walletAmount;
+        const gstPct = (await this.settings?.get())?.gstPct ?? 18;
+        const base = Math.round((total * 100) / (100 + gstPct));
+        title = 'Receipt: host registration fee';
+        body = 'Thanks — your host registration fee is paid. Next, finish your profile and verify your ID to go live.';
+        details = [['Registration fee', formatINR(base)], [`GST (${gstPct}%)`, formatINR(total - base)], ['Total', formatINR(total)], ...paid, ...ref];
+        link = '/become-a-companion';
+      }
+      await this.send(to, {
+        ...notificationEmail({ firstName: firstName(p.user.name), title, body, details, button: { url: `${config.webUrl}${link}`, label: b ? 'View meetup' : 'Continue' }, siteUrl: config.webUrl }),
+        subject: title,
+      });
+    } catch (e) {
+      this.log.error(`receipt email failed: ${(e as Error).message}`);
+    }
+  }
+
+  /** Something an admin has to act on (new ID verification to review, new dispute). Email only, to every active admin. */
+  async toAdmins(title: string, body: string, link: string) {
+    if (!this.enabled || !this.prisma) return;
+    try {
+      const admins = await this.prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' } });
+      for (const a of admins) {
+        const to = mailTo(a);
+        if (to) await this.send(to, notificationEmail({ firstName: firstName(a.name), title, body, button: { url: `${config.webUrl}${link}`, label: 'Open admin panel' }, siteUrl: config.webUrl }));
+      }
+    } catch (e) {
+      this.log.error(`admin alert email failed: ${(e as Error).message}`);
+    }
   }
 }
 

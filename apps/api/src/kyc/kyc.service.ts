@@ -21,6 +21,7 @@ import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
 import { toKycDto } from '../common/mappers';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 import { CompanionFeeService } from '../companions/companion-fee.service';
 import { PRIVATE_DIR, detectKind, readPrivateDoc, storePrivateBytes, storePrivateDoc } from '../files/uploads';
 import { CashfreeError, cashfree, kycOptions, verificationMode } from './cashfree';
@@ -56,6 +57,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
     private settings: SettingsService,
     private notifications: NotificationsService,
     private fee: CompanionFeeService,
+    private mail: MailService,
   ) {}
 
   onModuleInit() {
@@ -249,7 +251,10 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
           body: 'Your profile is now visible to members. Set your availability to get meetups.',
           link: '/companion/dashboard',
         });
-      else await this.notifications.notify(user.id, { type: 'kyc.submitted', title: 'Verification received 🪪', body: 'Thanks! We’re checking your details — usually within 24 hours. We’ll let you know as soon as you’re approved.', link: '/companion/dashboard' });
+      else {
+        await this.notifications.notify(user.id, { type: 'kyc.submitted', title: 'Verification received 🪪', body: 'Thanks! We’re checking your details — usually within 24 hours. We’ll let you know as soon as you’re approved.', link: '/companion/dashboard' });
+        void this.alertAdmins(user, 'DigiLocker');
+      }
       return toKycDto(k);
     }
 
@@ -280,7 +285,17 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
       this.prisma.companionProfile.update({ where: { userId: user.id }, data: { kycStatus: 'PENDING' } }),
     ]);
     await this.notifications.notify(user.id, { type: 'kyc.submitted', title: 'Verification received 🪪', body: 'Thanks! We’re checking your details — usually within 24 hours. We’ll let you know as soon as you’re approved.', link: '/companion/dashboard' });
+    void this.alertAdmins(user, 'ID photo upload');
     return toKycDto(k);
+  }
+
+  /** Emails the admins that a host is waiting for their ID check (we promise "usually within 24 hours"). */
+  private alertAdmins(user: User, method: string) {
+    return this.mail.toAdmins(
+      `New host verification to review: ${user.name ?? 'a host'}`,
+      `${user.name ?? 'A new host'}${user.city ? ` (${user.city})` : ''} submitted their ID verification by ${method}. Hosts are told we usually review within 24 hours.`,
+      '/admin/kyc',
+    );
   }
 
   // ---------- checks ----------

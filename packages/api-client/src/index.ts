@@ -149,6 +149,10 @@ export function createApiClient(opts: ClientOptions) {
       get: () => get<UserDto>('/me'),
       update: (input: UpdateMeInput) => patch<UserDto>('/me', input),
       uploadAvatar: (file: File | Blob) => request<UserDto>('POST', '/me/avatar', form({ file })),
+      /** emails a fresh "confirm your email" link */
+      resendEmailVerification: () => post<{ sent: boolean; verified: boolean }>('/me/email/resend'),
+      /** the token from the emailed link (no sign-in needed) */
+      verifyEmail: (token: string) => post<{ verified: true; email: string }>('/email/verify', { token }),
       /** account deletion step 1: re-confirm the phone (dev code or Firebase token) → short-lived deletion token */
       /** signs out every other device; returns a fresh token for this one */
       logoutOthers: () => post<{ token: string }>('/me/logout-others'),
