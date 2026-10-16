@@ -206,11 +206,11 @@ export class EmailVerifyController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async verify(@Body() dto: VerifyEmailDto) {
     const t = readEmailVerifyToken(dto.token);
-    if (!t) throw new BadRequestException('This link is invalid or has expired — open your profile and tap “Resend link”.');
+    if (!t) throw new BadRequestException('This link is invalid or has expired — open your profile and tap “Verify email”.');
     const u = await this.prisma.user.findUnique({ where: { id: t.userId } });
     // the address may have changed since the email was sent: only the current one can be confirmed
     if (!u || u.status === 'DELETED' || (u.contactEmail ?? '').toLowerCase() !== t.email)
-      throw new BadRequestException('This link is for an email address that’s no longer on your account — open your profile and tap “Resend link”.');
+      throw new BadRequestException('This link is for an email address that’s no longer on your account — open your profile and tap “Verify email”.');
     if (!u.contactEmailVerifiedAt) await this.prisma.user.update({ where: { id: u.id }, data: { contactEmailVerifiedAt: new Date() } });
     return { verified: true, email: u.contactEmail };
   }
