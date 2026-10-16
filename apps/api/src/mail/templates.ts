@@ -42,3 +42,32 @@ Good company yourself? Become a host: ${siteUrl}/become-a-companion
 Companio is strictly platonic and 18+. Questions? Just reply to this email.`;
   return { subject: `Welcome to Companio, ${first} 👋`, html, text };
 }
+
+/** Any important notification as an email: title, message, optional detail rows, one button. */
+export function notificationEmail({ firstName, title, body, details, button, siteUrl }: {
+  firstName: string;
+  title: string;
+  body: string;
+  details?: [string, string][];
+  button?: { url: string; label: string };
+  siteUrl: string;
+}) {
+  const rows = (details ?? [])
+    .map(([k, v]) => `<tr><td style="padding:6px 0;color:#6b6b6b;font-size:14px;width:38%;vertical-align:top">${esc(k)}</td><td style="padding:6px 0;font-size:14px;font-weight:700">${esc(v)}</td></tr>`)
+    .join('');
+  const html = `<!doctype html><html><body style="margin:0;background:#FFF8EE;font-family:Arial,Helvetica,sans-serif;color:#141414">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF8EE;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:3px solid #141414;border-radius:24px">
+<tr><td style="background:#FF7AC6;border-radius:20px 20px 0 0;padding:18px 28px;font-weight:800;font-size:20px">Companio</td></tr>
+<tr><td style="padding:28px">
+<p style="margin:0 0 6px;font-size:14px;color:#6b6b6b">Hi ${esc(firstName)},</p>
+<h1 style="margin:0 0 12px;font-size:24px;line-height:1.2">${esc(title)}</h1>
+<p style="margin:0 0 18px;font-size:16px;line-height:1.55;white-space:pre-line">${esc(body)}</p>
+${rows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:2px solid #141414;border-radius:14px;padding:10px 16px;background:#FFF8EE">${rows}</table>` : ''}
+${button ? `<p style="margin:0"><a href="${button.url}" style="display:inline-block;background:#C6F432;color:#141414;border:3px solid #141414;border-radius:999px;padding:12px 24px;font-weight:800;text-decoration:none;font-size:16px">${esc(button.label)} →</a></p>` : ''}
+</td></tr>
+<tr><td style="padding:16px 28px;border-top:2px solid #eee;font-size:12px;color:#6b6b6b;line-height:1.6">You’re getting this because of activity on your Companio account. Feel unsafe during a meetup? Use SOS in the app or call 112. Questions? Reply to this email.</td></tr>
+</table></td></tr></table></body></html>`;
+  const text = `Hi ${firstName},\n\n${title}\n\n${body}\n${(details ?? []).map(([k, v]) => `\n${k}: ${v}`).join('')}${button ? `\n\n${button.label}: ${button.url}` : ''}\n\n— Companio (${siteUrl.replace(/^https?:\/\//, '')}). Feel unsafe during a meetup? Use SOS in the app or call 112.`;
+  return { subject: title, html, text };
+}

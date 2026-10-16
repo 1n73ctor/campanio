@@ -249,6 +249,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
           body: 'Your profile is now visible to members. Set your availability to get meetups.',
           link: '/companion/dashboard',
         });
+      else await this.notifications.notify(user.id, { type: 'kyc.submitted', title: 'Verification received 🪪', body: 'Thanks! We’re checking your details — usually within 24 hours. We’ll let you know as soon as you’re approved.', link: '/companion/dashboard' });
       return toKycDto(k);
     }
 
@@ -278,6 +279,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
       }),
       this.prisma.companionProfile.update({ where: { userId: user.id }, data: { kycStatus: 'PENDING' } }),
     ]);
+    await this.notifications.notify(user.id, { type: 'kyc.submitted', title: 'Verification received 🪪', body: 'Thanks! We’re checking your details — usually within 24 hours. We’ll let you know as soon as you’re approved.', link: '/companion/dashboard' });
     return toKycDto(k);
   }
 
