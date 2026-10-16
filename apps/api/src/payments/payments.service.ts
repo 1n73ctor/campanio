@@ -10,6 +10,7 @@ import { bookingInclude, toBookingDto } from '../common/mappers';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './providers/provider';
 import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
+import { CashfreeProvider } from './providers/cashfree.provider';
 import { CompanionFeeService } from '../companions/companion-fee.service';
 
 @Injectable()
@@ -41,10 +42,13 @@ export class PaymentsService {
       return { status: 'PAID', bookingId: b.id };
     }
 
-    const { orderId } = await this.provider.createOrder(external, `booking_${b.id}`);
+    const { orderId, sessionId } = await this.provider.createOrder(external, `booking_${b.id}`, customerOf(user));
     await this.prisma.payment.create({
       data: { bookingId: b.id, userId: user.id, provider: this.provider.name, providerOrderId: orderId, amount: external, walletAmount },
     });
+    if (this.provider instanceof CashfreeProvider) {
+      return { status: 'ACTION_REQUIRED', provider: 'cashfree', orderId, paymentSessionId: sessionId!, mode: this.provider.mode, amount: external, walletAmount };
+    }
     if (this.provider instanceof RazorpayProvider) {
       return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount: external, walletAmount, keyId: this.provider.keyId };
     }
@@ -68,8 +72,11 @@ export class PaymentsService {
       await this.markPaid(orderId, orderId);
       return { status: 'PAID' };
     }
-    const { orderId } = await this.provider.createOrder(external, `fee_${user.id}`);
+    const { orderId, sessionId } = await this.provider.createOrder(external, `fee_${user.id}`, customerOf(user));
     await this.prisma.payment.create({ data: { ...base, provider: this.provider.name, providerOrderId: orderId, amount: external } });
+    if (this.provider instanceof CashfreeProvider) {
+      return { status: 'ACTION_REQUIRED', provider: 'cashfree', orderId, paymentSessionId: sessionId!, mode: this.provider.mode, amount: external, walletAmount };
+    }
     if (this.provider instanceof RazorpayProvider) {
       return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount: external, walletAmount, keyId: this.provider.keyId };
     }
@@ -79,6 +86,13 @@ export class PaymentsService {
   async verify(user: User, orderId: string, paymentId: string, signature: string) {
     const p = await this.prisma.payment.findUnique({ where: { providerOrderId: orderId } });
     if (!p || p.userId !== user.id) throw new NotFoundException('Payment not found');
+    if (this.provider instanceof CashfreeProvider) {
+      // Cashfree: our server asks Cashfree; the browser only tells us to look
+      const r = await this.provider.confirm(orderId, p.amount);
+      if (!r.paid) throw new BadRequestException('The payment isn’t complete yet. If money left your account, it’ll be confirmed automatically in a few minutes.');
+      await this.markPaid(orderId, r.paymentId);
+      return { status: 'PAID' as const, bookingId: p.bookingId, purpose: p.purpose };
+    }
     if (!this.provider.verifySignature(orderId, paymentId, signature)) {
       await this.prisma.payment.update({ where: { id: p.id }, data: { status: 'FAILED' } });
       throw new BadRequestException('Payment verification failed');
@@ -92,6 +106,19 @@ export class PaymentsService {
     if (!(this.provider instanceof MockProvider)) throw new ForbiddenException('Mock gateway disabled');
     const paymentId = `mock_pay_${Date.now()}`;
     return { orderId, paymentId, signature: this.provider.sign(orderId, paymentId) };
+  }
+
+  /** Cashfree server-to-server notice: signature checked, then the order is re-confirmed with Cashfree's API. */
+  async cashfreeWebhook(rawBody: Buffer | undefined, signature: string, timestamp: string) {
+    if (!(this.provider instanceof CashfreeProvider) || !rawBody || !this.provider.verifyWebhook(rawBody, signature, timestamp)) throw new ForbiddenException('Invalid webhook');
+    const evt = JSON.parse(rawBody.toString('utf8')) as { data?: { order?: { order_id?: string } } };
+    const orderId = evt.data?.order?.order_id;
+    if (!orderId) return { ok: true };
+    const p = await this.prisma.payment.findUnique({ where: { providerOrderId: orderId } });
+    if (!p || p.status === 'PAID') return { ok: true };
+    const r = await this.provider.confirm(orderId, p.amount);
+    if (r.paid) await this.markPaid(orderId, r.paymentId);
+    return { ok: true };
   }
 
   async webhook(rawBody: Buffer | undefined, signature: string) {
@@ -182,3 +209,5 @@ export class PaymentsService {
     );
   }
 }
+
+const customerOf = (u: User) => ({ id: u.id, phone: u.phone, name: u.name, email: u.contactEmail });

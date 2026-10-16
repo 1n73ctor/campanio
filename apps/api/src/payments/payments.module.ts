@@ -6,6 +6,7 @@ import { PaymentsService } from './payments.service';
 import { PAYMENT_PROVIDER } from './providers/provider';
 import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
+import { CashfreeProvider } from './providers/cashfree.provider';
 
 @Module({
   imports: [BookingsModule],
@@ -15,6 +16,11 @@ import { RazorpayProvider } from './providers/razorpay.provider';
     {
       provide: PAYMENT_PROVIDER,
       useFactory: () => {
+        if (config.paymentProvider === 'cashfree') {
+          if (!config.cashfreePg.appId || !config.cashfreePg.secret) throw new Error('CASHFREE_PG_APP_ID / CASHFREE_PG_SECRET are required');
+          if (config.cashfreePg.mode === 'sandbox') new Logger('Payments').warn('Cashfree is in TEST mode: no real money moves, and payouts are paused');
+          return new CashfreeProvider(config.cashfreePg.appId, config.cashfreePg.secret, config.cashfreePg.mode, `${config.publicApiUrl}/payments/webhook/cashfree`);
+        }
         if (config.paymentProvider === 'razorpay') {
           if (!config.razorpay.keyId || !config.razorpay.keySecret) throw new Error('RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are required');
           return new RazorpayProvider(config.razorpay.keyId, config.razorpay.keySecret, config.razorpay.webhookSecret);

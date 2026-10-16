@@ -60,6 +60,13 @@ export class PaymentsController {
   }
 
   @SkipThrottle()
+  @Post('webhook/cashfree')
+  @HttpCode(200)
+  cashfreeWebhook(@Req() req: RawBodyRequest<Request>, @Headers('x-webhook-signature') sig: string, @Headers('x-webhook-timestamp') ts: string) {
+    return this.svc.cashfreeWebhook(req.rawBody, sig, ts);
+  }
+
+  @SkipThrottle()
   @Post('webhook/razorpay')
   @HttpCode(200)
   webhook(@Req() req: RawBodyRequest<Request>, @Headers('x-razorpay-signature') sig: string) {

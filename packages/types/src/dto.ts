@@ -318,7 +318,8 @@ export interface CheckoutInput {
 export type CheckoutResponse =
   | { status: 'PAID'; bookingId: string }
   | { status: 'ACTION_REQUIRED'; provider: 'mock'; orderId: string; amount: Rupees; walletAmount: Rupees }
-  | { status: 'ACTION_REQUIRED'; provider: 'razorpay'; orderId: string; amount: Rupees; walletAmount: Rupees; keyId: string };
+  | { status: 'ACTION_REQUIRED'; provider: 'razorpay'; orderId: string; amount: Rupees; walletAmount: Rupees; keyId: string }
+  | { status: 'ACTION_REQUIRED'; provider: 'cashfree'; orderId: string; paymentSessionId: string; mode: 'sandbox' | 'production'; amount: Rupees; walletAmount: Rupees };
 
 export interface VerifyPaymentInput {
   orderId: string;
@@ -557,7 +558,8 @@ export interface CompanionFeeDto {
 export type FeeCheckoutResponse =
   | { status: 'PAID' }
   | { status: 'ACTION_REQUIRED'; provider: 'mock'; orderId: string; amount: Rupees; walletAmount: Rupees }
-  | { status: 'ACTION_REQUIRED'; provider: 'razorpay'; orderId: string; amount: Rupees; walletAmount: Rupees; keyId: string };
+  | { status: 'ACTION_REQUIRED'; provider: 'razorpay'; orderId: string; amount: Rupees; walletAmount: Rupees; keyId: string }
+  | { status: 'ACTION_REQUIRED'; provider: 'cashfree'; orderId: string; paymentSessionId: string; mode: 'sandbox' | 'production'; amount: Rupees; walletAmount: Rupees };
 
 /** Admin view of a user's registration fee (null fields = never paid). */
 export interface CompanionFeeAdminDto {

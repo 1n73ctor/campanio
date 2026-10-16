@@ -17,12 +17,12 @@ const firebaseAuthDomain =
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://*.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
+  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://*.razorpay.com https://sdk.cashfree.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${apiOrigin} https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com`,
+  `img-src 'self' data: blob: ${apiOrigin} https://*.cashfree.com https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com`,
   "font-src 'self' data:",
-  `connect-src 'self' ${apiOrigin} ${wsOrigin} https://*.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.facebook.com https://*.razorpay.com https://www.google.com`,
-  `frame-src https://*.razorpay.com https://www.google.com https://recaptcha.google.com https://www.openstreetmap.org${firebaseAuthDomain ? ` https://${firebaseAuthDomain}` : ''}`,
+  `connect-src 'self' ${apiOrigin} ${wsOrigin} https://*.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.facebook.com https://*.razorpay.com https://*.cashfree.com https://www.google.com`,
+  `frame-src https://*.razorpay.com https://*.cashfree.com https://www.google.com https://recaptcha.google.com https://www.openstreetmap.org${firebaseAuthDomain ? ` https://${firebaseAuthDomain}` : ''}`,
   "media-src 'self' blob: mediastream:",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
@@ -39,7 +39,7 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' }, // no framing → no clickjacking of booking/admin pages
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(self), geolocation=(self), microphone=(), usb=(), payment=(self "https://api.razorpay.com" "https://checkout.razorpay.com")' },
+  { key: 'Permissions-Policy', value: 'camera=(self), geolocation=(self), microphone=(), usb=(), payment=(self "https://api.razorpay.com" "https://checkout.razorpay.com" "https://sdk.cashfree.com" "https://api.cashfree.com" "https://sandbox.cashfree.com")' },
   ...(isProd ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' }] : []),
 ];
 

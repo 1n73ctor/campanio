@@ -11,7 +11,13 @@ export const config = {
   smsProvider: process.env.SMS_PROVIDER ?? 'console',
   /** Firebase project whose phone sign-ins we accept (web sends the SMS through Firebase). Empty = disabled. */
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? '',
-  paymentProvider: (process.env.PAYMENT_PROVIDER ?? 'mock') as 'mock' | 'razorpay',
+  paymentProvider: (process.env.PAYMENT_PROVIDER ?? 'mock') as 'mock' | 'razorpay' | 'cashfree',
+  /** Cashfree Payment Gateway keys (merchant.cashfree.com → Payment Gateway → Developers → API Keys) */
+  cashfreePg: {
+    appId: process.env.CASHFREE_PG_APP_ID ?? '',
+    secret: process.env.CASHFREE_PG_SECRET ?? '',
+    mode: (process.env.CASHFREE_PG_ENV === 'production' ? 'production' : 'sandbox') as 'sandbox' | 'production',
+  },
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID ?? '',
     keySecret: process.env.RAZORPAY_KEY_SECRET ?? '',
@@ -45,6 +51,9 @@ export const config = {
   docsEnabled: process.env.NODE_ENV !== 'production' || ['1', 'true', 'yes'].includes((process.env.API_DOCS ?? '').toLowerCase()),
 };
 
+/** Payments that move no real money (mock gateway or Cashfree test mode): payouts must stay paused. */
+export const testPayments = () => config.paymentProvider === 'mock' || (config.paymentProvider === 'cashfree' && config.cashfreePg.mode === 'sandbox');
+
 /** Settings that must never reach a public server. Returns human-readable problems; empty = OK. */
 export function productionProblems(): string[] {
   if (process.env.NODE_ENV !== 'production') return [];
@@ -52,6 +61,11 @@ export function productionProblems(): string[] {
   if (config.jwtSecret === 'dev-secret-change-me' || config.jwtSecret.length < 32) p.push('JWT_SECRET must be a random string of 32+ characters (openssl rand -hex 48)');
   if (config.paymentProvider === 'mock' && !['1', 'true', 'yes'].includes((process.env.ALLOW_MOCK_PAYMENTS ?? '').toLowerCase()))
     p.push('PAYMENT_PROVIDER=mock lets anyone "pay" with the fake gateway — use razorpay (or set ALLOW_MOCK_PAYMENTS=true on a private staging server)');
+  if (config.paymentProvider === 'cashfree' && (!config.cashfreePg.appId || !config.cashfreePg.secret))
+    p.push('PAYMENT_PROVIDER=cashfree needs CASHFREE_PG_APP_ID and CASHFREE_PG_SECRET');
+  // test-mode payments move no real money, but would still mark meetups paid and fill hosts' wallets
+  if (config.paymentProvider === 'cashfree' && config.cashfreePg.mode === 'sandbox' && !['1', 'true', 'yes'].includes((process.env.ALLOW_TEST_PAYMENTS ?? '').toLowerCase()))
+    p.push('Cashfree payments are in TEST mode — set CASHFREE_PG_ENV=production with production keys (or ALLOW_TEST_PAYMENTS=true while testing; payouts stay paused)');
   if (config.paymentProvider === 'razorpay' && (!config.razorpay.keyId || !config.razorpay.keySecret || !config.razorpay.webhookSecret))
     p.push('PAYMENT_PROVIDER=razorpay needs RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET');
   if (config.corsOrigins.some((o) => o.includes('localhost'))) p.push('CORS_ORIGINS still lists localhost — set it to your live website and admin URLs');

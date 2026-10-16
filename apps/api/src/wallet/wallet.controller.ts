@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
 import { toPayoutDto, toWalletTxnDto } from '../common/mappers';
+import { testPayments } from '../common/config';
 
 class PayoutRequestDto {
   @Type(() => Number) @IsInt() @Min(1) amount: number;
@@ -42,6 +43,8 @@ export class WalletController {
   @Post('payouts')
   @Roles('COMPANION')
   async requestPayout(@CurrentUser() user: User, @Body() dto: PayoutRequestDto) {
+    // test-mode payments move no real money, so paying out "earnings" from them would cost real money
+    if (process.env.NODE_ENV === 'production' && testPayments()) throw new BadRequestException('Payouts are paused while payments are in test mode');
     const { minPayout } = await this.settings.get();
     if (dto.amount < minPayout) throw new BadRequestException(`Minimum payout is ₹${minPayout}`);
     const pending = await this.prisma.payout.count({ where: { userId: user.id, status: 'REQUESTED' } });

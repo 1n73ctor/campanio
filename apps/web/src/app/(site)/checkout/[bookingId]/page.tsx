@@ -10,6 +10,7 @@ import { useToast } from '@/components/toast';
 import { errMsg, fmtDateTime } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { loadRazorpay } from '@/lib/razorpay';
+import { payWithCashfree } from '@/lib/cashfree';
 
 
 export default function CheckoutPage({ params }: { params: Promise<{ bookingId: string }> }) {
@@ -55,6 +56,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
         setMock(r);
         setBusy(false);
         return;
+      }
+      if (r.provider === 'cashfree') {
+        const finished = await payWithCashfree(r.paymentSessionId, r.mode);
+        if (!finished) return setBusy(false);
+        await api.payments.verify({ orderId: r.orderId, paymentId: '', signature: '' });
+        return done();
       }
       await loadRazorpay();
       const rz = new window.Razorpay!({

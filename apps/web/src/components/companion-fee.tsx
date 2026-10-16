@@ -6,6 +6,7 @@ import { Button, Callout, Card, Modal, Toggle } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
 import { loadRazorpay } from '@/lib/razorpay';
+import { payWithCashfree } from '@/lib/cashfree';
 import { useToast } from './toast';
 
 /**
@@ -49,6 +50,18 @@ export function useCompanionFee() {
     const done = new Promise<boolean>((resolve) => (settle.current = resolve));
     if (r.provider === 'mock') {
       setMock({ orderId: r.orderId, amount: r.amount });
+      return done;
+    }
+    if (r.provider === 'cashfree') {
+      try {
+        if (await payWithCashfree(r.paymentSessionId, r.mode)) {
+          await api.payments.verify({ orderId: r.orderId, paymentId: '', signature: '' });
+          await finish(true);
+        } else await finish(false);
+      } catch (e) {
+        toast(errMsg(e), 'error');
+        await finish(false);
+      }
       return done;
     }
     await loadRazorpay();
