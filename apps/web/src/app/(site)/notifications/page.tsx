@@ -12,6 +12,7 @@ import { NOTIFICATIONS_CHANGED } from '@/components/header';
 
 /** Icon + colour per notification family (type is e.g. "booking.accepted", "payout.paid", "sos"). */
 function kindOf(type: string): { icon: string; bg: string } {
+  if (/^admin/.test(type)) return { icon: '📣', bg: 'bg-pink' };
   if (/refund|paid_out|goodwill/.test(type) || /^(payment|payout|wallet)/.test(type)) return { icon: '💸', bg: 'bg-lime' };
   if (/^(sos|safety|dispute|report)/.test(type) || type === 'booking.disputed') return { icon: '🛡️', bg: 'bg-pink' };
   if (/^(kyc|companion)/.test(type)) return { icon: '🪪', bg: 'bg-lavender' };
@@ -111,7 +112,8 @@ function Row({ n, when, onRead }: { n: NotificationDto; when: string; onRead: ()
       </span>
       <span className="min-w-0 flex-1">
         <span className={cn('block font-display leading-snug', unread ? 'font-extrabold' : 'font-bold')}>{n.title}</span>
-        <span className="mt-0.5 block text-sm text-ink-soft">{n.body}</span>
+        {n.type.startsWith('admin') && <span className="block text-xs font-bold uppercase tracking-wide text-pink-deep">From the Companio team</span>}
+        <span className="mt-0.5 block whitespace-pre-line text-sm text-ink-soft">{n.body}</span>
         <span className="mt-1 block text-xs text-ink-mute">{when}</span>
       </span>
       {unread && <span className="mt-2 h-3 w-3 shrink-0 rounded-full border-2 border-ink bg-pink" aria-label="Unread" />}

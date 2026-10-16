@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser, Roles } from '../common/auth';
 import { AdminService } from './admin.service';
@@ -11,6 +12,7 @@ class TotpDto {
   @IsString() @Length(6, 6) code: string;
 }
 import {
+  AdminMessageDto,
   HiddenDto,
   NoteDto,
   PageDto,
@@ -40,6 +42,9 @@ export class AdminController {
   @Get('users/:id') user(@CurrentUser() a: User, @Param('id') id: string) { return this.svc.user(id, a); }
   @Post('users/:id/refund-companion-fee') refundCompanionFee(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.refundCompanionFee(a, id, dto.note);
+  }
+  @Post('users/:id/message') @Throttle({ default: { limit: 30, ttl: 60_000 } }) messageUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminMessageDto) {
+    return this.svc.messageUser(a, id, dto);
   }
   @Post('users/:id/status') userStatus(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: UserStatusDto) {
     return this.svc.setUserStatus(a, id, dto.status, dto.reason);

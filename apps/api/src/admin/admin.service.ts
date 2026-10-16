@@ -123,6 +123,15 @@ export class AdminService {
   }
 
   /** Refund a user's companion registration fee to their wallet (any time, admin's decision). */
+  /** A direct message from the team: lands in the person's notifications (live, if they're online). */
+  async messageUser(admin: User, userId: string, dto: { title: string; body: string; link?: string }) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!u || u.status === 'DELETED') throw new NotFoundException('User not found');
+    const n = await this.notifications.notify(userId, { type: 'admin.message', title: dto.title.trim(), body: dto.body.trim(), link: dto.link || undefined });
+    await this.audit.log(admin.id, 'user.message', 'user', userId, { title: dto.title, body: dto.body, link: dto.link ?? null });
+    return { ok: true, id: n.id };
+  }
+
   async refundCompanionFee(admin: User, userId: string, note?: string) {
     const amount = await this.prisma.$transaction((tx) => this.fee.refund(tx, userId, note || 'refunded by admin'));
     await this.fee.notifyRefunded(userId, amount);

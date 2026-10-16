@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, Matches } from 'class-validator';
 import { DISPUTE_OUTCOMES, MODERATION_ACTIONS, USER_STATUSES } from '@companio/types';
 
 export class PageDto {
@@ -13,6 +13,14 @@ export class PageDto {
 export class UserStatusDto {
   @IsIn(USER_STATUSES.filter((s) => s !== 'DELETED')) status: string;
   @IsOptional() @IsString() @MaxLength(300) reason?: string;
+}
+
+/** A message from the team, shown in the person's notifications. */
+export class AdminMessageDto {
+  @IsString() @Length(3, 80) title: string;
+  @IsString() @Length(3, 1000) body: string;
+  // only pages on our own site (e.g. /wallet), so a message can never link people off to another website
+  @IsOptional() @IsString() @MaxLength(200) @Matches(/^\/(?![\/\\])[\w\-\/?=&#.%]*$/, { message: 'Link must be a page on this site, like /wallet' }) link?: string;
 }
 
 export class NoteDto {

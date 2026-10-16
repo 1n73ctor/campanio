@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { ageFromDob, cityBySlug, type UserStatus } from '@companio/types';
-import { Avatar, Button, Card, Field, Input, Modal, Stat, StatusBadge } from '@companio/ui';
+import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
@@ -18,6 +18,8 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const [msg, setMsg] = useState({ title: '', body: '', link: '' });
+  const [sending, setSending] = useState(false);
 
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
@@ -82,6 +84,65 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
         <Stat label="Warnings" value={data.warnings} tone={data.warnings ? 'sunny' : 'white'} />
         <Stat label="Wallet" value={formatINR(u.walletBalance)} tone="lime" />
       </div>
+
+      {u.status !== 'DELETED' && (
+        <Card className="mt-6 p-5 text-sm">
+          <h2 className="font-display text-lg font-extrabold">📣 Send a message</h2>
+          <p className="mt-1 text-ink-soft">Appears in {u.name?.split(' ')[0] ?? 'their'}’s notifications straight away (live if they’re online), marked “From the Companio team”.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { label: 'Profile photo', title: 'Please update your profile photo', body: 'Hi! A clear face photo helps members trust you. Please upload one from your Account page.', link: '/account' },
+              { label: 'Verification', title: 'Your verification needs attention', body: 'Hi! Please check your ID verification and re-submit if anything is unclear.', link: '/companion/kyc' },
+              { label: 'Warning', title: 'A reminder about our guidelines', body: 'Hi! We received a concern about a recent meetup. Please keep every meetup platonic, in public places, and all payments on Companio. Repeated issues can lead to suspension.', link: '/community-guidelines' },
+            ].map((tpl) => (
+              <Button key={tpl.label} size="sm" variant="white" onClick={() => setMsg({ title: tpl.title, body: tpl.body, link: tpl.link })}>
+                {tpl.label}
+              </Button>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3">
+            <Field label="Title">
+              <Input value={msg.title} maxLength={80} onChange={(e) => setMsg({ ...msg, title: e.target.value })} placeholder="Your payout is on its way" />
+            </Field>
+            <Field label={`Message (${msg.body.length}/1000)`}>
+              <Textarea value={msg.body} maxLength={1000} onChange={(e) => setMsg({ ...msg, body: e.target.value })} placeholder="Hi! …" />
+            </Field>
+            <Field label="Opens this page when tapped (optional)">
+              <Select value={msg.link} onChange={(e) => setMsg({ ...msg, link: e.target.value })}>
+                <option value="">— none —</option>
+                <option value="/account">Account</option>
+                <option value="/wallet">Wallet</option>
+                <option value="/bookings">Meetups</option>
+                <option value="/explore">Explore</option>
+                <option value="/become-a-companion">Become a host</option>
+                <option value="/companion/dashboard">Host dashboard</option>
+                <option value="/companion/kyc">ID verification</option>
+                <option value="/community-guidelines">Community guidelines</option>
+                <option value="/safety">Safety</option>
+              </Select>
+            </Field>
+          </div>
+          <Button
+            className="mt-3"
+            loading={sending}
+            disabled={msg.title.trim().length < 3 || msg.body.trim().length < 3}
+            onClick={async () => {
+              setSending(true);
+              try {
+                await api.admin.messageUser(u.id, { title: msg.title.trim(), body: msg.body.trim(), link: msg.link || undefined });
+                toast('Message sent');
+                setMsg({ title: '', body: '', link: '' });
+              } catch (e) {
+                toast(errMsg(e), 'error');
+              } finally {
+                setSending(false);
+              }
+            }}
+          >
+            Send message
+          </Button>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="space-y-2 p-5 text-sm">

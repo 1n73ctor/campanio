@@ -238,6 +238,8 @@ export function createApiClient(opts: ClientOptions) {
       stats: () => get<AdminStatsDto>('/admin/stats'),
       users: (q: AdminPage) => get<Paginated<AdminUserDto>>('/admin/users', q),
       user: (id: string) => get<AdminUserDetail>(`/admin/users/${id}`),
+      /** message shown in the person's notifications */
+      messageUser: (id: string, msg: { title: string; body: string; link?: string }) => post<{ ok: true; id: string }>(`/admin/users/${id}/message`, msg),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
       approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),
