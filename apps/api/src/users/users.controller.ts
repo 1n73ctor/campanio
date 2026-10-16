@@ -18,6 +18,8 @@ import { ageFromDob, MIN_AGE } from '@companio/types';
 import { AuthGuard, CurrentUser } from '../common/auth';
 import { PrismaService } from '../common/prisma.service';
 import { toUserDto } from '../common/mappers';
+import { MailService } from '../mail/mail.service';
+import { SettingsService } from '../common/settings.service';
 import { publicUrl, storePublicImage, uploadLimits } from '../files/uploads';
 import { UpdateMeDto } from './users.dto';
 import { OffersService } from '../offers/offers.service';
@@ -45,6 +47,8 @@ export class UsersController {
     private prisma: PrismaService,
     private offers: OffersService,
     private auth: AuthService,
+    private mail: MailService,
+    private settings: SettingsService,
   ) {}
 
   @Get()
@@ -90,7 +94,14 @@ export class UsersController {
       },
       include: { companion: true },
     });
-    if (!user.onboarded && u.onboarded) await this.offers.grantWelcomeCredit(u.id); // first time onboarding completes
+    if (!user.onboarded && u.onboarded) {
+      // first time onboarding completes
+      await this.offers.grantWelcomeCredit(u.id);
+      if (u.contactEmail) {
+        const { welcomeCredit } = await this.settings.get();
+        void this.mail.sendWelcome(u.contactEmail, u.name, welcomeCredit); // in the background: never slows sign-up
+      }
+    }
     return toUserDto(u);
   }
 

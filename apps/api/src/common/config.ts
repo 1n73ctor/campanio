@@ -47,6 +47,15 @@ export const config = {
     /** selfie ↔ ID photo similarity needed to count as the same person (Cashfree recommends 0.75) */
     faceMatchThreshold: Number(process.env.FACE_MATCH_THRESHOLD ?? 0.75),
   },
+  /** outgoing email (Hostinger: smtp.hostinger.com, port 465, the full mailbox address and its password) */
+  mail: {
+    host: process.env.SMTP_HOST ?? '',
+    port: Number(process.env.SMTP_PORT ?? 465),
+    user: process.env.SMTP_USER ?? '',
+    pass: process.env.SMTP_PASS ?? '',
+    from: process.env.MAIL_FROM || `Companio <${process.env.SMTP_USER || 'info@getcompanio.in'}>`,
+    replyTo: process.env.MAIL_REPLY_TO || process.env.SMTP_USER || undefined,
+  },
   /** serve the Swagger API docs (always on in development; off in production unless set) */
   docsEnabled: process.env.NODE_ENV !== 'production' || ['1', 'true', 'yes'].includes((process.env.API_DOCS ?? '').toLowerCase()),
 };
