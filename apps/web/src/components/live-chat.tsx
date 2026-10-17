@@ -3,12 +3,15 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { TAWK_PROPERTY_ID, TAWK_WIDGET_ID } from '@/lib/env';
+import { CONSENT_CHANGED, TRACKING_ENABLED, getConsent } from '@/lib/analytics';
 
 type TawkApi = {
   onLoad?: () => void;
   setAttributes?: (attrs: Record<string, string>, cb?: (err?: unknown) => void) => void;
   customStyle?: unknown;
   hideWidget?: () => void;
+  showWidget?: () => void;
+  onLoadCallbacks?: (() => void)[];
 };
 declare global {
   interface Window {
@@ -41,17 +44,39 @@ export function LiveChat() {
     document.body.appendChild(s);
   }, [ready, viewAs]);
 
+  // the bubble would cover the cookie banner on phones: keep it hidden until the visitor has answered it
+  useEffect(() => {
+    if (!TAWK_PROPERTY_ID || !TRACKING_ENABLED) return;
+    const sync = () => {
+      const api = window.Tawk_API;
+      if (!api?.hideWidget) return;
+      if (getConsent() === null) api.hideWidget();
+      else api.showWidget?.();
+    };
+    whenLoaded(sync);
+    window.addEventListener(CONSENT_CHANGED, sync);
+    return () => window.removeEventListener(CONSENT_CHANGED, sync);
+  }, [ready, viewAs]);
+
   // tell the agent who they're talking to (once the widget is up, and again after signing in)
   useEffect(() => {
     if (!loaded || !user) return;
     const attrs: Record<string, string> = { name: user.name ?? 'Member', id: user.id, role: user.companion ? 'Host' : 'Member' };
     if (user.email && user.emailVerified) attrs.email = user.email;
-    const api = window.Tawk_API;
-    if (!api) return;
-    const send = () => api.setAttributes?.(attrs, () => {});
-    if (api.setAttributes) send();
-    else api.onLoad = send;
+    whenLoaded(() => window.Tawk_API?.setAttributes?.(attrs, () => {}));
   }, [user]);
 
   return null;
+}
+
+/** Runs now if the widget is up, else once it loads (Tawk has a single onLoad slot, so callbacks are queued). */
+function whenLoaded(fn: () => void) {
+  const api = window.Tawk_API;
+  if (!api) return;
+  if (api.hideWidget) return fn();
+  if (!api.onLoadCallbacks) {
+    api.onLoadCallbacks = [];
+    api.onLoad = () => api.onLoadCallbacks!.forEach((f) => f());
+  }
+  api.onLoadCallbacks.push(fn);
 }
