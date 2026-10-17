@@ -1,5 +1,6 @@
 'use client';
 
+import { MaintenanceBanner } from './maintenance';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -113,6 +114,7 @@ function Frame({ children }: { children: ReactNode }) {
           </button>
           <Logo />
         </header>
+        <MaintenanceBanner />
         {counts && counts.activeSos > 0 && !pathname.startsWith('/admin/sos') && (
           <Link href="/admin/sos" className="block border-b-3 border-ink bg-danger px-4 py-2 text-center text-sm font-extrabold text-white">
             🚨 {counts.activeSos} active SOS alert{counts.activeSos > 1 ? 's' : ''} — respond now →

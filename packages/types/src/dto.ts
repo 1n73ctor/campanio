@@ -533,6 +533,8 @@ export interface PlatformSettings {
   cashbackMax: Rupees;
   /** 1 = a DigiLocker verification that passes every automatic check goes live without waiting for an admin */
   kycAutoApprove: number;
+  /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */
+  maintenanceMode: number;
 }
 
 /** Public offer terms, for marketing copy ("₹100 off your first booking"). */

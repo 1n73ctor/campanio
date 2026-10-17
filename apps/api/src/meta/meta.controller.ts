@@ -20,6 +20,12 @@ export class MetaController {
     return this.offers.publicTerms();
   }
 
+  /** Is the site under maintenance? (the website checks this on every page load, cached for a few seconds) */
+  @Get('status')
+  async status() {
+    return { maintenance: (await this.settings.get()).maintenanceMode === 1 };
+  }
+
   @Get('health')
   health() {
     return { ok: true, time: new Date().toISOString() };

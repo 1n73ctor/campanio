@@ -60,6 +60,8 @@ export interface ClientOptions {
   baseUrl: string;
   getToken?: () => string | null | undefined;
   onUnauthorized?: () => void;
+  /** the site was put under maintenance (503 { maintenance: true }) */
+  onMaintenance?: () => void;
   /** forwarded to fetch — e.g. Next.js `{ next: { revalidate: 300 } }` for ISR pages */
   fetchInit?: RequestInit & Record<string, unknown>;
 }
@@ -159,6 +161,7 @@ export function createApiClient(opts: ClientOptions) {
     const data = text ? safeJson(text) : undefined;
     if (!res.ok) {
       if (res.status === 401) opts.onUnauthorized?.();
+      if (res.status === 503 && (data as { maintenance?: boolean } | undefined)?.maintenance) opts.onMaintenance?.();
       const msg = (data as { message?: string | string[] } | undefined)?.message;
       throw new ApiError(res.status, Array.isArray(msg) ? msg[0] : msg ?? `Request failed (${res.status})`, data);
     }
@@ -178,6 +181,7 @@ export function createApiClient(opts: ClientOptions) {
       pricing: () => get<{ connectionFee: number; gstPct: number; freeCancelHours: number; lateCancelRefundPct: number }>('/meta/pricing'),
       coverage: () => get<Record<string, Record<string, number>>>('/meta/coverage'),
       offers: () => get<OffersDto>('/meta/offers'),
+      status: () => get<{ maintenance: boolean }>('/meta/status'),
     },
     auth: {
       requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
@@ -291,6 +295,8 @@ export function createApiClient(opts: ClientOptions) {
       /** correct someone's profile; only the fields sent change. `reason` goes in the audit log */
       editUser: (id: string, input: AdminEditUserInput) => patch<{ ok: true; changed: string[] }>(`/admin/users/${id}/profile`, input),
       /** "log in as": a 30-minute read-only session as this user (audited with the reason) */
+      /** one click: the whole site under maintenance, or back */
+      setMaintenance: (on: boolean) => post<{ maintenance: boolean }>('/admin/maintenance', { on }),
       impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),

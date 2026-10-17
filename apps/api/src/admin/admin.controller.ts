@@ -15,6 +15,7 @@ import {
   AdminEditUserDto,
   AdminMessageDto,
   ImpersonateDto,
+  MaintenanceDto,
   BroadcastAudienceDto,
   BroadcastDto,
   HiddenDto,
@@ -41,6 +42,8 @@ export class AdminController {
   ) {}
 
   @Get('stats') stats() { return this.svc.stats(); }
+  /** One click: the whole site under maintenance (or back). Audited. */
+  @Post('maintenance') setMaintenance(@CurrentUser() a: User, @Body() dto: MaintenanceDto) { return this.svc.setMaintenance(a, dto.on); }
 
   @Get('users') users(@Query() q: PageDto) { return this.svc.users(q); }
   @Get('users/:id') user(@CurrentUser() a: User, @Param('id') id: string) { return this.svc.user(id, a); }
