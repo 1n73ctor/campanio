@@ -115,8 +115,8 @@ export class PaymentsService {
       return p;
     });
     if (!p) return;
+    // no notification: the wallet page confirms it on screen, and the wallet ledger keeps the record
     this.log.log(`wallet top-up ${formatINR(p.amount)} by ${p.userId}`);
-    await this.notifications.notify(p.userId, { type: 'payment.captured', title: `${p.amount.toLocaleString('en-IN')} coins added`, body: 'Use them to message hosts or pay for meetups.', link: '/wallet' });
   }
 
   async verify(user: User, orderId: string, paymentId: string, signature: string) {

@@ -37,7 +37,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id]);
   useRealtime({ 'dm:new': (m: DirectMessageDto) => m.conversationId === id && setMsgs((x) => (x.some((y) => y.id === m.id) ? x : [...x, m])) });
-  useEffect(() => endRef.current?.scrollIntoView({ block: 'end' }), [msgs.length]);
+  useEffect(() => {
+    // braces matter: newer browsers return a Promise from scrollIntoView, and an effect may only return a clean-up function
+    endRef.current?.scrollIntoView({ block: 'end' });
+  }, [msgs.length]);
 
   if (error) return <div className="container-x max-w-xl py-16"><Callout tone="white" title="Chat not available">{error}</Callout></div>;
   if (!user || !conv) return <FullLoader />;
