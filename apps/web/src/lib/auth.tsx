@@ -7,8 +7,36 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { API_URL } from './env';
 
 const TOKEN_KEY = 'companio.token';
+/**
+ * An admin's read-only "log in as" session. Kept in sessionStorage, so it lives only in the tab the admin opened and
+ * never replaces anyone's own sign-in (closing the tab ends it).
+ */
+export const VIEW_AS_KEY = 'companio.viewAs';
+export interface ViewAs {
+  token: string;
+  expiresAt: string;
+  /** the admin page to go back to */
+  back: string;
+}
+
+export const readViewAs = (): ViewAs | null => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(VIEW_AS_KEY) ?? 'null') as ViewAs | null;
+    if (v?.token && new Date(v.expiresAt).getTime() > Date.now()) return v;
+    if (v) sessionStorage.removeItem(VIEW_AS_KEY);
+  } catch {}
+  return null;
+};
+
+export const endViewAs = () => {
+  try {
+    sessionStorage.removeItem(VIEW_AS_KEY);
+  } catch {}
+};
 
 const readToken = () => {
+  const v = readViewAs();
+  if (v) return v.token;
   try {
     return localStorage.getItem(TOKEN_KEY);
   } catch {
@@ -25,6 +53,8 @@ interface AuthCtx {
   signOut: () => void;
   refresh: () => Promise<UserDto | null>;
   setUser: (u: UserDto) => void;
+  /** set while an admin is viewing the site as this user (read-only) */
+  viewAs: ViewAs | null;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -33,11 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserDto | null>(null);
   const [ready, setReady] = useState(false);
+  const [viewAs, setViewAs] = useState<ViewAs | null>(null);
 
   const signOut = useCallback(() => {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-    } catch {}
+    // ending a view-as session never touches the real sign-in kept in localStorage
+    if (readViewAs()) endViewAs();
+    else
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch {}
+    setViewAs(null);
     setToken(null);
     setUser(null);
   }, []);
@@ -57,11 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const t = readToken();
+    setViewAs(readViewAs());
     setToken(t);
     (t ? refresh() : Promise.resolve(null)).finally(() => setReady(true));
   }, [refresh]);
 
   const signIn = useCallback((t: string, u: UserDto) => {
+    endViewAs();
+    setViewAs(null);
     try {
       localStorage.setItem(TOKEN_KEY, t);
     } catch {}
@@ -69,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }, []);
 
-  return <Ctx.Provider value={{ api, token, user, ready, signIn, signOut, refresh, setUser }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ api, token, user, ready, signIn, signOut, refresh, setUser, viewAs }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

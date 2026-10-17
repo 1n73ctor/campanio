@@ -5,6 +5,7 @@ import { Providers } from '@/components/providers';
 import { SiteHeader } from '@/components/header';
 import { SiteFooter } from '@/components/footer';
 import { VerifyEmailBanner } from '@/components/verify-email-banner';
+import { ViewAsBanner } from '@/components/view-as-banner';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-IN" className={fontVars}>
       <body className="min-h-screen">
         <Providers>
+          <ViewAsBanner />
           <SiteHeader />
           <VerifyEmailBanner />
           <main>{children}</main>

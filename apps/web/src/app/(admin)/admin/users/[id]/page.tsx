@@ -6,6 +6,7 @@ import { ageFromDob, cityBySlug, type UserStatus } from '@companio/types';
 import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
+import { EditUserModal, ViewAsModal } from '@/admin/components/user-admin-actions';
 import { USER_TEMPLATES } from '@/admin/lib/message-templates';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, d, dt, dtIST, formatINR, humanize } from '@/admin/lib/format';
@@ -21,6 +22,8 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
   const [refunding, setRefunding] = useState(false);
   const [msg, setMsg] = useState({ title: '', body: '', link: '' });
   const [sending, setSending] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
@@ -35,6 +38,12 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
         actions={
           <>
             <StatusBadge status={u.status} />
+            {u.status !== 'DELETED' && u.role !== 'ADMIN' && (
+              <>
+                <Button size="sm" variant="white" onClick={() => setEditing(true)}>✏️ Edit profile</Button>
+                {u.status === 'ACTIVE' && <Button size="sm" variant="white" onClick={() => setViewing(true)}>👁 Log in as user</Button>}
+              </>
+            )}
             {u.status !== 'DELETED' && (u.status === 'ACTIVE' ? (
               <>
                 <Button size="sm" variant="sunny" onClick={() => setTarget('SUSPENDED')}>Suspend</Button>
@@ -230,6 +239,8 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
         </Card>
       </div>
 
+      {editing && <EditUserModal key={u.id} user={u} open onClose={() => setEditing(false)} onSaved={reload} />}
+      <ViewAsModal user={u} open={viewing} onClose={() => setViewing(false)} />
       <Modal
         open={!!target}
         onClose={() => setTarget(null)}

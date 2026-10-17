@@ -1,6 +1,6 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, Matches } from 'class-validator';
-import { DISPUTE_OUTCOMES, MODERATION_ACTIONS, USER_STATUSES } from '@companio/types';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, Matches, ValidateNested } from 'class-validator';
+import { CATEGORIES, CITIES, DISPUTE_OUTCOMES, GENDERS, LANGUAGES, MODERATION_ACTIONS, USER_STATUSES } from '@companio/types';
 
 export class PageDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
@@ -93,4 +93,40 @@ export class SettingsDto {
   @IsOptional() @IsNumber() @Min(0) @Max(50) cashbackPct?: number;
   @IsOptional() @IsInt() @Min(0) @Max(5000) cashbackMax?: number;
   @IsOptional() @IsIn([0, 1]) kycAutoApprove?: number;
+}
+
+/** A host's public profile, as an admin may correct it (same limits as the host's own form). */
+export class AdminEditCompanionDto {
+  @IsOptional() @IsString() @Length(8, 90) headline?: string;
+  @IsOptional() @IsString() @Length(10, 1500) about?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate?: number;
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CATEGORIES.map((c) => c.slug), { each: true }) categories?: string[];
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages?: string[];
+  @IsOptional() @IsIn(CITIES.map((c) => c.slug)) city?: string;
+  @IsOptional() @IsBoolean() womenOnly?: boolean;
+}
+
+/** An admin correcting someone's profile. Phone number, role and status are changed elsewhere (or not at all). */
+export class AdminEditUserDto {
+  @IsOptional() @IsString() @Length(2, 60) name?: string;
+  /** empty string removes the email */
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @Matches(/^$|^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, { message: 'Enter a valid email address' })
+  @MaxLength(254)
+  email?: string;
+  /** mark the email as verified (e.g. they confirmed it with support) — otherwise a changed email is sent a new link */
+  @IsOptional() @IsBoolean() emailVerified?: boolean;
+  @IsOptional() @IsISO8601() dob?: string;
+  @IsOptional() @IsIn(GENDERS) gender?: string;
+  @IsOptional() @IsIn(CITIES.map((c) => c.slug)) city?: string;
+  @IsOptional() @IsString() @MaxLength(500) bio?: string;
+  @IsOptional() @ValidateNested() @Type(() => AdminEditCompanionDto) companion?: AdminEditCompanionDto;
+  /** why — kept in the audit log */
+  @IsString() @Length(3, 300) reason: string;
+}
+
+/** "Log in as this user" (read-only view) — the reason is kept in the audit log. */
+export class ImpersonateDto {
+  @IsString() @Length(5, 300) reason: string;
 }

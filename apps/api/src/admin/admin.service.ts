@@ -22,7 +22,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { OffersService } from '../offers/offers.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
+import type { AdminEditUserDto, PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
+import { ageFromDob, MIN_AGE } from '@companio/types';
+import { MailService } from '../mail/mail.service';
 import { CompanionFeeService, feePaid, toFeeAdminDto } from '../companions/companion-fee.service';
 
 const PAGE = 25;
@@ -41,6 +43,7 @@ export class AdminService {
     private referrals: ReferralsService,
     private fee: CompanionFeeService,
     private offers: OffersService,
+    private mail: MailService,
   ) {}
 
   private page(q: PageDto) {
@@ -130,6 +133,89 @@ export class AdminService {
     const n = await this.notifications.notify(userId, { type: 'admin.message', title: dto.title.trim(), body: dto.body.trim(), link: dto.link || undefined });
     await this.audit.log(admin.id, 'user.message', 'user', userId, { title: dto.title, body: dto.body, link: dto.link ?? null });
     return { ok: true, id: n.id };
+  }
+
+  /**
+   * An admin correcting someone's profile. Only the fields sent change; every change is audited with its old and new
+   * value, and the person gets an in-app note. Admin accounts can't be edited here.
+   */
+  async editUser(admin: User, userId: string, dto: AdminEditUserDto) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, include: { companion: true } });
+    if (!u || u.status === 'DELETED') throw new NotFoundException('User not found');
+    if (u.role === 'ADMIN') throw new BadRequestException('Admin accounts can’t be edited here');
+    if (dto.dob) {
+      const age = ageFromDob(dto.dob);
+      if (age === null || age < MIN_AGE) throw new BadRequestException(`Must be ${MIN_AGE}+`);
+    }
+    const c = dto.companion;
+    if (c && !u.companion) throw new BadRequestException('This person has no host profile');
+    if (c?.womenOnly && (dto.gender ?? u.gender) !== 'FEMALE') throw new BadRequestException('Women-only meetups are available to women hosts');
+
+    const email = dto.email === undefined ? undefined : dto.email || null;
+    const emailChanged = email !== undefined && email !== (u.contactEmail ?? null);
+    const userData: Prisma.UserUpdateInput = {
+      name: dto.name,
+      contactEmail: email,
+      dob: dto.dob ? new Date(dto.dob) : undefined,
+      gender: dto.gender,
+      city: dto.city,
+      bio: dto.bio,
+      ...(dto.emailVerified !== undefined ? { contactEmailVerifiedAt: dto.emailVerified && (email ?? u.contactEmail) ? new Date() : null } : emailChanged ? { contactEmailVerifiedAt: null } : {}),
+      // women-only stops making sense if the gender changes away from female
+      ...(dto.gender && dto.gender !== 'FEMALE' && u.companion?.womenOnly && c?.womenOnly === undefined ? { companion: { update: { womenOnly: false } } } : {}),
+    };
+    const companionData: Prisma.CompanionProfileUpdateInput | null = c
+      ? { headline: c.headline, about: c.about, hourlyRate: c.hourlyRate, categories: c.categories?.join(','), languages: c.languages?.join(','), city: c.city, womenOnly: c.womenOnly }
+      : null;
+
+    // old → new for the audit log (only what actually changes)
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    const note = (k: string, from: unknown, to: unknown) => {
+      const f = from instanceof Date ? from.toISOString().slice(0, 10) : from ?? null;
+      const t = to instanceof Date ? to.toISOString().slice(0, 10) : to ?? null;
+      if (to !== undefined && JSON.stringify(f) !== JSON.stringify(t)) changes[k] = { from: f, to: t };
+    };
+    note('name', u.name, dto.name);
+    note('email', u.contactEmail, email);
+    note('emailVerified', !!u.contactEmailVerifiedAt, dto.emailVerified);
+    note('dob', u.dob, dto.dob ? new Date(dto.dob) : undefined);
+    note('gender', u.gender, dto.gender);
+    note('city', u.city, dto.city);
+    note('bio', u.bio, dto.bio);
+    if (c && u.companion) {
+      note('host.headline', u.companion.headline, c.headline);
+      note('host.about', u.companion.about, c.about);
+      note('host.hourlyRate', u.companion.hourlyRate, c.hourlyRate);
+      note('host.categories', u.companion.categories.split(','), c.categories);
+      note('host.languages', u.companion.languages.split(','), c.languages);
+      note('host.city', u.companion.city, c.city);
+      note('host.womenOnly', u.companion.womenOnly, c.womenOnly);
+    }
+    if (!Object.keys(changes).length) throw new BadRequestException('Nothing changed');
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (companionData) await tx.companionProfile.update({ where: { userId }, data: companionData });
+      return tx.user.update({ where: { id: userId }, data: userData });
+    });
+    await this.audit.log(admin.id, 'user.edit', 'user', userId, { reason: dto.reason, changes });
+    await this.notifications.notify(userId, {
+      type: 'admin.profile_edit',
+      title: 'Your profile was updated by the Companio team',
+      body: `We updated: ${Object.keys(changes).map((k) => k.replace('host.', 'host ').replace(/([A-Z])/g, ' $1').toLowerCase()).join(', ')}. Questions? Reply to any of our emails or contact support.`,
+      link: u.companion && c ? '/companion/dashboard' : '/account',
+    });
+    if (emailChanged && updated.contactEmail && !updated.contactEmailVerifiedAt) void this.mail.sendVerification(updated);
+    return { ok: true, changed: Object.keys(changes) };
+  }
+
+  /** Checks who an admin may view the site as (active, non-admin accounts) and records why. */
+  async impersonationTarget(admin: User, userId: string, reason: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!u || u.status === 'DELETED') throw new NotFoundException('User not found');
+    if (u.role === 'ADMIN') throw new BadRequestException('You can’t log in as another admin');
+    if (u.status !== 'ACTIVE') throw new BadRequestException(`This account is ${u.status.toLowerCase()} — reactivate it first to view as them`);
+    await this.audit.log(admin.id, 'user.impersonate', 'user', userId, { reason: reason.trim(), readOnly: true, minutes: 30 });
+    return u;
   }
 
   // ---------- broadcasts ----------

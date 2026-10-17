@@ -11,13 +11,15 @@ import {
 import type { Server, Socket } from 'socket.io';
 import { config } from '../common/config';
 import { PrismaService } from '../common/prisma.service';
-import type { JwtPayload } from '../common/auth';
+import { impersonatorOf, type JwtPayload } from '../common/auth';
 import { BookingsService } from '../bookings/bookings.service';
 import { RealtimeService } from './realtime.service';
 
 interface SocketData {
   userId: string;
   role: string;
+  /** an admin viewing as this user: receives updates, never acts (no typing indicators) */
+  readOnly?: boolean;
 }
 
 /**
@@ -43,10 +45,13 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     try {
       const token = (socket.handshake.auth?.token as string | undefined) ?? '';
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
+      if (payload.purpose) throw new Error('not a sign-in');
+      const impersonator = await impersonatorOf(this.prisma, payload);
       const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
       if (!user || user.status !== 'ACTIVE') throw new Error('inactive');
       if ((payload.v ?? 0) !== user.tokenVersion) throw new Error('session revoked');
-      (socket.data as SocketData) = { userId: user.id, role: user.role };
+      if (impersonator && user.role === 'ADMIN') throw new Error('not allowed');
+      (socket.data as SocketData) = { userId: user.id, role: user.role, readOnly: !!impersonator };
       await socket.join(`user:${user.id}`);
       if (user.role === 'ADMIN') await socket.join('admins');
     } catch {
@@ -79,7 +84,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
 
   @SubscribeMessage('chat:typing')
   typing(@ConnectedSocket() socket: Socket, @MessageBody() body: { bookingId: string }) {
-    if (socket.rooms.has(`booking:${body.bookingId}`)) {
+    if (!(socket.data as SocketData).readOnly && socket.rooms.has(`booking:${body.bookingId}`)) {
       socket.to(`booking:${body.bookingId}`).emit('chat:typing', { bookingId: body.bookingId, userId: this.viewer(socket).id });
     }
   }

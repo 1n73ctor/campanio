@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
@@ -12,7 +12,9 @@ class TotpDto {
   @IsString() @Length(6, 6) code: string;
 }
 import {
+  AdminEditUserDto,
   AdminMessageDto,
+  ImpersonateDto,
   BroadcastAudienceDto,
   BroadcastDto,
   HiddenDto,
@@ -42,6 +44,15 @@ export class AdminController {
 
   @Get('users') users(@Query() q: PageDto) { return this.svc.users(q); }
   @Get('users/:id') user(@CurrentUser() a: User, @Param('id') id: string) { return this.svc.user(id, a); }
+  @Patch('users/:id/profile') editUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminEditUserDto) {
+    return this.svc.editUser(a, id, dto);
+  }
+  /** One-click "log in as": a 30-minute, read-only session as this user, audited with the reason. */
+  @Post('users/:id/impersonate') @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async impersonate(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: ImpersonateDto) {
+    const target = await this.svc.impersonationTarget(a, id, dto.reason);
+    return this.auth.impersonationToken(a, target);
+  }
   @Post('users/:id/refund-companion-fee') refundCompanionFee(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.refundCompanionFee(a, id, dto.note);
   }

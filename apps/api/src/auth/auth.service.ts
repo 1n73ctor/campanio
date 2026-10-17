@@ -209,6 +209,16 @@ export class AuthService {
     return { enabled: false };
   }
 
+  /**
+   * "Log in as" for admins: a 30-minute, read-only session as this user (the API refuses anything but viewing), tied to
+   * the admin's own session so signing the admin out — or removing their admin rights — ends it too.
+   */
+  async impersonationToken(admin: Pick<User, 'id' | 'tokenVersion'>, target: Pick<User, 'id' | 'role' | 'tokenVersion'>) {
+    const minutes = 30;
+    const token = await this.jwt.signAsync({ sub: target.id, role: target.role, v: target.tokenVersion, imp: admin.id, iv: admin.tokenVersion }, { expiresIn: `${minutes}m` });
+    return { token, expiresAt: new Date(Date.now() + minutes * 60_000).toISOString() };
+  }
+
   /** A fresh session token for this user (current session version). */
   sign(user: Pick<User, 'id' | 'role' | 'tokenVersion'>) {
     return this.signRaw(user.id, user.role, user.tokenVersion);

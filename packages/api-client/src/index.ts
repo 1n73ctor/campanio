@@ -74,6 +74,19 @@ const qs = (q?: Query) => {
 };
 
 export type AdminPage = { page?: number; q?: string; status?: string; role?: string };
+export type AdminEditUserInput = {
+  name?: string;
+  /** '' removes it */
+  email?: string;
+  emailVerified?: boolean;
+  dob?: string;
+  gender?: string;
+  city?: string;
+  bio?: string;
+  companion?: { headline?: string; about?: string; hourlyRate?: number; categories?: string[]; languages?: string[]; city?: string; womenOnly?: boolean };
+  reason: string;
+};
+
 export type AdminUserDetail = {
   user: AdminUserDto;
   warnings: number;
@@ -247,6 +260,10 @@ export function createApiClient(opts: ClientOptions) {
         post<{ ok: true; sent: number }>('/admin/broadcast', msg),
       /** message shown in the person's notifications */
       messageUser: (id: string, msg: { title: string; body: string; link?: string }) => post<{ ok: true; id: string }>(`/admin/users/${id}/message`, msg),
+      /** correct someone's profile; only the fields sent change. `reason` goes in the audit log */
+      editUser: (id: string, input: AdminEditUserInput) => patch<{ ok: true; changed: string[] }>(`/admin/users/${id}/profile`, input),
+      /** "log in as": a 30-minute read-only session as this user (audited with the reason) */
+      impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
       approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),

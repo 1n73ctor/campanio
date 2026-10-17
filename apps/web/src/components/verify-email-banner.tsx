@@ -11,7 +11,7 @@ const HIDE_KEY = 'companio.verifyEmailBanner.hidden';
 
 /** Signed-in members whose email isn't verified yet: one tap emails them the verification link. */
 export function VerifyEmailBanner() {
-  const { api, user, setUser } = useAuth();
+  const { api, user, setUser, viewAs } = useAuth();
   const path = usePathname();
   const toast = useToast();
   const [hidden, setHidden] = useState(true);
@@ -27,7 +27,7 @@ export function VerifyEmailBanner() {
   }, []);
 
   // the account page has its own verify box; the verify page is where the link lands
-  if (hidden || !user?.onboarded || !user.email || user.emailVerified || user.role === 'ADMIN' || path === '/account' || path === '/verify-email') return null;
+  if (hidden || viewAs || !user?.onboarded || !user.email || user.emailVerified || user.role === 'ADMIN' || path === '/account' || path === '/verify-email') return null;
 
   const send = async () => {
     setBusy(true);
