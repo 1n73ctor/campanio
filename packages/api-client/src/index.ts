@@ -111,23 +111,50 @@ export type FlaggedMessage = MessageDto & { flagReason: string | null; sender: {
 export type AdminReview = { id: string; bookingId: string; rating: number; comment: string | null; hidden: boolean; author: { id: string; name: string | null }; target: { id: string; name: string | null }; createdAt: string };
 export type AdminSos = SosAlertDto & { booking: { id: string; meetingPoint: string; startAt: string; userName: string | null; companionName: string | null; status: string } };
 
+/** waits between retries while the API restarts (about 2s during a deploy): ~10s in all */
+const RETRY_DELAYS = [400, 800, 1500, 2500, 5000];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /** Typed SDK over the Companio REST API. One client for web, admin and (later) the Expo app. */
 export function createApiClient(opts: ClientOptions) {
   const base = opts.baseUrl.replace(/\/$/, '');
 
   async function request<T>(method: string, path: string, body?: unknown, extra?: RequestInit): Promise<T> {
-    const token = opts.getToken?.();
     const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
-    const res = await fetch(`${base}${path}`, {
-      ...opts.fetchInit,
-      ...extra,
-      method,
-      headers: {
-        ...(isForm || body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
-    });
+    const send = () => {
+      const token = opts.getToken?.();
+      return fetch(`${base}${path}`, {
+        ...opts.fetchInit,
+        ...extra,
+        method,
+        headers: {
+          ...(isForm || body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
+      });
+    };
+    // A deploy restarts the API for a couple of seconds; nginx then answers 503 { retry: true } (the request never
+    // reached the API, so repeating it is safe for any method). Reads are also repeated after a dropped connection.
+    const safeToRepeat = method === 'GET' || method === 'HEAD';
+    let res: Response | undefined;
+    for (let attempt = 0; ; attempt++) {
+      const last = attempt >= RETRY_DELAYS.length;
+      try {
+        res = await send();
+      } catch (e) {
+        if (!last && safeToRepeat) {
+          await sleep(RETRY_DELAYS[attempt]);
+          continue;
+        }
+        throw new ApiError(0, 'Couldn’t reach Companio — check your internet connection and try again.', e);
+      }
+      if (res.status === 503 && !last && (await res.clone().json().catch(() => null))?.retry === true) {
+        await sleep(RETRY_DELAYS[attempt]);
+        continue;
+      }
+      break;
+    }
     const text = await res.text();
     const data = text ? safeJson(text) : undefined;
     if (!res.ok) {
@@ -137,6 +164,7 @@ export function createApiClient(opts: ClientOptions) {
     }
     return data as T;
   }
+
   const get = <T>(p: string, q?: Query) => request<T>('GET', p + qs(q));
   const post = <T>(p: string, b?: unknown) => request<T>('POST', p, b ?? {});
   const patch = <T>(p: string, b: unknown) => request<T>('PATCH', p, b);
