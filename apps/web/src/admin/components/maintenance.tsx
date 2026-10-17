@@ -33,7 +33,7 @@ function useSwitch() {
     try {
       await api.admin.setMaintenance(on);
       window.dispatchEvent(new Event(CHANGED));
-      toast(on ? 'Site is under maintenance — visitors see the “back soon” page' : 'Site is back online');
+      toast(on ? 'Maintenance on — the site is browsable, changes are paused' : 'Maintenance off — everything works again');
       return true;
     } catch (e) {
       toast(errMsg(e), 'error');
@@ -58,8 +58,8 @@ export function MaintenanceCard() {
           <p className="font-display text-lg font-extrabold">{on ? '🛠️ The site is under maintenance' : '🟢 The site is online'}</p>
           <p className="text-sm text-ink-soft">
             {on
-              ? 'Visitors see a “back soon” page and the app can’t be used. The admin panel still works.'
-              : 'Need to fix something? Put the whole site under maintenance with one click.'}
+              ? 'People can still browse, but sign-in, bookings, payments, chats and withdrawals are paused. The admin panel works as normal.'
+              : 'Need to fix something? Pause all changes on the site with one click — people can keep browsing.'}
           </p>
         </div>
         {on ? (
@@ -83,8 +83,8 @@ export function MaintenanceCard() {
         }
       >
         <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>Everyone on the website and app sees “We’ll be right back” within a few seconds.</li>
-          <li>Nobody can sign in, book, pay, chat or withdraw until you turn it off. Payments already under way still complete.</li>
+          <li>The website and app stay open for browsing, with a “maintenance in progress” banner.</li>
+          <li>Nobody can sign in, book, pay, chat, withdraw or edit their profile until you turn it off. Payments already under way still complete.</li>
           <li>Timers keep running: unanswered requests still expire and are refunded as usual.</li>
           <li>The admin panel keeps working. Turn it off here when you’re done.</li>
         </ul>
@@ -100,7 +100,7 @@ export function MaintenanceBanner() {
   if (!on) return null;
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 border-b-3 border-ink bg-danger px-4 py-2 text-center text-sm font-extrabold text-white">
-      🛠️ The site is under maintenance — visitors can’t use Companio.
+      🛠️ Maintenance is on — people can browse, but sign-in, bookings, payments and chats are paused.
       <button type="button" disabled={busy} onClick={() => set(false)} className="rounded-full border-2 border-white px-3 py-0.5 hover:bg-white hover:text-danger">
         {busy ? 'Turning off…' : 'Bring it back online'}
       </button>

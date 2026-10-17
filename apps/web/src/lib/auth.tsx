@@ -34,15 +34,9 @@ export const endViewAs = () => {
   } catch {}
 };
 
-/** The site went under maintenance while this page was open: reload, and the website shows the "back soon" page. */
-const showMaintenance = () => {
-  try {
-    const last = Number(sessionStorage.getItem('companio.maintenanceReload') ?? 0);
-    if (Date.now() - last < 10_000) return; // the website may take a few seconds to notice — don't reload in a loop
-    sessionStorage.setItem('companio.maintenanceReload', String(Date.now()));
-  } catch {}
-  window.location.reload();
-};
+/** A change was refused because the site is under maintenance: show the maintenance banner straight away. */
+export const MAINTENANCE_EVENT = 'companio:maintenance';
+const showMaintenance = () => window.dispatchEvent(new Event(MAINTENANCE_EVENT));
 
 const readToken = () => {
   const v = readViewAs();

@@ -10,11 +10,15 @@ import { impersonatorOf, type JwtPayload } from './auth';
  */
 const ALWAYS_OPEN = [/^\/meta\//, /^\/auth\/admin\//, /^\/admin(\/|$)/, /^\/payments\/webhook\//, /^\/payments\/verify$/, /^\/files\//, /^\/uploads\//];
 
-export const MAINTENANCE_MESSAGE = 'Companio is under maintenance. We’ll be back shortly — thanks for your patience!';
+export const MAINTENANCE_MESSAGE = 'Companio is under maintenance — you can keep browsing, but changes are paused. Please try again in a few minutes.';
+
+/** Reading never changes anything, so the site stays browsable during maintenance. */
+const READS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**
- * Maintenance mode (Admin → Dashboard → one click): every API request gets 503 { maintenance: true } except the
- * always-open routes above and requests from admins (including an admin viewing the site as someone, to test it).
+ * Maintenance mode (Admin → Dashboard → one click): the site stays browsable (every read works), but anything that
+ * changes something — sign-in, bookings, payments, chats, withdrawals, profile edits — gets 503 { maintenance: true },
+ * except the always-open routes above and requests from admins (including an admin viewing the site as someone).
  */
 @Injectable()
 export class MaintenanceGuard implements CanActivate {
@@ -27,7 +31,8 @@ export class MaintenanceGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext) {
     if (ctx.getType() !== 'http') return true;
     if ((await this.settings.get()).maintenanceMode !== 1) return true;
-    const req = ctx.switchToHttp().getRequest<{ path: string; headers: Record<string, string | undefined> }>();
+    const req = ctx.switchToHttp().getRequest<{ method: string; path: string; headers: Record<string, string | undefined> }>();
+    if (READS.has(req.method.toUpperCase())) return true;
     if (ALWAYS_OPEN.some((re) => re.test(req.path))) return true;
     if (await this.isAdmin(req.headers.authorization)) return true;
     throw new ServiceUnavailableException({ statusCode: 503, message: MAINTENANCE_MESSAGE, maintenance: true });
