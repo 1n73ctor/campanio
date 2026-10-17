@@ -27,6 +27,10 @@ export default function Privacy() {
           Identity checks for hosts (DigiLocker, and checking that the selfie is a live person matching the ID photo) are run for us by Cashfree Payments, a
           verification provider regulated in India. DigiLocker only shares your Aadhaar after you sign in and allow it.
         </p>
+        <p>
+          Our live support chat is provided by Tawk.to. When you chat with us, your messages — and, if you’re signed in, your name and verified email — are
+          shared with Tawk.to so our team can reply. Your phone number, ID documents and location are never shared with it.
+        </p>
         <h2>Cookies & advertising</h2>
         <p>
           With your consent, we use Google Analytics and the Meta Pixel to measure which ads and pages bring people to Companio (page visits, sign-ups, bookings and
