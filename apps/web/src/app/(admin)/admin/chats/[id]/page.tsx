@@ -44,7 +44,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
           <ul className="mt-2 space-y-2">
             {c.unlocks.map((u) => (
               <li key={u.id} className="border-b-2 border-dashed border-ink/10 pb-2">
-                <b><CoinAmount n={u.price} className="align-middle" /></b> · {u.kind === 'PERMANENT' ? 'forever' : `${u.hours}h`} · {u.status === 'ANSWERED' ? 'earned' : u.status === 'REFUNDED' ? 'refunded' : 'waiting for reply'}
+                <b><CoinAmount n={u.price} className="align-middle" /></b> · {u.kind === 'PERMANENT' ? 'forever' : `${u.hours}h`} · {u.status === 'ANSWERED' ? `earned · host got ${u.hostEarning}` : u.status === 'REFUNDED' ? 'refunded' : 'waiting for reply'}
                 <span className="block text-xs text-ink-mute">{dtIST(u.createdAt)}{u.refundedAt ? ` · refunded ${dtIST(u.refundedAt)}` : ''}</span>
               </li>
             ))}

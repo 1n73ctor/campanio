@@ -56,7 +56,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       setMsgs((x) => (x.some((y) => y.id === r.message.id) ? x : [...x, r.message]));
       setText('');
       if (r.warning) toast(r.warning);
-      if (isHost && !conv.hostReplied) setConv({ ...conv, hostReplied: true, refundDueAt: null });
+      if (r.earned) toast(`You earned ${r.earned} coins for replying 💸`);
+      if (isHost && !conv.hostReplied) setConv({ ...conv, hostReplied: true, refundDueAt: null, earnOnReply: 0 });
     } catch (e) {
       toast(errMsg(e), 'error');
       load();
@@ -82,7 +83,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             {isHost
               ? conv.hostReplied
                 ? 'Replies are free for hosts.'
-                : `⏳ Reply${conv.refundDueAt ? ` before ${fmtDateTime(conv.refundDueAt)}` : ''} — otherwise ${first}’s coins are refunded.`
+                : `⏳ Reply${conv.refundDueAt ? ` before ${fmtDateTime(conv.refundDueAt)}` : ''}${conv.earnOnReply > 0 ? ` to earn ${conv.earnOnReply} coins` : ''} — otherwise ${first}’s coins are refunded.`
               : conv.permanent
                 ? 'Open for good'
                 : conv.canWrite

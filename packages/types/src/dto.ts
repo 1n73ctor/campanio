@@ -544,6 +544,8 @@ export interface PlatformSettings {
   chatPermanentPrice: Rupees;
   /** hours the host has to reply before the coins go back automatically */
   chatRefundHours: number;
+  /** % of each chat payment the host earns (withdrawable) once they reply; the rest is platform revenue */
+  chatHostSharePct: number;
   /** 1 = members add coins by paying the platform's UPI QR and an admin approves it; 0 = through the payment gateway */
   manualTopup: number;
   /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */
@@ -627,6 +629,8 @@ export interface ConversationDto {
   hostReplied: boolean;
   /** the newest unlock still waiting for the host's reply: when its coins go back if they don't answer */
   refundDueAt: string | null;
+  /** host's view: coins they earn by replying now (0 for members) */
+  earnOnReply: number;
   lastMessage: { body: string; senderId: string; createdAt: string } | null;
   unread: boolean;
   createdAt: string;
@@ -641,6 +645,9 @@ export interface AdminChatUnlockDto {
   price: Rupees;
   hours: number | null;
   promoUsed: Rupees;
+  hostSharePct: number;
+  /** paid to the host when they replied */
+  hostEarning: Rupees;
   status: 'ACTIVE' | 'ANSWERED' | 'REFUNDED';
   refundDueAt: string;
   refundedAt: string | null;
@@ -648,8 +655,10 @@ export interface AdminChatUnlockDto {
 }
 
 export interface AdminChatStatsDto {
-  /** coins kept (unlocks not refunded and no longer refundable or answered) */
+  /** platform's share of answered chats (price − host earnings) */
   earned: Rupees;
+  /** paid to hosts for answered chats */
+  hostEarnings: Rupees;
   /** coins taken that could still be refunded (waiting for a reply) */
   pending: Rupees;
   refunded: Rupees;

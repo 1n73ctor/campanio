@@ -525,6 +525,9 @@ model ChatUnlock {
   hours          Int?
   /// how much of the price was spend-only credit (refunded as credit)
   promoUsed      Int          @default(0)
+  /// the host's share (%) when this was paid, and what they got once they replied (withdrawable)
+  hostSharePct   Int          @default(0)
+  hostEarning    Int          @default(0)
   /// ACTIVE (waiting for the host's reply) · ANSWERED (host replied — kept) · REFUNDED (no reply in time)
   status         String       @default("ACTIVE")
   refundDueAt    DateTime

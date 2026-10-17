@@ -163,14 +163,14 @@ export default function SettingsPage() {
         <Card className="p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-extrabold">💬 Paid chats</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Members spend coins (wallet balance, ₹1 = 1 coin) to message a host before booking. Hosts reply free. All coins are platform revenue — refunded
-            automatically if the host doesn’t reply in time. When off, there’s no Message button, inbox or “Add coins” anywhere.
+            Members spend coins (wallet balance, ₹1 = 1 coin) to message a host before booking. Hosts reply free and earn their share when they reply; the
+            rest is platform revenue. Everything is refunded automatically if the host doesn’t reply in time. When off, there’s no Message button, inbox or “Add coins” anywhere.
           </p>
           <div className="mt-4 flex items-center gap-3">
             <Toggle checked={form.chatEnabled === 1} onChange={(v) => setForm({ ...form, chatEnabled: v ? 1 : 0 })} label="Paid chats on" />
             <span className="font-bold">{form.chatEnabled === 1 ? 'On' : 'Off'}</span>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Field label="Timed chat price (coins)">
               <NumberInput value={form.chatTimedPrice} onValueChange={(n) => setForm((x) => (x ? { ...x, chatTimedPrice: Math.round(n) } : x))} />
             </Field>
@@ -182,6 +182,9 @@ export default function SettingsPage() {
             </Field>
             <Field label="Refund if no reply within (hours)">
               <NumberInput value={form.chatRefundHours} onValueChange={(n) => setForm((x) => (x ? { ...x, chatRefundHours: Math.round(n) } : x))} />
+            </Field>
+            <Field label="Host’s share of chat coins (%)" hint={`Paid to the host (withdrawable) when they reply. On a ${form.chatTimedPrice}-coin chat: host ${Math.floor((form.chatTimedPrice * form.chatHostSharePct) / 100)}, Companio ${form.chatTimedPrice - Math.floor((form.chatTimedPrice * form.chatHostSharePct) / 100)}.`}>
+              <NumberInput value={form.chatHostSharePct} onValueChange={(n) => setForm((x) => (x ? { ...x, chatHostSharePct: Math.max(0, Math.min(90, Math.round(n))) } : x))} />
             </Field>
           </div>
           <div className="mt-4">

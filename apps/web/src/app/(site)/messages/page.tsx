@@ -43,7 +43,9 @@ export default function MessagesPage() {
                   {c.viewerRole === 'host'
                     ? c.hostReplied
                       ? 'Member chat'
-                      : '⏳ Waiting for your reply'
+                      : c.earnOnReply > 0
+                        ? `⏳ Reply to earn ${c.earnOnReply} coins`
+                        : '⏳ Waiting for your reply'
                     : c.permanent
                       ? 'Open for good'
                       : c.canWrite

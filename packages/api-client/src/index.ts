@@ -92,7 +92,7 @@ export type AdminChatConversation = {
   permanent: boolean;
   accessUntil: string | null;
   messages: (DirectMessageDto & { flagged: boolean; flagReason: string | null; hidden: boolean })[];
-  unlocks: { id: string; kind: string; price: number; hours: number | null; status: string; createdAt: string; refundedAt: string | null }[];
+  unlocks: { id: string; kind: string; price: number; hours: number | null; status: string; hostEarning: number; createdAt: string; refundedAt: string | null }[];
 };
 
 export type AdminEditUserInput = {
@@ -290,7 +290,8 @@ export function createApiClient(opts: ClientOptions) {
       withHost: (companionId: string) => get<{ prices: ChatPricesDto; conversation: ConversationDto | null }>(`/chats/with/${companionId}`),
       unlock: (companionId: string, kind: ChatUnlockKind) => post<ConversationDto>('/chats/unlock', { companionId, kind }),
       get: (id: string) => get<{ conversation: ConversationDto; messages: DirectMessageDto[] }>(`/chats/${id}`),
-      send: (id: string, body: string) => post<{ message: DirectMessageDto; warning: string | null }>(`/chats/${id}/messages`, { body }),
+      /** `earned`: coins the host just earned by replying (0 otherwise) */
+      send: (id: string, body: string) => post<{ message: DirectMessageDto; warning: string | null; earned?: number }>(`/chats/${id}/messages`, { body }),
     },
     payments: {
       /** add coins (spend-only wallet balance); confirm with verify() like other payments */

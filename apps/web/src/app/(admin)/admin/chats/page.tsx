@@ -21,8 +21,9 @@ export default function ChatsPage() {
     <>
       <PageTitle title="Paid chats" subtitle="Coin payments to open chats with hosts. All coins are platform revenue unless refunded." />
       {stats && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <Stat label="Earned" value={formatINR(stats.earned)} tone="lime" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+          <Stat label="Platform earned" value={formatINR(stats.earned)} tone="lime" />
+          <Stat label="Paid to hosts" value={formatINR(stats.hostEarnings ?? 0)} tone="sky" />
           <Stat label="Waiting for reply" value={formatINR(stats.pending)} tone="sunny" />
           <Stat label="Refunded" value={formatINR(stats.refunded)} />
           <Stat label="Unlocks" value={stats.unlocks} />
@@ -43,7 +44,7 @@ export default function ChatsPage() {
         <Loading />
       ) : (
         <>
-          <Table head={['When (IST)', 'Member', 'Host', 'Type', 'Coins', 'Status', '']} empty={data.items.length === 0}>
+          <Table head={['When (IST)', 'Member', 'Host', 'Type', 'Coins', 'Host share', 'Status', '']} empty={data.items.length === 0}>
             {data.items.map((u) => (
               <tr key={u.id}>
                 <Td className="whitespace-nowrap text-xs">{dtIST(u.createdAt)}</Td>
@@ -53,6 +54,12 @@ export default function ChatsPage() {
                 <Td className="tabular-nums">
                   <CoinAmount n={u.price} />
                   {u.promoUsed > 0 && <span className="block text-xs text-ink-mute">{formatINR(u.promoUsed)} from credit</span>}
+                </Td>
+                <Td className="whitespace-nowrap text-sm">
+                  {u.hostSharePct}%
+                  <span className="block text-xs text-ink-mute">
+                    {u.status === 'ANSWERED' ? `paid ${u.hostEarning}` : u.status === 'REFUNDED' ? 'none (refunded)' : `${Math.floor((u.price * u.hostSharePct) / 100)} on reply`}
+                  </span>
                 </Td>
                 <Td>
                   <StatusBadge status={u.status === 'ANSWERED' ? 'COMPLETED' : u.status === 'REFUNDED' ? 'REFUNDED' : 'PENDING'} />

@@ -16,6 +16,9 @@ type ConvWith = Conversation & {
   unlocks?: ChatUnlock[];
 };
 
+/** the host's cut of a chat payment, in whole coins (rounded down — the platform keeps the remainder) */
+const share = (price: number, pct: number) => Math.floor((price * pct) / 100);
+
 const toMessageDto = (m: DirectMessage): DirectMessageDto => ({ id: m.id, conversationId: m.conversationId, senderId: m.senderId, body: m.body, createdAt: m.createdAt.toISOString() });
 
 /**
@@ -77,6 +80,7 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
       canWrite: isHost || this.canWrite(c),
       hostReplied: !!c.hostRepliedAt,
       refundDueAt: waiting?.refundDueAt.toISOString() ?? null,
+      earnOnReply: isHost ? (c.unlocks ?? []).filter((u) => u.status === 'ACTIVE').reduce((s, u) => s + share(u.price, u.hostSharePct), 0) : 0,
       lastMessage: last ? { body: last.body, senderId: last.senderId, createdAt: last.createdAt.toISOString() } : null,
       unread: !!last && last.senderId !== viewerId && (!readAt || readAt < last.createdAt),
       createdAt: c.createdAt.toISOString(),
@@ -154,6 +158,8 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
           price,
           hours: kind === 'TIMED' ? s.timedHours : null,
           refundDueAt: new Date(now + s.refundHours * HOUR),
+          // the share is fixed when the member pays, so changing the setting never changes what's owed
+          hostSharePct: (await this.settings.get()).chatHostSharePct,
         },
       });
       let promoUsed: number;
@@ -185,15 +191,27 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
     if (!f.body) throw new BadRequestException('Message is empty');
 
     const now = new Date();
-    const [m] = await this.prisma.$transaction([
-      this.prisma.directMessage.create({ data: { conversationId: id, senderId: viewer.id, body: f.body, flagged: f.flagged, flagReason: f.reason } }),
-      this.prisma.conversation.update({
+    const { m, earned } = await this.prisma.$transaction(async (tx) => {
+      const m = await tx.directMessage.create({ data: { conversationId: id, senderId: viewer.id, body: f.body, flagged: f.flagged, flagReason: f.reason } });
+      await tx.conversation.update({
         where: { id },
         data: { lastMessageAt: now, ...(isHost ? { hostRepliedAt: now, hostReadAt: now } : { userReadAt: now }) },
-      }),
-      // the host answered: the coins waiting on a reply are earned (no refund)
-      ...(isHost ? [this.prisma.chatUnlock.updateMany({ where: { conversationId: id, status: 'ACTIVE' }, data: { status: 'ANSWERED' } })] : []),
-    ]);
+      });
+      // the host answered: each payment waiting on a reply is kept (no refund) and the host gets their share of it.
+      // Claimed one by one, so a payment the refund job just returned can't also be paid to the host.
+      let earned = 0;
+      if (isHost) {
+        const waiting = await tx.chatUnlock.findMany({ where: { conversationId: id, status: 'ACTIVE' } });
+        for (const u of waiting) {
+          const cut = share(u.price, u.hostSharePct);
+          const claimed = await tx.chatUnlock.updateMany({ where: { id: u.id, status: 'ACTIVE' }, data: { status: 'ANSWERED', hostEarning: cut } });
+          if (!claimed.count || cut <= 0) continue;
+          await this.wallet.credit(tx, viewer.id, cut, `Chat earnings · ${c.user.name?.split(' ')[0] ?? 'a member'}`, { type: 'chat-earning', id: u.id });
+          earned += cut;
+        }
+      }
+      return { m, earned };
+    });
     const dto = toMessageDto(m);
     this.rt.toUser(other, 'dm:new', dto);
     this.rt.toUser(viewer.id, 'dm:new', dto);
@@ -208,11 +226,18 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
         await this.notifications.notify(other, {
           type: 'chat.new',
           title: `New message from ${viewer.name?.split(' ')[0] ?? 'a member'} 💬`,
-          body: `“${f.body.slice(0, 120)}” — reply within ${(await this.prices()).refundHours}h. Replies are free.`,
+          body: `“${f.body.slice(0, 120)}” — reply within ${(await this.prices()).refundHours}h${c.unlocks?.some((u) => u.status === 'ACTIVE' && u.hostSharePct > 0) ? ' to earn coins' : ''}. Replies are free.`,
           link: `/messages/${id}`,
         });
     }
-    return { message: dto, warning: f.flagged ? 'For your safety, contact details and off-platform payment info are hidden. Keep it platonic.' : null };
+    if (earned > 0)
+      await this.notifications.notify(viewer.id, {
+        type: 'chat.earning',
+        title: `You earned ${earned.toLocaleString('en-IN')} coins 💸`,
+        body: `For replying to ${c.user.name?.split(' ')[0] ?? 'a member'}. It’s in your wallet and can be withdrawn.`,
+        link: '/wallet',
+      });
+    return { message: dto, warning: f.flagged ? 'For your safety, contact details and off-platform payment info are hidden. Keep it platonic.' : null, earned };
   }
 
   /** Coins back for unlocks the host never answered in time (runs every minute). */
@@ -251,13 +276,13 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
 
   async adminStats(): Promise<AdminChatStatsDto> {
     const [kept, pending, refunded, unlocks, conversations] = await Promise.all([
-      this.prisma.chatUnlock.aggregate({ where: { status: 'ANSWERED' }, _sum: { price: true } }),
+      this.prisma.chatUnlock.aggregate({ where: { status: 'ANSWERED' }, _sum: { price: true, hostEarning: true } }),
       this.prisma.chatUnlock.aggregate({ where: { status: 'ACTIVE' }, _sum: { price: true } }),
       this.prisma.chatUnlock.aggregate({ where: { status: 'REFUNDED' }, _sum: { price: true } }),
       this.prisma.chatUnlock.count(),
       this.prisma.conversation.count(),
     ]);
-    return { earned: kept._sum.price ?? 0, pending: pending._sum.price ?? 0, refunded: refunded._sum.price ?? 0, unlocks, conversations };
+    return { earned: (kept._sum.price ?? 0) - (kept._sum.hostEarning ?? 0), hostEarnings: kept._sum.hostEarning ?? 0, pending: pending._sum.price ?? 0, refunded: refunded._sum.price ?? 0, unlocks, conversations };
   }
 
   async adminUnlocks(page = 1, status?: string) {
@@ -276,6 +301,8 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
       price: u.price,
       hours: u.hours,
       promoUsed: u.promoUsed,
+      hostSharePct: u.hostSharePct,
+      hostEarning: u.hostEarning,
       status: u.status as AdminChatUnlockDto['status'],
       refundDueAt: u.refundDueAt.toISOString(),
       refundedAt: u.refundedAt?.toISOString() ?? null,
@@ -298,7 +325,7 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
       permanent: c.permanent,
       accessUntil: c.accessUntil?.toISOString() ?? null,
       messages: c.messages.map((m) => ({ ...toMessageDto(m), flagged: m.flagged, flagReason: m.flagReason, hidden: m.hidden })),
-      unlocks: c.unlocks.map((u) => ({ id: u.id, kind: u.kind, price: u.price, hours: u.hours, status: u.status, createdAt: u.createdAt.toISOString(), refundedAt: u.refundedAt?.toISOString() ?? null })),
+      unlocks: c.unlocks.map((u) => ({ id: u.id, kind: u.kind, price: u.price, hours: u.hours, status: u.status, hostEarning: u.hostEarning, createdAt: u.createdAt.toISOString(), refundedAt: u.refundedAt?.toISOString() ?? null })),
     };
   }
 }
