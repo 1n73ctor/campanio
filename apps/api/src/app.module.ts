@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { MaintenanceGuard } from './common/maintenance.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma.service';
 import { SettingsModule } from './common/settings.service';
@@ -64,6 +65,6 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     PublicSafetyShareController,
     DemoDigilockerController,
   ],
-  providers: [CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
 })
 export class AppModule {}

@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   chatTimedHours: 24,
   chatPermanentPrice: 99,
   chatRefundHours: 48,
+  maintenanceMode: 0,
 };
 
 /** Platform business rules live here (and only here). Admins can edit them from the panel. */

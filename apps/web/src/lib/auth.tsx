@@ -34,6 +34,16 @@ export const endViewAs = () => {
   } catch {}
 };
 
+/** The site went under maintenance while this page was open: reload, and the website shows the "back soon" page. */
+const showMaintenance = () => {
+  try {
+    const last = Number(sessionStorage.getItem('companio.maintenanceReload') ?? 0);
+    if (Date.now() - last < 10_000) return; // the website may take a few seconds to notice — don't reload in a loop
+    sessionStorage.setItem('companio.maintenanceReload', String(Date.now()));
+  } catch {}
+  window.location.reload();
+};
+
 const readToken = () => {
   const v = readViewAs();
   if (v) return v.token;
@@ -77,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const api = useMemo(() => createApiClient({ baseUrl: API_URL, getToken: readToken, onUnauthorized: signOut }), [signOut]);
+  const api = useMemo(() => createApiClient({ baseUrl: API_URL, getToken: readToken, onUnauthorized: signOut, onMaintenance: showMaintenance }), [signOut]);
 
   const refresh = useCallback(async () => {
     if (!readToken()) return null;

@@ -619,6 +619,12 @@ export class AdminService {
     return this.settings.get();
   }
 
+  async setMaintenance(admin: User, on: boolean) {
+    await this.settings.update({ maintenanceMode: on ? 1 : 0 });
+    await this.audit.log(admin.id, on ? 'maintenance.on' : 'maintenance.off', 'settings', 'platform', {});
+    return { maintenance: on };
+  }
+
   async updateSettings(admin: User, patch: Partial<PlatformSettings>) {
     const before = await this.settings.get();
     const after = await this.settings.update(patch);

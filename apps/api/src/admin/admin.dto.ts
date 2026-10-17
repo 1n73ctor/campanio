@@ -98,6 +98,7 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(1) @Max(720) chatTimedHours?: number;
   @IsOptional() @IsInt() @Min(1) @Max(10000) chatPermanentPrice?: number;
   @IsOptional() @IsInt() @Min(1) @Max(336) chatRefundHours?: number;
+  @IsOptional() @IsIn([0, 1]) maintenanceMode?: number;
 }
 
 /** A host's public profile, as an admin may correct it (same limits as the host's own form). */
@@ -134,4 +135,8 @@ export class AdminEditUserDto {
 /** "Log in as this user" (read-only view) — the reason is kept in the audit log. */
 export class ImpersonateDto {
   @IsString() @Length(5, 300) reason: string;
+}
+
+export class MaintenanceDto {
+  @IsBoolean() on: boolean;
 }

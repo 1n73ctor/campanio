@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Card, Stat, StatusBadge } from '@companio/ui';
 import { BarChart } from '@/admin/components/bar-chart';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
+import { MaintenanceCard } from '@/admin/components/maintenance';
 import { useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, formatINR } from '@/admin/lib/format';
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   return (
     <>
       <PageTitle title="Dashboard" subtitle="Platform health at a glance. Money is in INR." />
+      <MaintenanceCard />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="GMV (net of refunds)" value={formatINR(data.gmv)} tone="lime" />
         <Stat label="Platform revenue" value={formatINR(data.revenue)} tone="pink" hint="Fees + GST + commission" />

@@ -542,6 +542,8 @@ export interface PlatformSettings {
   chatPermanentPrice: Rupees;
   /** hours the host has to reply before the coins go back automatically */
   chatRefundHours: number;
+  /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */
+  maintenanceMode: number;
 }
 
 /** Public offer terms, for marketing copy ("₹100 off your first booking"). */
