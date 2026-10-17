@@ -184,6 +184,22 @@ export default function SettingsPage() {
               <NumberInput value={form.chatRefundHours} onValueChange={(n) => setForm((x) => (x ? { ...x, chatRefundHours: Math.round(n) } : x))} />
             </Field>
           </div>
+          <div className="mt-4">
+            <p className="font-bold">How members add coins</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant={form.manualTopup === 1 ? 'primary' : 'white'} onClick={() => setForm({ ...form, manualTopup: 1 })}>
+                UPI QR — I approve each payment
+              </Button>
+              <Button size="sm" variant={form.manualTopup === 0 ? 'primary' : 'white'} onClick={() => setForm({ ...form, manualTopup: 0 })}>
+                Payment gateway (Cashfree)
+              </Button>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">
+              {form.manualTopup === 1
+                ? 'Members pay your UPI QR with a note (their name + a code); you check and approve each one in Coin top-ups.'
+                : 'Members pay through Cashfree and the coins are added automatically. Switch to this once Cashfree is live.'}
+            </p>
+          </div>
           {form.chatPermanentPrice <= form.chatTimedPrice && (
             <p className="mt-2 text-sm font-semibold text-danger">The forever price should be higher than the timed price.</p>
           )}

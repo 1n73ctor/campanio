@@ -92,7 +92,9 @@ export class PaymentsService {
    * stolen card can't be turned into a UPI payout. Only while paid chats are switched on.
    */
   async checkoutTopUp(user: User, amount: number): Promise<FeeCheckoutResponse> {
-    if ((await this.settings.get()).chatEnabled !== 1) throw new ForbiddenException('Adding coins isn’t available right now');
+    const s = await this.settings.get();
+    if (s.chatEnabled !== 1) throw new ForbiddenException('Adding coins isn’t available right now');
+    if (s.manualTopup === 1) throw new ForbiddenException('Coins are added by UPI QR for now — use “Add coins” in your wallet');
     if (!Number.isInteger(amount) || amount < TOPUP_MIN || amount > TOPUP_MAX) throw new BadRequestException(`Add between ${formatINR(TOPUP_MIN)} and ${formatINR(TOPUP_MAX)}`);
     const base = { purpose: 'WALLET_TOPUP', userId: user.id, walletAmount: 0 };
     const { orderId, sessionId } = await this.provider.createOrder(amount, `topup_${user.id}`, customerOf(user));

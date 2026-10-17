@@ -60,6 +60,7 @@ model User {
   totpEnabledAt          DateTime?
   totpLastStep           Int?
   chatsAsUser            Conversation[]  @relation("ConversationUser")
+  topUpRequests          TopUpRequest[]  @relation("TopUpRequests")
   chatsAsHost            Conversation[]  @relation("ConversationHost")
   directMessages         DirectMessage[] @relation("DirectMessageSender")
 
@@ -532,4 +533,30 @@ model ChatUnlock {
 
   @@index([status, refundDueAt])
   @@index([createdAt])
+}
+
+/// Coins bought by paying the platform's UPI QR (until the payment gateway is live). An admin checks the payment
+/// against the UPI app (amount, note with the reference code, transaction ID) and approves it, which adds the coins.
+model TopUpRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation("TopUpRequests", fields: [userId], references: [id])
+  amount       Int
+  /// short code the member puts in the UPI payment note (e.g. CMP-7KQ2)
+  ref          String    @unique
+  note         String
+  /// UPI transaction ID (UTR), if the member entered it
+  utr          String?
+  /// STARTED (QR shown) · PENDING (member says they paid) · APPROVED · REJECTED · CANCELLED
+  status       String    @default("STARTED")
+  credited     Int?
+  reviewedById String?
+  reviewNote   String?
+  createdAt    DateTime  @default(now())
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([utr])
 }

@@ -16,6 +16,8 @@ import { BookingsModule } from './bookings/bookings.module';
 import { ChatsModule } from './chats/chats.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WalletController } from './wallet/wallet.controller';
+import { AdminTopUpsController, TopUpsController } from './wallet/topups.controller';
+import { TopUpsService } from './wallet/topups.service';
 import { ReportsController } from './safety/reports.controller';
 import { MetaController } from './meta/meta.controller';
 import { AdminController } from './admin/admin.controller';
@@ -55,6 +57,8 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     EmailVerifyController,
     CompanionsController,
     CompanionSelfController,
+    TopUpsController,
+    AdminTopUpsController,
     WalletController,
     ReportsController,
     NotificationsController,
@@ -65,6 +69,6 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     PublicSafetyShareController,
     DemoDigilockerController,
   ],
-  providers: [CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
+  providers: [TopUpsService, CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
 })
 export class AppModule {}

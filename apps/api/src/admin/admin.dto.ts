@@ -98,6 +98,7 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(1) @Max(720) chatTimedHours?: number;
   @IsOptional() @IsInt() @Min(1) @Max(10000) chatPermanentPrice?: number;
   @IsOptional() @IsInt() @Min(1) @Max(336) chatRefundHours?: number;
+  @IsOptional() @IsIn([0, 1]) manualTopup?: number;
   @IsOptional() @IsIn([0, 1]) maintenanceMode?: number;
 }
 

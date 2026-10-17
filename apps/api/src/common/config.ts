@@ -61,6 +61,11 @@ export const config = {
     from: process.env.MAIL_FROM || `Companio <${process.env.SMTP_USER || 'info@getcompanio.in'}>`,
     replyTo: process.env.MAIL_REPLY_TO || process.env.SMTP_USER || undefined,
   },
+  /** the platform's UPI ID and name for coin top-ups by QR (until the payment gateway is live). Empty = off. */
+  upiPayee: {
+    vpa: (process.env.UPI_PAYEE_VPA ?? '').trim(),
+    name: (process.env.UPI_PAYEE_NAME ?? 'Companio').trim(),
+  },
   /** serve the Swagger API docs (always on in development; off in production unless set) */
   docsEnabled: process.env.NODE_ENV !== 'production' || ['1', 'true', 'yes'].includes((process.env.API_DOCS ?? '').toLowerCase()),
 };

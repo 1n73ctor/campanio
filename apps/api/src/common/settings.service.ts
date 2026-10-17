@@ -32,6 +32,8 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   chatTimedHours: 24,
   chatPermanentPrice: 99,
   chatRefundHours: 48,
+  // coins by UPI QR + admin approval until the payment gateway is live (needs UPI_PAYEE_VPA in .env)
+  manualTopup: 1,
   maintenanceMode: 0,
 };
 

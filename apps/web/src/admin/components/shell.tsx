@@ -11,7 +11,7 @@ import { useAdminRealtime } from '@/admin/lib/realtime';
 import { ToastProvider, useToast } from './toast';
 import { Loading } from './ui';
 
-type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts'>;
+type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'pendingTopups'>;
 
 const NAV: { href: string; label: string; icon: string; count?: keyof Counts; urgent?: boolean }[] = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -22,6 +22,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/payouts', label: 'Payouts', icon: '🏦', count: 'pendingPayouts' },
   { href: '/admin/bookings', label: 'Bookings & refunds', icon: '📅' },
   { href: '/admin/users', label: 'Users', icon: '👥' },
+  { href: '/admin/topups', label: 'Coin top-ups', icon: '🪙', count: 'pendingTopups' },
   { href: '/admin/chats', label: 'Paid chats', icon: '💬' },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },

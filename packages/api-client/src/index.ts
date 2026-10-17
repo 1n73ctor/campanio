@@ -1,4 +1,7 @@
 import type {
+  AdminTopUpDto,
+  TopUpRequestDto,
+  TopUpStartDto,
   AdminChatStatsDto,
   AdminChatUnlockDto,
   ChatPricesDto,
@@ -272,6 +275,14 @@ export function createApiClient(opts: ClientOptions) {
       messages: (id: string) => get<MessageDto[]>(`/bookings/${id}/messages`),
       send: (id: string, body: string) => post<{ message: MessageDto; warning: string | null }>(`/bookings/${id}/messages`, { body }),
     },
+    /** coins by UPI QR (until the payment gateway is live): pay, then an admin approves */
+    topups: {
+      mode: () => get<{ coins: boolean; manual: boolean; payeeName: string | null; min: number; max: number }>('/wallet/topups/mode'),
+      mine: () => get<TopUpRequestDto[]>('/wallet/topups'),
+      start: (amount: number) => post<TopUpStartDto>('/wallet/topups', { amount }),
+      paid: (id: string, utr?: string) => post<TopUpRequestDto>(`/wallet/topups/${id}/paid`, { utr: utr || undefined }),
+      cancel: (id: string) => post<TopUpRequestDto>(`/wallet/topups/${id}/cancel`),
+    },
     /** paid chats with hosts (coins = wallet balance) */
     chats: {
       prices: () => get<ChatPricesDto>('/chats/prices'),
@@ -325,6 +336,9 @@ export function createApiClient(opts: ClientOptions) {
       chatStats: () => get<AdminChatStatsDto>('/admin/chats/stats'),
       chatUnlocks: (q: { page?: number; status?: string }) => get<Paginated<AdminChatUnlockDto>>('/admin/chats/unlocks', q),
       chatConversation: (id: string) => get<AdminChatConversation>(`/admin/chats/${id}`),
+      topups: (q: { status?: string; page?: number }) => get<Paginated<AdminTopUpDto>>('/admin/topups', q),
+      approveTopup: (id: string, input: { amount?: number; note?: string }) => post<{ ok: true }>(`/admin/topups/${id}/approve`, input),
+      rejectTopup: (id: string, reason: string) => post<{ ok: true }>(`/admin/topups/${id}/reject`, { reason }),
       /** one click: the whole site under maintenance, or back */
       setMaintenance: (on: boolean) => post<{ maintenance: boolean }>('/admin/maintenance', { on }),
       impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),
