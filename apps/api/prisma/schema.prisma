@@ -14,63 +14,66 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  phone              String?   @unique
+  id                     String          @id @default(cuid())
+  phone                  String?         @unique
   // admin sign-in email (unique). Members' email lives in contactEmail so typing one can't collide with, or reveal, an admin login.
-  email              String?   @unique
-  contactEmail       String?
+  email                  String?         @unique
+  contactEmail           String?
   // set when they click the link we emailed to contactEmail; cleared when the address changes. Only verified addresses get our emails.
   contactEmailVerifiedAt DateTime?
-  passwordHash       String?
-  name               String?
-  dob                DateTime?
-  gender             String?
-  city               String?
-  bio                String?
-  avatarUrl          String?
-  role               String    @default("USER")
-  status             String    @default("ACTIVE")
-  statusReason       String?
-  onboarded          Boolean   @default(false)
-  guidelinesAccepted DateTime?
-  warnings           Int       @default(0)
+  passwordHash           String?
+  name                   String?
+  dob                    DateTime?
+  gender                 String?
+  city                   String?
+  bio                    String?
+  avatarUrl              String?
+  role                   String          @default("USER")
+  status                 String          @default("ACTIVE")
+  statusReason           String?
+  onboarded              Boolean         @default(false)
+  guidelinesAccepted     DateTime?
+  warnings               Int             @default(0)
   // referrals: code is generated lazily; reward is paid once, when the referred user's first booking is released
-  referralCode       String?   @unique
-  referredById       String?
-  referredBy         User?     @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals          User[]    @relation("Referrals")
-  referralRewardedAt DateTime?
+  referralCode           String?         @unique
+  referredById           String?
+  referredBy             User?           @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]          @relation("Referrals")
+  referralRewardedAt     DateTime?
   // companion registration fee (amount incl. GST); a refund reopens the fee, so re-applying means paying again
   companionFeePaid       Int?
   companionFeePaidAt     DateTime?
   companionFeeRefundedAt DateTime?
   // one-time welcome credit (set when it's paid so it can never be paid twice)
   welcomeCreditAt        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  deletedAt          DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  deletedAt              DateTime?
   // on deletion the phone moves here: frees the number for a new sign-up, but admins still see who it was
-  deletedPhone       String?
+  deletedPhone           String?
   // bumped by "log out of all other devices": tokens carrying an older version stop working
-  tokenVersion       Int       @default(0)
+  tokenVersion           Int             @default(0)
   // admin sign-in protection: lock after repeated wrong passwords; optional authenticator-app 2FA
-  failedLogins       Int       @default(0)
-  lockedUntil        DateTime?
-  totpSecret         String?
-  totpEnabledAt      DateTime?
-  totpLastStep       Int?
+  failedLogins           Int             @default(0)
+  lockedUntil            DateTime?
+  totpSecret             String?
+  totpEnabledAt          DateTime?
+  totpLastStep           Int?
+  chatsAsUser            Conversation[]  @relation("ConversationUser")
+  chatsAsHost            Conversation[]  @relation("ConversationHost")
+  directMessages         DirectMessage[] @relation("DirectMessageSender")
 
   companion         CompanionProfile?
   wallet            Wallet?
-  bookings          Booking[]         @relation("BookingUser")
-  companionBookings Booking[]         @relation("BookingCompanion")
+  bookings          Booking[]           @relation("BookingUser")
+  companionBookings Booking[]           @relation("BookingCompanion")
   messages          Message[]
-  reviewsWritten    Review[]          @relation("ReviewAuthor")
-  reviewsReceived   Review[]          @relation("ReviewTarget")
-  reportsMade       Report[]          @relation("ReportReporter")
-  reportsAgainst    Report[]          @relation("ReportTarget")
-  blocks            Block[]           @relation("Blocker")
-  blockedBy         Block[]           @relation("Blocked")
+  reviewsWritten    Review[]            @relation("ReviewAuthor")
+  reviewsReceived   Review[]            @relation("ReviewTarget")
+  reportsMade       Report[]            @relation("ReportReporter")
+  reportsAgainst    Report[]            @relation("ReportTarget")
+  blocks            Block[]             @relation("Blocker")
+  blockedBy         Block[]             @relation("Blocked")
   kycSubmissions    KycSubmission[]
   digilocker        DigilockerSession[]
   payouts           Payout[]
@@ -82,13 +85,13 @@ model User {
 }
 
 model OtpCode {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   phone     String
   codeHash  String
   expiresAt DateTime
-  attempts  Int      @default(0)
+  attempts  Int       @default(0)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([phone, createdAt])
 }
@@ -124,20 +127,20 @@ model CompanionProfile {
 }
 
 model KycSubmission {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  idType     String
-  idLast4    String
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idType         String
+  idLast4        String
   // MANUAL: the companion uploaded a photo of their ID. DIGILOCKER: idDocPath is the photo on their Aadhaar record.
-  method     String    @default("MANUAL")
-  idDocPath  String
-  selfiePath String
-  status     String    @default("PENDING")
-  reviewNote String?
-  reviewerId String?
-  createdAt  DateTime  @default(now())
-  reviewedAt DateTime?
+  method         String    @default("MANUAL")
+  idDocPath      String
+  selfiePath     String
+  status         String    @default("PENDING")
+  reviewNote     String?
+  reviewerId     String?
+  createdAt      DateTime  @default(now())
+  reviewedAt     DateTime?
   // from the government record (DigiLocker only) — never the full Aadhaar number
   verifiedName   String?
   verifiedDob    DateTime?
@@ -212,15 +215,15 @@ model Booking {
   remindedDayAt   DateTime?
   remindedSoonAt  DateTime?
 
-  escrow    Escrow?
-  payments  Payment[]
-  messages  Message[]
-  review    Review?
-  dispute   Dispute?
-  sosAlerts SosAlert[]
-  locations LiveLocation[]
+  escrow       Escrow?
+  payments     Payment[]
+  messages     Message[]
+  review       Review?
+  dispute      Dispute?
+  sosAlerts    SosAlert[]
+  locations    LiveLocation[]
   safetyShares SafetyShare[]
-  reports   Report[]
+  reports      Report[]
 
   @@index([userId, status])
   @@index([companionUserId, status])
@@ -248,28 +251,28 @@ model Payment {
 }
 
 model Escrow {
-  id         String    @id @default(cuid())
-  bookingId  String    @unique
-  booking    Booking   @relation(fields: [bookingId], references: [id])
-  amount     Int
-  refunded   Int       @default(0)
-  released   Int       @default(0)
+  id        String    @id @default(cuid())
+  bookingId String    @unique
+  booking   Booking   @relation(fields: [bookingId], references: [id])
+  amount    Int
+  refunded  Int       @default(0)
+  released  Int       @default(0)
   /// platform revenue retained (connection fee + GST + commission)
-  retained   Int       @default(0)
-  status     String    @default("HELD")
-  heldAt     DateTime  @default(now())
-  settledAt  DateTime?
+  retained  Int       @default(0)
+  status    String    @default("HELD")
+  heldAt    DateTime  @default(now())
+  settledAt DateTime?
 }
 
 model Wallet {
-  id        String      @id @default(cuid())
-  userId    String      @unique
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balance   Int         @default(0)
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Int         @default(0)
   /// the part of `balance` that is spend-only credit: pays for bookings, can never be withdrawn (see WalletLedger)
-  promoBalance Int      @default(0)
-  updatedAt DateTime    @updatedAt
-  txns      WalletTxn[]
+  promoBalance Int         @default(0)
+  updatedAt    DateTime    @updatedAt
+  txns         WalletTxn[]
 }
 
 model WalletTxn {
@@ -322,16 +325,16 @@ model Review {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  bookingId String
-  booking   Booking  @relation(fields: [bookingId], references: [id])
-  senderId  String
-  sender    User     @relation(fields: [senderId], references: [id])
-  body      String
-  flagged   Boolean  @default(false)
+  id         String   @id @default(cuid())
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  senderId   String
+  sender     User     @relation(fields: [senderId], references: [id])
+  body       String
+  flagged    Boolean  @default(false)
   flagReason String?
-  hidden    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  hidden     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   reports Report[]
 
@@ -340,22 +343,22 @@ model Message {
 }
 
 model Report {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   reporterId   String
-  reporter     User     @relation("ReportReporter", fields: [reporterId], references: [id])
+  reporter     User      @relation("ReportReporter", fields: [reporterId], references: [id])
   targetUserId String
-  target       User     @relation("ReportTarget", fields: [targetUserId], references: [id])
+  target       User      @relation("ReportTarget", fields: [targetUserId], references: [id])
   bookingId    String?
-  booking      Booking? @relation(fields: [bookingId], references: [id])
+  booking      Booking?  @relation(fields: [bookingId], references: [id])
   messageId    String?
-  message      Message? @relation(fields: [messageId], references: [id])
+  message      Message?  @relation(fields: [messageId], references: [id])
   reason       String
   details      String?
-  status       String   @default("OPEN")
+  status       String    @default("OPEN")
   action       String?
   resolution   String?
   handledById  String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
   handledAt    DateTime?
 
   @@index([status])
@@ -465,4 +468,68 @@ model AuditLog {
 model Setting {
   key   String @id
   value String
+}
+
+/// A paid chat between a member and a host (outside any meetup). The member opens it with coins (wallet balance).
+model Conversation {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation("ConversationUser", fields: [userId], references: [id])
+  hostId        String
+  host          User      @relation("ConversationHost", fields: [hostId], references: [id])
+  /// opened for good (a permanent unlock that wasn't refunded)
+  permanent     Boolean   @default(false)
+  /// a timed unlock lets the member write until then
+  accessUntil   DateTime?
+  lastMessageAt DateTime?
+  hostRepliedAt DateTime?
+  userReadAt    DateTime?
+  hostReadAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  messages DirectMessage[]
+  unlocks  ChatUnlock[]
+
+  @@unique([userId, hostId])
+  @@index([hostId, lastMessageAt])
+  @@index([userId, lastMessageAt])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("DirectMessageSender", fields: [senderId], references: [id])
+  body           String
+  flagged        Boolean      @default(false)
+  flagReason     String?
+  hidden         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+/// Every coin payment to open a chat — the log admins see. All of it is platform revenue unless refunded.
+model ChatUnlock {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  hostId         String
+  /// TIMED or PERMANENT
+  kind           String
+  price          Int
+  /// TIMED: how long it opened the chat for
+  hours          Int?
+  /// how much of the price was spend-only credit (refunded as credit)
+  promoUsed      Int          @default(0)
+  /// ACTIVE (waiting for the host's reply) · ANSWERED (host replied — kept) · REFUNDED (no reply in time)
+  status         String       @default("ACTIVE")
+  refundDueAt    DateTime
+  refundedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([status, refundDueAt])
+  @@index([createdAt])
 }

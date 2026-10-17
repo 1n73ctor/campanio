@@ -5,6 +5,7 @@ import { CATEGORIES, WEEKDAYS, cityBySlug, formatINR } from '@companio/types';
 import { Avatar, Badge, Card, Stars, buttonClass } from '@companio/ui';
 import { JsonLd } from '@/components/misc';
 import { ProfileActions } from '@/components/profile-actions';
+import { MessageHost } from '@/components/message-host';
 import { serverApi } from '@/lib/server-api';
 import { fmtDate } from '@/lib/format';
 import { SITE_URL } from '@/lib/env';
@@ -153,6 +154,7 @@ export default async function CompanionPage({ params }: { params: Promise<{ id: 
             <Link href={`/book/${c.id}`} className={buttonClass('primary', 'lg', 'w-full')}>
               Request a meetup with {first}
             </Link>
+            <MessageHost companionId={c.id} companionUserId={c.userId} name={first} />
             <ul className="space-y-1.5 text-sm">
               <li>🔐 Paid into escrow — released after the meetup</li>
               <li>↩️ Full refund if {first} declines or doesn’t show</li>

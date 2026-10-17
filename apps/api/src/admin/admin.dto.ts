@@ -93,6 +93,11 @@ export class SettingsDto {
   @IsOptional() @IsNumber() @Min(0) @Max(50) cashbackPct?: number;
   @IsOptional() @IsInt() @Min(0) @Max(5000) cashbackMax?: number;
   @IsOptional() @IsIn([0, 1]) kycAutoApprove?: number;
+  @IsOptional() @IsIn([0, 1]) chatEnabled?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(5000) chatTimedPrice?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(720) chatTimedHours?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(10000) chatPermanentPrice?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(336) chatRefundHours?: number;
 }
 
 /** A host's public profile, as an admin may correct it (same limits as the host's own form). */

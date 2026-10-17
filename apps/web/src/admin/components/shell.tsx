@@ -21,6 +21,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/payouts', label: 'Payouts', icon: '🏦', count: 'pendingPayouts' },
   { href: '/admin/bookings', label: 'Bookings & refunds', icon: '📅' },
   { href: '/admin/users', label: 'Users', icon: '👥' },
+  { href: '/admin/chats', label: 'Paid chats', icon: '💬' },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },

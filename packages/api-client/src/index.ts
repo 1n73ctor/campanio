@@ -1,4 +1,10 @@
 import type {
+  AdminChatStatsDto,
+  AdminChatUnlockDto,
+  ChatPricesDto,
+  ChatUnlockKind,
+  ConversationDto,
+  DirectMessageDto,
   AdminStatsDto,
   AdminUserDto,
   ApplyCompanionInput,
@@ -74,6 +80,16 @@ const qs = (q?: Query) => {
 };
 
 export type AdminPage = { page?: number; q?: string; status?: string; role?: string };
+export type AdminChatConversation = {
+  id: string;
+  user: { id: string; name: string | null };
+  host: { id: string; name: string | null };
+  permanent: boolean;
+  accessUntil: string | null;
+  messages: (DirectMessageDto & { flagged: boolean; flagReason: string | null; hidden: boolean })[];
+  unlocks: { id: string; kind: string; price: number; hours: number | null; status: string; createdAt: string; refundedAt: string | null }[];
+};
+
 export type AdminEditUserInput = {
   name?: string;
   /** '' removes it */
@@ -224,7 +240,18 @@ export function createApiClient(opts: ClientOptions) {
       messages: (id: string) => get<MessageDto[]>(`/bookings/${id}/messages`),
       send: (id: string, body: string) => post<{ message: MessageDto; warning: string | null }>(`/bookings/${id}/messages`, { body }),
     },
+    /** paid chats with hosts (coins = wallet balance) */
+    chats: {
+      prices: () => get<ChatPricesDto>('/chats/prices'),
+      list: () => get<ConversationDto[]>('/chats'),
+      withHost: (companionId: string) => get<{ prices: ChatPricesDto; conversation: ConversationDto | null }>(`/chats/with/${companionId}`),
+      unlock: (companionId: string, kind: ChatUnlockKind) => post<ConversationDto>('/chats/unlock', { companionId, kind }),
+      get: (id: string) => get<{ conversation: ConversationDto; messages: DirectMessageDto[] }>(`/chats/${id}`),
+      send: (id: string, body: string) => post<{ message: DirectMessageDto; warning: string | null }>(`/chats/${id}/messages`, { body }),
+    },
     payments: {
+      /** add coins (spend-only wallet balance); confirm with verify() like other payments */
+      topUp: (amount: number) => post<FeeCheckoutResponse>('/payments/topup', { amount }),
       checkout: (bookingId: string, useWallet = true) => post<CheckoutResponse>('/payments/checkout', { bookingId, useWallet }),
       companionFee: (useWallet = true) => post<FeeCheckoutResponse>('/payments/companion-fee', { useWallet }),
       verify: (input: VerifyPaymentInput) => post<{ status: 'PAID'; bookingId: string | null; purpose: string }>('/payments/verify', input),
@@ -263,6 +290,9 @@ export function createApiClient(opts: ClientOptions) {
       /** correct someone's profile; only the fields sent change. `reason` goes in the audit log */
       editUser: (id: string, input: AdminEditUserInput) => patch<{ ok: true; changed: string[] }>(`/admin/users/${id}/profile`, input),
       /** "log in as": a 30-minute read-only session as this user (audited with the reason) */
+      chatStats: () => get<AdminChatStatsDto>('/admin/chats/stats'),
+      chatUnlocks: (q: { page?: number; status?: string }) => get<Paginated<AdminChatUnlockDto>>('/admin/chats/unlocks', q),
+      chatConversation: (id: string) => get<AdminChatConversation>(`/admin/chats/${id}`),
       impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),

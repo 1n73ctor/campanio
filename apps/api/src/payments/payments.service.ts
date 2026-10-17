@@ -13,6 +13,7 @@ import { RazorpayProvider } from './providers/razorpay.provider';
 import { CashfreeProvider } from './providers/cashfree.provider';
 import { CompanionFeeService } from '../companions/companion-fee.service';
 import { MailService } from '../mail/mail.service';
+import { SettingsService } from '../common/settings.service';
 
 @Injectable()
 export class PaymentsService {
@@ -25,6 +26,7 @@ export class PaymentsService {
     private rt: RealtimeService,
     private fee: CompanionFeeService,
     private mail: MailService,
+    private settings: SettingsService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
 
@@ -83,6 +85,38 @@ export class PaymentsService {
       return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount: external, walletAmount, keyId: this.provider.keyId };
     }
     return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount: external, walletAmount };
+  }
+
+  /**
+   * Add coins (wallet balance) through the gateway — for paid chats and meetups. Topped-up coins are spend-only, so a
+   * stolen card can't be turned into a UPI payout. Only while paid chats are switched on.
+   */
+  async checkoutTopUp(user: User, amount: number): Promise<FeeCheckoutResponse> {
+    if ((await this.settings.get()).chatEnabled !== 1) throw new ForbiddenException('Adding coins isn’t available right now');
+    if (!Number.isInteger(amount) || amount < TOPUP_MIN || amount > TOPUP_MAX) throw new BadRequestException(`Add between ${formatINR(TOPUP_MIN)} and ${formatINR(TOPUP_MAX)}`);
+    const base = { purpose: 'WALLET_TOPUP', userId: user.id, walletAmount: 0 };
+    const { orderId, sessionId } = await this.provider.createOrder(amount, `topup_${user.id}`, customerOf(user));
+    await this.prisma.payment.create({ data: { ...base, provider: this.provider.name, providerOrderId: orderId, amount } });
+    if (this.provider instanceof CashfreeProvider) {
+      return { status: 'ACTION_REQUIRED', provider: 'cashfree', orderId, paymentSessionId: sessionId!, mode: this.provider.mode, amount, walletAmount: 0 };
+    }
+    if (this.provider instanceof RazorpayProvider) {
+      return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount, walletAmount: 0, keyId: this.provider.keyId };
+    }
+    return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount, walletAmount: 0 };
+  }
+
+  private async markTopUpPaid(paymentId: string, providerPaymentId: string) {
+    const p = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.payment.updateMany({ where: { id: paymentId, status: { not: 'PAID' } }, data: { status: 'PAID', providerPaymentId } });
+      if (claimed.count === 0) return null; // already processed
+      const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+      await this.wallet.credit(tx, p.userId, p.amount, 'Coins added', { type: 'topup', id: p.id }, p.amount);
+      return p;
+    });
+    if (!p) return;
+    this.log.log(`wallet top-up ${formatINR(p.amount)} by ${p.userId}`);
+    await this.notifications.notify(p.userId, { type: 'payment.captured', title: `${formatINR(p.amount)} coins added 🪙`, body: 'Use them to message hosts or pay for meetups.', link: '/wallet' });
   }
 
   async verify(user: User, orderId: string, paymentId: string, signature: string) {
@@ -146,6 +180,7 @@ export class PaymentsService {
     const p0 = await this.prisma.payment.findUnique({ where: { providerOrderId: orderId } });
     if (!p0) throw new NotFoundException('Payment not found');
     if (p0.purpose === 'COMPANION_FEE') return this.markFeePaid(p0.id, providerPaymentId);
+    if (p0.purpose === 'WALLET_TOPUP') return this.markTopUpPaid(p0.id, providerPaymentId);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const p = await tx.payment.findUniqueOrThrow({ where: { id: p0.id } });
@@ -214,4 +249,6 @@ export class PaymentsService {
   }
 }
 
+const TOPUP_MIN = 50;
+const TOPUP_MAX = 10_000;
 const customerOf = (u: User) => ({ id: u.id, phone: u.phone, name: u.name, email: u.contactEmail });

@@ -533,6 +533,15 @@ export interface PlatformSettings {
   cashbackMax: Rupees;
   /** 1 = a DigiLocker verification that passes every automatic check goes live without waiting for an admin */
   kycAutoApprove: number;
+  /** paid chats with hosts (coins = wallet balance): 1 = on, 0 = off (no Message button anywhere) */
+  chatEnabled: number;
+  /** price to open a chat for `chatTimedHours` */
+  chatTimedPrice: Rupees;
+  chatTimedHours: number;
+  /** price to open a chat for good (priced above the timed one) */
+  chatPermanentPrice: Rupees;
+  /** hours the host has to reply before the coins go back automatically */
+  chatRefundHours: number;
 }
 
 /** Public offer terms, for marketing copy ("₹100 off your first booking"). */
@@ -578,4 +587,66 @@ export interface AuditLogDto {
   targetId: string;
   meta: string | null;
   createdAt: string;
+}
+
+// ---------- paid chats (coins = wallet balance) ----------
+export type ChatUnlockKind = 'TIMED' | 'PERMANENT';
+
+/** What opening a chat costs right now, and whether it's switched on. */
+export interface ChatPricesDto {
+  enabled: boolean;
+  timedPrice: Rupees;
+  timedHours: number;
+  permanentPrice: Rupees;
+  refundHours: number;
+}
+
+export interface DirectMessageDto {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ConversationDto {
+  id: string;
+  /** the viewer's side of the chat */
+  viewerRole: 'user' | 'host';
+  other: { id: string; name: string | null; avatarUrl: string | null; companionId: string | null };
+  permanent: boolean;
+  accessUntil: string | null;
+  /** can the member write right now (hosts can always reply) */
+  canWrite: boolean;
+  hostReplied: boolean;
+  /** the newest unlock still waiting for the host's reply: when its coins go back if they don't answer */
+  refundDueAt: string | null;
+  lastMessage: { body: string; senderId: string; createdAt: string } | null;
+  unread: boolean;
+  createdAt: string;
+}
+
+export interface AdminChatUnlockDto {
+  id: string;
+  conversationId: string;
+  user: { id: string; name: string | null };
+  host: { id: string; name: string | null };
+  kind: ChatUnlockKind;
+  price: Rupees;
+  hours: number | null;
+  promoUsed: Rupees;
+  status: 'ACTIVE' | 'ANSWERED' | 'REFUNDED';
+  refundDueAt: string;
+  refundedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminChatStatsDto {
+  /** coins kept (unlocks not refunded and no longer refundable or answered) */
+  earned: Rupees;
+  /** coins taken that could still be refunded (waiting for a reply) */
+  pending: Rupees;
+  refunded: Rupees;
+  unlocks: number;
+  conversations: number;
 }

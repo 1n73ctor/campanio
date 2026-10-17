@@ -3,7 +3,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import type { User } from '@prisma/client';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { SkipThrottle } from '@nestjs/throttler';
 import { AuthGuard, CurrentUser } from '../common/auth';
 import { PaymentsService } from './payments.service';
@@ -14,6 +15,9 @@ class CheckoutDto {
 }
 class FeeCheckoutDto {
   @IsOptional() @IsBoolean() useWallet?: boolean;
+}
+class TopUpDto {
+  @Type(() => Number) @IsInt() @Min(1) amount: number;
 }
 class VerifyDto {
   @IsString() orderId: string;
@@ -41,6 +45,15 @@ export class PaymentsController {
   @HttpCode(200)
   companionFee(@CurrentUser() user: User, @Body() dto: FeeCheckoutDto) {
     return this.svc.checkoutCompanionFee(user, dto.useWallet ?? true);
+  }
+
+  /** Add coins to the wallet (spend-only). */
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('topup')
+  @HttpCode(200)
+  topUp(@CurrentUser() user: User, @Body() dto: TopUpDto) {
+    return this.svc.checkoutTopUp(user, dto.amount);
   }
 
   @ApiBearerAuth()

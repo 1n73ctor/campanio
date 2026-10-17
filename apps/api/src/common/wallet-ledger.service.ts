@@ -77,7 +77,7 @@ export class WalletLedger implements OnModuleInit {
       if (cash < amount)
         throw new BadRequestException(
           promoOf(w) > 0
-            ? `You can withdraw up to ${formatINR(Math.max(0, cash))}. The other ${formatINR(promoOf(w))} is credit (welcome credit, cashback, rewards) — use it on meetups.`
+            ? `You can withdraw up to ${formatINR(Math.max(0, cash))}. The other ${formatINR(promoOf(w))} is spend-only (coins you added, welcome credit, cashback, rewards) — use it on meetups and chats.`
             : 'Insufficient wallet balance',
         );
       return 0;

@@ -19,6 +19,7 @@ const EMAIL_TYPES: Record<string, string> = {
   'kyc.rejected': 'Fix and re-submit',
   'companion.applied': 'Continue',
   'booking.requested': 'Review the request',
+  'chat.new': 'Reply now',
   'booking.accepted': 'View meetup',
   'booking.declined': 'Find another host',
   'booking.cancelled': 'View meetup',

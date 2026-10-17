@@ -161,6 +161,37 @@ export default function SettingsPage() {
           </Button>
         </Card>
         <Card className="p-6 lg:col-span-2">
+          <h2 className="font-display text-lg font-extrabold">💬 Paid chats</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Members spend coins (wallet balance, ₹1 = 1 coin) to message a host before booking. Hosts reply free. All coins are platform revenue — refunded
+            automatically if the host doesn’t reply in time. When off, there’s no Message button, inbox or “Add coins” anywhere.
+          </p>
+          <div className="mt-4 flex items-center gap-3">
+            <Toggle checked={form.chatEnabled === 1} onChange={(v) => setForm({ ...form, chatEnabled: v ? 1 : 0 })} label="Paid chats on" />
+            <span className="font-bold">{form.chatEnabled === 1 ? 'On' : 'Off'}</span>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Timed chat price (coins)">
+              <NumberInput value={form.chatTimedPrice} onValueChange={(n) => setForm((x) => (x ? { ...x, chatTimedPrice: Math.round(n) } : x))} />
+            </Field>
+            <Field label="Timed chat length (hours)">
+              <NumberInput value={form.chatTimedHours} onValueChange={(n) => setForm((x) => (x ? { ...x, chatTimedHours: Math.round(n) } : x))} />
+            </Field>
+            <Field label="Forever chat price (coins)">
+              <NumberInput value={form.chatPermanentPrice} onValueChange={(n) => setForm((x) => (x ? { ...x, chatPermanentPrice: Math.round(n) } : x))} />
+            </Field>
+            <Field label="Refund if no reply within (hours)">
+              <NumberInput value={form.chatRefundHours} onValueChange={(n) => setForm((x) => (x ? { ...x, chatRefundHours: Math.round(n) } : x))} />
+            </Field>
+          </div>
+          {form.chatPermanentPrice <= form.chatTimedPrice && (
+            <p className="mt-2 text-sm font-semibold text-danger">The forever price should be higher than the timed price.</p>
+          )}
+          <Button className="mt-4" loading={busy} disabled={form.chatPermanentPrice <= form.chatTimedPrice} onClick={save}>
+            Save chat settings
+          </Button>
+        </Card>
+        <Card className="p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-extrabold">Companion registration fee</h2>
           <p className="mt-1 text-sm text-ink-soft">
             One-time fee to apply as a companion, set per gender. GST ({form.gstPct}%) is added on top. When it’s off, applicants of that gender never see a payment

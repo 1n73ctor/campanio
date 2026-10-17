@@ -25,6 +25,10 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [chats, setChats] = useState(false);
+  useEffect(() => {
+    if (user) api.chats.prices().then((p) => setChats(p.enabled)).catch(() => {});
+  }, [user, api]);
   const toast = useToast();
 
   useEffect(() => {
@@ -80,6 +84,7 @@ export function SiteHeader() {
                     {[
                       ...(user.companion ? [{ href: '/companion/dashboard', label: '💼 Host dashboard' }] : []),
                       { href: '/bookings', label: '📅 My meetups' },
+                      ...(chats ? [{ href: '/messages', label: '💬 Messages' }] : []),
                       { href: '/wallet', label: '👛 Wallet' },
                       { href: '/account', label: '⚙️ Account' },
                     ].map((l) => (

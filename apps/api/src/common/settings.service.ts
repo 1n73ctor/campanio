@@ -26,6 +26,12 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   cashbackMax: 200,
   // companion verification: an admin reviews every submission until this is switched on
   kycAutoApprove: 0,
+  // paid chats with hosts: off until an admin switches them on
+  chatEnabled: 0,
+  chatTimedPrice: 29,
+  chatTimedHours: 24,
+  chatPermanentPrice: 99,
+  chatRefundHours: 48,
 };
 
 /** Platform business rules live here (and only here). Admins can edit them from the panel. */

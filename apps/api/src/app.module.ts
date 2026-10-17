@@ -12,6 +12,7 @@ import { EmailVerifyController, UsersController } from './users/users.controller
 import { CompanionSelfController, CompanionsController } from './companions/companions.controller';
 import { CompanionsService } from './companions/companions.service';
 import { BookingsModule } from './bookings/bookings.module';
+import { ChatsModule } from './chats/chats.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WalletController } from './wallet/wallet.controller';
 import { ReportsController } from './safety/reports.controller';
@@ -40,6 +41,7 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     NotificationsCoreModule,
     AuthModule,
     BookingsModule,
+    ChatsModule,
     PaymentsModule,
     ReferralsModule,
     CompanionFeeModule,
