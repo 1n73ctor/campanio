@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Select, Stat, StatusBadge } from '@companio/ui';
+import { CoinAmount, Select, Stat, StatusBadge } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useAdmin, useLoad } from '@/admin/lib/api';
 import { dtIST, formatINR } from '@/admin/lib/format';
@@ -51,7 +51,7 @@ export default function ChatsPage() {
                 <Td><Link href={`/admin/users/${u.host.id}`} className="underline">{u.host.name ?? '—'}</Link></Td>
                 <Td>{u.kind === 'PERMANENT' ? 'Forever' : `${u.hours}h`}</Td>
                 <Td className="tabular-nums">
-                  🪙 {u.price}
+                  <CoinAmount n={u.price} />
                   {u.promoUsed > 0 && <span className="block text-xs text-ink-mute">{formatINR(u.promoUsed)} from credit</span>}
                 </Td>
                 <Td>

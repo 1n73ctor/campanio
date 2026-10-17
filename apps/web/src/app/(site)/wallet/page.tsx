@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatINR, type PayoutDto, type WalletDto } from '@companio/types';
-import { Button, Card, EmptyState, Field, Input, Modal, StatusBadge, cn } from '@companio/ui';
+import { Button, Card, CoinAmount, EmptyState, Field, Input, Modal, StatusBadge, cn } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
 import { useToast } from '@/components/toast';
@@ -61,7 +61,11 @@ export default function WalletPage() {
         <div>
           <p className="text-sm font-bold uppercase tracking-wider">Balance</p>
           <p className="font-display text-5xl font-extrabold tabular-nums">{formatINR(w.balance)}</p>
-          {coins && <p className="text-sm font-semibold">🪙 {w.balance.toLocaleString('en-IN')} coins</p>}
+          {coins && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
+              <CoinAmount n={w.balance} size={20} /> coins
+            </p>
+          )}
           {credit > 0 && (
             <p className="mt-1 text-sm">
               {formatINR(withdrawable)} {user.companion ? 'withdrawable' : 'money'} · <b>{formatINR(credit)} credit & coins</b> — for meetups and chats, can’t be withdrawn

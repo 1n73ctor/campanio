@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatINR, type ChatPricesDto, type ChatUnlockKind, type ConversationDto } from '@companio/types';
-import { Button, Modal, cn } from '@companio/ui';
+import type { ChatPricesDto, ChatUnlockKind, ConversationDto } from '@companio/types';
+import { Button, Coin, CoinAmount, Modal, cn } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg, fmtDateTime } from '@/lib/format';
 import { useToast } from './toast';
@@ -38,7 +38,7 @@ export function MessageHost({ companionId, companionUserId, name }: { companionI
       </Button>
       {!conv?.canWrite && (
         <p className="-mt-1 text-center text-xs text-ink-mute">
-          From {formatINR(prices.timedPrice)} in coins · refunded if {name} doesn’t reply in {prices.refundHours}h
+          From <Coin size={14} /> {prices.timedPrice} coins · refunded if {name} doesn’t reply in {prices.refundHours}h
         </p>
       )}
       <UnlockChat open={open} onClose={() => setOpen(false)} companionId={companionId} name={name} prices={prices} conversation={conv} onOpened={(c) => router.push(`/messages/${c.id}`)} />
@@ -100,7 +100,7 @@ export function UnlockChat({
     >
       <span className="flex items-center justify-between gap-3">
         <span className="font-display text-lg font-extrabold">{title}</span>
-        <span className="font-display text-lg font-extrabold tabular-nums">🪙 {p}</span>
+        <CoinAmount n={p} size={22} className="font-display text-lg font-extrabold" />
       </span>
       <span className="mt-1 block text-sm text-ink-soft">{sub}</span>
     </button>
@@ -118,7 +118,9 @@ export function UnlockChat({
           </Link>
         ) : (
           <Button className="w-full" loading={busy} disabled={balance === null} onClick={unlock}>
-            Pay 🪙 {price} and open chat
+            <span className="inline-flex items-center gap-1.5">
+              Pay <CoinAmount n={price} /> and open chat
+            </span>
           </Button>
         )
       }
@@ -127,7 +129,7 @@ export function UnlockChat({
         <Option k="TIMED" title={`${prices.timedHours} hours`} sub={extending ? `Adds ${prices.timedHours}h to your chat time.` : `Write to ${name} for the next ${prices.timedHours} hours.`} p={prices.timedPrice} />
         <Option k="PERMANENT" title="Forever" sub={`Message ${name} any time, no time limit.`} p={prices.permanentPrice} />
         <p className="text-sm">
-          Your coins: <b>{balance === null ? '…' : `🪙 ${balance}`}</b>
+          Your coins: <b>{balance === null ? '…' : <CoinAmount n={balance} className="align-middle" />}</b>
           {short && <span className="font-semibold text-danger"> — not enough for this option</span>}
         </p>
         <ul className="space-y-1 text-xs text-ink-soft">

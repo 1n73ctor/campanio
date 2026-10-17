@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { formatINR } from '@companio/types';
-import { Button, Card, Input, cn } from '@companio/ui';
+import { Button, Card, Coin, Input, cn } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { useGatewayPay } from '@/lib/use-gateway-pay';
 import { useToast } from './toast';
@@ -26,7 +26,7 @@ export function AddCoins({ onAdded, className, id }: { onAdded: () => void; clas
     setBusy(true);
     try {
       if (await pay(await api.payments.topUp(n))) {
-        toast(`${formatINR(n)} coins added 🪙`);
+        toast(`${n.toLocaleString('en-IN')} coins added`);
         onAdded();
       }
     } catch (e) {
@@ -38,7 +38,9 @@ export function AddCoins({ onAdded, className, id }: { onAdded: () => void; clas
 
   return (
     <Card id={id} className={cn('p-5', className)}>
-      <h2 className="font-display text-lg font-extrabold">🪙 Add coins</h2>
+      <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
+        <Coin size={26} /> Add coins
+      </h2>
       <p className="mt-1 text-sm text-ink-soft">1 coin = ₹1. Use coins to message hosts or pay for meetups. Coins can’t be withdrawn.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {PRESETS.map((p) => (

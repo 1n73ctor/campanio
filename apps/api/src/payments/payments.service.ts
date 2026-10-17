@@ -116,7 +116,7 @@ export class PaymentsService {
     });
     if (!p) return;
     this.log.log(`wallet top-up ${formatINR(p.amount)} by ${p.userId}`);
-    await this.notifications.notify(p.userId, { type: 'payment.captured', title: `${formatINR(p.amount)} coins added 🪙`, body: 'Use them to message hosts or pay for meetups.', link: '/wallet' });
+    await this.notifications.notify(p.userId, { type: 'payment.captured', title: `${p.amount.toLocaleString('en-IN')} coins added`, body: 'Use them to message hosts or pay for meetups.', link: '/wallet' });
   }
 
   async verify(user: User, orderId: string, paymentId: string, signature: string) {

@@ -341,3 +341,34 @@ export function Logo({ className, withText = true }: { className?: string; withT
     </span>
   );
 }
+
+/** Companio coin (wallet balance used as coins, ₹1 = 1 coin): a gold coin with a sparkle, in the site's outlined style. */
+export function Coin({ size = 18, className, title }: { size?: number; className?: string; title?: string }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      className={cn('inline-block shrink-0 align-[-0.15em]', className)}
+      role={title ? 'img' : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+    >
+      <circle cx="17.5" cy="17.5" r="13" fill="#141414" />
+      <circle cx="15" cy="15" r="13" fill="#FFD23F" stroke="#141414" strokeWidth="2.5" />
+      <circle cx="15" cy="15" r="9.2" fill="#FFE27A" stroke="#E0A800" strokeWidth="1.6" />
+      <path d="M15 8.6c.5 3.6 2.8 5.9 6.4 6.4-3.6.5-5.9 2.8-6.4 6.4-.5-3.6-2.8-5.9-6.4-6.4 3.6-.5 5.9-2.8 6.4-6.4z" fill="#141414" />
+      <path d="M7.6 11.2a8.4 8.4 0 0 1 4.6-4.7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".9" />
+    </svg>
+  );
+}
+
+/** A coin amount: the coin icon followed by the number (e.g. price of a chat, wallet coins). */
+export function CoinAmount({ n, size = 18, className }: { n: number; size?: number; className?: string }) {
+  return (
+    <span className={cn('inline-flex items-center gap-1 tabular-nums', className)}>
+      <Coin size={size} title="coins" />
+      {n.toLocaleString('en-IN')}
+    </span>
+  );
+}
