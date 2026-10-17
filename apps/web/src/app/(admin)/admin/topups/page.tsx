@@ -60,7 +60,7 @@ export default function TopUpsPage() {
         <Loading />
       ) : (
         <>
-          <Table head={['When (IST)', 'Member', 'Amount', 'Note to look for', 'UPI transaction ID', 'Status', '']} empty={data.items.length === 0}>
+          <Table head={['When (IST)', 'Member', 'Amount', 'Note to look for', 'UPI txn ID', 'Status', '']} empty={data.items.length === 0}>
             {data.items.map((r) => (
               <tr key={r.id}>
                 <Td className="whitespace-nowrap text-xs">
@@ -72,19 +72,19 @@ export default function TopUpsPage() {
                   <span className="block text-xs text-ink-mute">{r.user.phone}</span>
                 </Td>
                 <Td className="font-bold tabular-nums">{formatINR(r.amount)}</Td>
-                <Td className="font-mono text-sm">{r.note}</Td>
+                <Td className="whitespace-nowrap font-mono text-sm font-bold">{r.note}</Td>
                 <Td className="font-mono text-sm">
                   {r.utr ?? <span className="text-ink-mute">—</span>}
                   {r.utrUsedBy && <span className="block font-sans text-xs font-bold text-danger">⚠️ already used for {r.utrUsedBy}</span>}
                 </Td>
-                <Td className="text-sm">
+                <Td className="whitespace-nowrap text-sm">
                   {STATUS[r.status] ?? r.status}
                   {r.status === 'APPROVED' && r.credited !== r.amount && <span className="block text-xs">added {formatINR(r.credited ?? 0)}</span>}
                   {r.reviewNote && <span className="block text-xs text-ink-mute">{r.reviewNote}</span>}
                 </Td>
                 <Td>
                   {(r.status === 'PENDING' || r.status === 'STARTED') && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="lime" onClick={() => (setApproving(r), setAmount(String(r.amount)))}>Add coins</Button>
                       <Button size="sm" variant="white" onClick={() => setRejecting(r)}>Reject</Button>
                     </div>
