@@ -66,6 +66,7 @@ echo "== GoAccess"
 command -v goaccess >/dev/null || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq goaccess)
 mkdir -p "$OPS/requests" /var/lib/goaccess-companio
 touch "$LOG"
+# note: in systemd unit files % is special (%h = home dir…), so every % in GoAccess's formats is written as %%
 cat > /etc/systemd/system/goaccess-companio.service <<EOF
 [Unit]
 Description=GoAccess live request analytics for Companio (/ops/requests/)
@@ -73,7 +74,7 @@ After=network.target nginx.service
 
 [Service]
 ExecStart=/usr/bin/goaccess $LOG \\
-  --log-format='%h - %^ [%d:%t %^] "%r" %s %b "%R" "%u" %T %^ %v' --date-format=%d/%b/%Y --time-format=%T \\
+  --log-format='%%h - %%^ [%%d:%%t %%^] "%%r" %%s %%b "%%R" "%%u" %%T %%^ %%v' --date-format=%%d/%%b/%%Y --time-format=%%T \\
   --output=$OPS/requests/index.html --real-time-html --addr=127.0.0.1 --port=7890 \\
   --ws-url=wss://$SITE:443/ops/requests/ws --origin=https://$SITE \\
   --persist --restore --db-path=/var/lib/goaccess-companio \\
