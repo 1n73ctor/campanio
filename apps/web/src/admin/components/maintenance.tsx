@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Modal } from '@companio/ui';
+import { Card, Toggle } from '@companio/ui';
 import { errMsg, useAdmin } from '@/admin/lib/api';
 import { useToast } from '@/admin/components/toast';
 
@@ -45,51 +45,21 @@ function useSwitch() {
   return { set, busy };
 }
 
-/** Dashboard card: one button to put the whole site under maintenance (with a confirmation), or bring it back. */
+/** Dashboard card: one switch puts the site under maintenance (browsing stays open, changes pause) or back. */
 export function MaintenanceCard() {
   const on = useMaintenance();
   const { set, busy } = useSwitch();
-  const [confirm, setConfirm] = useState(false);
   if (on === null) return null;
   return (
-    <>
-      <Card tone={on ? 'pink' : 'white'} className="mb-6 flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <p className="font-display text-lg font-extrabold">{on ? '🛠️ The site is under maintenance' : '🟢 The site is online'}</p>
-          <p className="text-sm text-ink-soft">
-            {on
-              ? 'People can still browse, but sign-in, bookings, payments, chats and withdrawals are paused. The admin panel works as normal.'
-              : 'Need to fix something? Pause all changes on the site with one click — people can keep browsing.'}
-          </p>
-        </div>
-        {on ? (
-          <Button variant="lime" loading={busy} onClick={() => set(false)}>
-            Bring the site back online
-          </Button>
-        ) : (
-          <Button variant="danger" onClick={() => setConfirm(true)}>
-            Put site under maintenance
-          </Button>
-        )}
-      </Card>
-      <Modal
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title="Put the site under maintenance?"
-        footer={
-          <Button variant="danger" loading={busy} onClick={async () => (await set(true)) && setConfirm(false)}>
-            Yes, start maintenance
-          </Button>
-        }
-      >
-        <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>The website and app stay open for browsing, with a “maintenance in progress” banner.</li>
-          <li>Nobody can sign in, book, pay, chat, withdraw or edit their profile until you turn it off. Payments already under way still complete.</li>
-          <li>Timers keep running: unanswered requests still expire and are refunded as usual.</li>
-          <li>The admin panel keeps working. Turn it off here when you’re done.</li>
-        </ul>
-      </Modal>
-    </>
+    <Card tone={on ? 'pink' : 'white'} className="mb-6 flex items-center justify-between gap-4 p-5">
+      <div>
+        <p className="font-display text-lg font-extrabold">🛠️ Maintenance mode</p>
+        <p className="text-sm text-ink-soft">
+          {on ? 'On — people can browse, but sign-in, bookings, payments and chats are paused.' : 'Off — everything works normally.'}
+        </p>
+      </div>
+      <Toggle checked={on} disabled={busy} onChange={(v) => void set(v)} label="Maintenance mode" />
+    </Card>
   );
 }
 
