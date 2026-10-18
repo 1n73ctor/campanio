@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { GENDERS, ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
+import { CITIES, GENDERS, ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
 import { Avatar, Input, Select, StatusBadge } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useAdmin, useLoad } from '@/admin/lib/api';
@@ -15,8 +15,9 @@ export default function UsersPage() {
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
   const [gender, setGender] = useState('');
+  const [city, setCity] = useState('');
   const [page, setPage] = useState(1);
-  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, gender: gender || undefined, page }), [query, role, status, gender, page]);
+  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, gender: gender || undefined, city: city || undefined, page }), [query, role, status, gender, city, page]);
 
   return (
     <>
@@ -34,6 +35,11 @@ export default function UsersPage() {
         <Select className="max-w-[180px]" value={gender} onChange={(e) => { setGender(e.target.value); setPage(1); }} aria-label="Gender">
           <option value="">Any gender</option>
           {GENDERS.map((g) => <option key={g} value={g}>{humanize(g)}</option>)}
+        </Select>
+        <Select className="max-w-[200px]" value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} aria-label="City">
+          <option value="">Any city</option>
+          <option value="none">Not set</option>
+          {[...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
         </Select>
       </form>
       {error && <ErrorBox error={error} />}

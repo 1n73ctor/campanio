@@ -84,7 +84,7 @@ const qs = (q?: Query) => {
   return s ? `?${s}` : '';
 };
 
-export type AdminPage = { page?: number; q?: string; status?: string; role?: string; gender?: string };
+export type AdminPage = { page?: number; q?: string; status?: string; role?: string; gender?: string; city?: string };
 export type AdminChatConversation = {
   id: string;
   user: { id: string; name: string | null };

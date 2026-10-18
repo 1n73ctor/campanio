@@ -10,6 +10,8 @@ export class PageDto {
   @IsOptional() @IsString() role?: string;
   /** users list only */
   @IsOptional() @IsIn(GENDERS) gender?: string;
+  /** users list only: a city slug, or "none" for people who haven't set one */
+  @IsOptional() @IsIn([...CITIES.map((c) => c.slug), 'none']) city?: string;
 }
 
 export class UserStatusDto {
