@@ -44,6 +44,9 @@ NDCONF=/etc/netdata; [ -d /opt/netdata/etc/netdata ] && NDCONF=/opt/netdata/etc/
 if ! grep -q "^\s*bind to = 127.0.0.1" "$NDCONF/netdata.conf" 2>/dev/null; then
   printf '\n[web]\n    bind to = 127.0.0.1\n' >> "$NDCONF/netdata.conf"
 fi
+# no Netdata Cloud: the data stays on this server and the dashboard needs no Netdata account
+mkdir -p "$NDCONF/cloud.d"
+printf '[global]\n    enabled = no\n' > "$NDCONF/cloud.d/cloud.conf"
 mkdir -p "$NDCONF/go.d"
 cat > "$NDCONF/go.d/nginx.conf" <<'EOF'
 jobs:
