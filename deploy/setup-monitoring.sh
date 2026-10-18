@@ -49,17 +49,18 @@ cat > "$NDCONF/go.d/nginx.conf" <<'EOF'
 jobs:
   - name: companio
     url: http://127.0.0.1:8081/stub_status
+    autodetection_retry: 30
 EOF
 cat > "$NDCONF/go.d/web_log.conf" <<EOF
 jobs:
   - name: companio
     path: $LOG
+    autodetection_retry: 30
     log_type: csv
     csv_config:
       format: '\$remote_addr - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "\$http_user_agent" \$request_time \$upstream_response_time \$host'
 EOF
 usermod -aG adm netdata 2>/dev/null || true   # read the nginx logs
-systemctl restart netdata
 
 echo "== GoAccess"
 command -v goaccess >/dev/null || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq goaccess)
@@ -153,6 +154,9 @@ PY
 fi
 nginx -t
 systemctl reload nginx
+# Netdata last, once nginx serves the status page and writes the new log (its collectors check them at start)
+sleep 2
+systemctl restart netdata
 
 echo
 echo "✅ Monitoring is up: https://$SITE/ops/"
