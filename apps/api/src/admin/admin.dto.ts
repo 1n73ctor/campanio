@@ -8,6 +8,8 @@ export class PageDto {
   @IsOptional() @IsString() @MaxLength(80) @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[%_\\]/g, ' ').trim() : value)) q?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() role?: string;
+  /** users list only */
+  @IsOptional() @IsIn(GENDERS) gender?: string;
 }
 
 export class UserStatusDto {

@@ -104,6 +104,7 @@ export class AdminService {
     const where: Prisma.UserWhereInput = {
       ...(q.role ? { role: q.role } : { role: { not: 'ADMIN' } }),
       ...(q.status ? { status: q.status } : {}),
+      ...(q.gender ? { gender: q.gender } : {}),
       ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { deletedPhone: { contains: q.q } }, { email: { contains: q.q } }, { contactEmail: { contains: q.q } }] } : {}),
     };
     const [total, rows] = await this.prisma.$transaction([

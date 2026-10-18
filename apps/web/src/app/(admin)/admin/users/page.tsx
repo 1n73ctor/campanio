@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
+import { GENDERS, ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
 import { Avatar, Input, Select, StatusBadge } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useAdmin, useLoad } from '@/admin/lib/api';
@@ -14,8 +14,9 @@ export default function UsersPage() {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
+  const [gender, setGender] = useState('');
   const [page, setPage] = useState(1);
-  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, page }), [query, role, status, page]);
+  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, gender: gender || undefined, page }), [query, role, status, gender, page]);
 
   return (
     <>
@@ -30,13 +31,17 @@ export default function UsersPage() {
           <option value="">Any status</option>
           {USER_STATUSES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
         </Select>
+        <Select className="max-w-[180px]" value={gender} onChange={(e) => { setGender(e.target.value); setPage(1); }} aria-label="Gender">
+          <option value="">Any gender</option>
+          {GENDERS.map((g) => <option key={g} value={g}>{humanize(g)}</option>)}
+        </Select>
       </form>
       {error && <ErrorBox error={error} />}
       {!data ? (
         <Loading />
       ) : (
         <>
-          <Table head={['User', 'Role', 'City', 'Bookings', 'Reports', 'Wallet', 'Joined (IST)', 'Status']} empty={data.items.length === 0}>
+          <Table head={['User', 'Role', 'Gender', 'City', 'Bookings', 'Reports', 'Wallet', 'Joined (IST)', 'Status']} empty={data.items.length === 0}>
             {data.items.map((u) => (
               <tr key={u.id} className="hover:bg-paper">
                 <Td>
@@ -52,6 +57,7 @@ export default function UsersPage() {
                   {humanize(u.role)}
                   {u.companion && <span className="block text-xs text-ink-mute">KYC {u.companion.kycStatus.toLowerCase()}</span>}
                 </Td>
+                <Td className="text-sm">{u.gender ? humanize(u.gender) : '—'}</Td>
                 <Td>{cityBySlug(u.city ?? '')?.name ?? '—'}</Td>
                 <Td className="tabular-nums">{u.bookingsCount}</Td>
                 <Td className={u.reportsAgainst ? 'font-bold text-danger' : ''}>{u.reportsAgainst}</Td>
