@@ -7,10 +7,19 @@ import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
 import { config } from '../common/config';
-import { ASSISTANT_NAME, systemPrompt } from './assistant.prompt';
+import { ASSISTANT_NAME, systemPrompt, type HostFacts } from './assistant.prompt';
+import { instantAnswer } from './assistant.instant';
 
-const HISTORY = 16; // messages sent to the model per turn
-const PER_DAY = 40; // user messages per person (or IP) per 24h
+// cost controls: the model sees only the recent chat, writes short replies, and each person gets a daily allowance
+const HISTORY = 8; // messages sent to the model per turn
+const MAX_TOKENS = 300;
+const PER_DAY = 25; // AI replies per person (or IP) per 24h — instant answers are free and don't count
+const KNOWLEDGE_IN_PROMPT = 30;
+/** account tools are only sent when the question is about the user's own account (they cost input tokens) */
+const PERSONAL = /\b(my|mine|mera|meri|mere|refund|wallet|coin|balance|booking|meetup|payout|withdraw|verif|kyc|paise|paisa|payment|paid|charged|cancel|order|account)\b/i;
+// Claude Haiku 4.5 list prices (USD per million tokens) — for the admin's cost estimate
+const PRICE_IN = 1;
+const PRICE_OUT = 5;
 const PER_CONVERSATION = 80;
 const KEEP_DAYS = 90;
 const DAY = 86_400_000;
@@ -41,6 +50,7 @@ export interface AssistantReply {
 export class AssistantService implements OnModuleInit, OnModuleDestroy {
   private log = new Logger('Assistant');
   private client: Anthropic | null = null;
+  private hostFacts: { at: number; facts: HostFacts } | null = null;
   private timer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -108,47 +118,92 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     // cost limits
     const since = new Date(Date.now() - DAY);
     const today = await this.prisma.assistantMessage.count({
-      where: { role: 'user', createdAt: { gt: since }, conversation: viewer ? { userId: viewer.id } : { ipHash: ipHash ?? '-' } },
+      where: { role: 'assistant', source: 'ai', createdAt: { gt: since }, conversation: viewer ? { userId: viewer.id } : { ipHash: ipHash ?? '-' } },
     });
-    if (today >= PER_DAY) throw new HttpException(`You've reached today's limit for the assistant — tap "Talk to a person" and the team will help.`, HttpStatus.TOO_MANY_REQUESTS);
     if ((await this.prisma.assistantMessage.count({ where: { conversationId: c.id } })) >= PER_CONVERSATION)
       throw new HttpException('This chat is very long — start a new one, or tap "Talk to a person".', HttpStatus.TOO_MANY_REQUESTS);
 
     await this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'user', content: message.slice(0, 1000) } });
+
+    // free answers first: greetings, starter questions, and questions an admin already answered
+    const knowledge = await this.prisma.assistantKnowledge.findMany({ where: { active: true }, orderBy: { updatedAt: 'desc' }, take: 200, select: { question: true, answer: true } });
+    const instant = await instantAnswer(message, {
+      settings: s,
+      firstName: viewer?.name?.split(' ')[0] ?? null,
+      knowledge,
+      coins: viewer ? async () => {
+        const b = await this.wallet.balances(viewer.id);
+        return `You have ${b.balance.toLocaleString('en-IN')} coins (${formatINR(b.balance)}) in your wallet${b.promoBalance ? ` — ${formatINR(b.promoBalance)} of it is spend-only credit/coins` : ''}. You can add more from Wallet → Add coins.`;
+      } : undefined,
+      nextMeetup: viewer ? async () => {
+        const b = await this.prisma.booking.findFirst({ where: { userId: viewer.id, status: { in: ['REQUESTED', 'ACCEPTED', 'IN_PROGRESS'] } }, orderBy: { startAt: 'asc' }, include: { companion: true } });
+        if (!b) return 'You don’t have any upcoming meetups right now. Want help finding a host?';
+        const label = b.status === 'ACCEPTED' ? 'confirmed ✅' : b.status === 'IN_PROGRESS' ? 'happening now' : `waiting for ${first(b.companion.name)} to accept`;
+        return `Your meetup with ${first(b.companion.name)} on ${when(b.startAt)} is ${label}.${b.status === 'REQUESTED' ? ` If they don’t respond within ${s.requestExpiryHours}h, you get a full refund automatically.` : ''}`;
+      } : undefined,
+    });
+    if (instant) {
+      await this.prisma.$transaction([
+        this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: instant, source: 'instant' } }),
+        this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date() } }),
+      ]);
+      return { conversationKey: c.key, reply: instant, handoff: false, summary: null };
+    }
+    if (today >= PER_DAY) throw new HttpException(`You've reached today's limit for the assistant — tap "Talk to a person" and the team will help.`, HttpStatus.TOO_MANY_REQUESTS);
+
     const past = await this.prisma.assistantMessage.findMany({ where: { conversationId: c.id }, orderBy: { createdAt: 'desc' }, take: HISTORY });
     const messages: Anthropic.MessageParam[] = past.reverse().map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
     while (messages.length && messages[0].role !== 'user') messages.shift(); // the model needs to start with the user
 
-    const knowledge = await this.prisma.assistantKnowledge.findMany({ where: { active: true }, orderBy: { updatedAt: 'desc' }, take: 60, select: { question: true, answer: true } });
-    const system = systemPrompt(s, knowledge, !!viewer);
+    const lookups = !!viewer && PERSONAL.test(message);
+    const system = systemPrompt(s, knowledge.slice(0, KNOWLEDGE_IN_PROMPT), viewer ? (lookups ? 'tools' : 'signed-in') : 'signed-out', await this.facts());
     let handoff: string | null = null;
     let reply = '';
+    const usage = { in: 0, out: 0 };
     try {
-      reply = await this.run(system, messages, viewer, (summary) => (handoff = summary));
+      reply = await this.run(system, messages, lookups ? viewer : undefined, !!viewer, (summary) => (handoff = summary), usage);
     } catch (e) {
       this.log.error(`assistant failed: ${(e as Error).message}`);
       reply = 'Sorry — I’m having trouble answering right now. Tap “Talk to a person” and someone from the team will help you.';
     }
     reply = reply.trim() || 'Sorry, could you say that another way?';
     await this.prisma.$transaction([
-      this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: reply } }),
+      this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: reply, source: 'ai', inputTokens: usage.in, outputTokens: usage.out } }),
       this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date(), ...(handoff ? { handoff: true, summary: handoff } : {}) } }),
     ]);
     return { conversationKey: c.key, reply, handoff: !!handoff, summary: handoff };
   }
 
-  /** The model, with up to 4 rounds of tool use. */
-  private async run(system: string, messages: Anthropic.MessageParam[], viewer: User | undefined, onHandoff: (s: string) => void) {
-    if (config.assistant.apiKey === 'mock') return this.mock(messages, viewer, onHandoff);
+  /** Live host numbers for the prompt (count, rate range, cities), cached for 10 minutes. */
+  private async facts(): Promise<HostFacts> {
+    if (this.hostFacts && Date.now() - this.hostFacts.at < 10 * 60_000) return this.hostFacts.facts;
+    const rows = await this.prisma.companionProfile.findMany({ where: { isListed: true, kycStatus: 'APPROVED', user: { status: 'ACTIVE' } }, select: { hourlyRate: true, city: true } });
+    const rates = rows.map((r) => r.hourlyRate).sort((a, b) => a - b);
+    const cities = [...new Set(rows.map((r) => r.city))].sort();
+    const facts: HostFacts =
+      rows.length >= 3 ? { count: rows.length, min: rates[0], max: rates[rates.length - 1], median: rates[Math.floor(rates.length / 2)], cities } : { count: 0, min: 0, max: 0, median: 0, cities };
+    this.hostFacts = { at: Date.now(), facts };
+    return facts;
+  }
+
+  /**
+   * The model, with up to 3 rounds of tool use. `toolsFor` is set only when the question is about the user's own
+   * account — otherwise just the hand-over tool is sent (fewer tokens per message).
+   */
+  private async run(system: string, messages: Anthropic.MessageParam[], toolsFor: User | undefined, signedIn: boolean, onHandoff: (s: string) => void, usage: { in: number; out: number }) {
+    const viewer = toolsFor;
+    if (config.assistant.apiKey === 'mock') return this.mock(messages, toolsFor, onHandoff);
     const tools = viewer ? TOOLS : TOOLS.filter((t) => t.name === 'handoff_to_human');
-    for (let round = 0; round < 4; round++) {
+    for (let round = 0; round < 3; round++) {
       const res = await this.client!.messages.create({
         model: config.assistant.model,
-        max_tokens: 600,
+        max_tokens: MAX_TOKENS,
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         tools,
         messages,
       });
+      usage.in += res.usage.input_tokens + (res.usage.cache_read_input_tokens ?? 0) + (res.usage.cache_creation_input_tokens ?? 0);
+      usage.out += res.usage.output_tokens;
       const text = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n');
       const calls = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
       if (res.stop_reason !== 'tool_use' || !calls.length) return text;
@@ -278,6 +333,12 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
 
   async adminStats() {
     const since = new Date(Date.now() - 7 * DAY);
+    const [ai, instant] = await Promise.all([
+      this.prisma.assistantMessage.aggregate({ where: { createdAt: { gt: since }, source: 'ai' }, _count: true, _sum: { inputTokens: true, outputTokens: true } }),
+      this.prisma.assistantMessage.count({ where: { createdAt: { gt: since }, source: 'instant' } }),
+    ]);
+    const tokensIn = ai._sum.inputTokens ?? 0;
+    const tokensOut = ai._sum.outputTokens ?? 0;
     const [conversations, handoffs, liked, disliked, knowledge] = await Promise.all([
       this.prisma.assistantConversation.count({ where: { createdAt: { gt: since } } }),
       this.prisma.assistantConversation.count({ where: { createdAt: { gt: since }, handoff: true } }),
@@ -285,7 +346,12 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
       this.prisma.assistantConversation.count({ where: { createdAt: { gt: since }, rating: -1 } }),
       this.prisma.assistantKnowledge.count({ where: { active: true } }),
     ]);
-    return { configured: this.configured, model: config.assistant.model, last7Days: { conversations, handoffs, liked, disliked }, knowledge };
+    return {
+      configured: this.configured,
+      model: config.assistant.model,
+      last7Days: { conversations, handoffs, liked, disliked, aiReplies: ai._count, freeReplies: instant, tokensIn, tokensOut, costUsd: Math.round(((tokensIn * PRICE_IN + tokensOut * PRICE_OUT) / 1e6) * 100) / 100 },
+      knowledge,
+    };
   }
 
   knowledgeList() {

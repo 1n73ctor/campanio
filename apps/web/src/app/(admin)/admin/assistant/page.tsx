@@ -75,6 +75,20 @@ export default function AssistantAdminPage() {
           <Stat label="Approved answers" value={stats.knowledge} tone="sky" />
         </div>
       )}
+      {stats && (
+        <Card className="mb-6 flex flex-wrap items-center gap-x-8 gap-y-2 p-4 text-sm">
+          <span>
+            <b>Cost, last 7 days:</b> ≈ ${stats.last7Days.costUsd.toFixed(2)} <span className="text-ink-mute">(≈ ₹{Math.round(stats.last7Days.costUsd * 88)})</span>
+          </span>
+          <span>
+            <b>{stats.last7Days.freeReplies}</b> free instant answers · <b>{stats.last7Days.aiReplies}</b> AI replies
+            {stats.last7Days.aiReplies + stats.last7Days.freeReplies > 0 && (
+              <span className="text-ink-mute"> ({Math.round((stats.last7Days.freeReplies / (stats.last7Days.aiReplies + stats.last7Days.freeReplies)) * 100)}% free)</span>
+            )}
+          </span>
+          <span className="text-xs text-ink-mute">Every answer you approve can be served free next time. Estimate at {stats.model} list prices.</span>
+        </Card>
+      )}
 
       <div className="mb-4 flex gap-2">
         <Button size="sm" variant={tab === 'chats' ? 'primary' : 'white'} onClick={() => setTab('chats')}>Conversations</Button>

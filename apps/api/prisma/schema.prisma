@@ -596,6 +596,10 @@ model AssistantMessage {
   /// user | assistant
   role           String
   content        String
+  /// assistant replies: "ai" (the model answered) or "instant" (a free built-in / approved answer, no AI call)
+  source         String?
+  inputTokens    Int?
+  outputTokens   Int?
   createdAt      DateTime              @default(now())
 
   @@index([conversationId, createdAt])

@@ -95,7 +95,12 @@ export type AdminChatConversation = {
   unlocks: { id: string; kind: string; price: number; hours: number | null; status: string; hostEarning: number; createdAt: string; refundedAt: string | null }[];
 };
 
-export type AdminAssistantStats = { configured: boolean; model: string; last7Days: { conversations: number; handoffs: number; liked: number; disliked: number }; knowledge: number };
+export type AdminAssistantStats = {
+  configured: boolean;
+  model: string;
+  last7Days: { conversations: number; handoffs: number; liked: number; disliked: number; aiReplies: number; freeReplies: number; tokensIn: number; tokensOut: number; costUsd: number };
+  knowledge: number;
+};
 export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; summary: string | null; rating: number | null; lastAt: string };
 export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; at: string }[] };
 export type AdminAssistantKnowledge = { id: string; question: string; answer: string; active: boolean; createdAt: string; updatedAt: string };
