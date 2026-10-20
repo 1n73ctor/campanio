@@ -7,8 +7,38 @@ import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
 import { CONSENT_CHANGED, TRACKING_ENABLED, getConsent } from '@/lib/analytics';
 import { ASSISTANT_CHANGED, openHumanChat } from './live-chat';
+import { playHello, playReceive, playSend, primeSounds, setSoundMuted, soundMuted } from '@/lib/chat-sounds';
 
 type Msg = { role: 'user' | 'assistant' | 'note'; content: string };
+
+const STYLES = `
+@keyframes cmp-pop-in { 0% { transform: scale(0) rotate(-20deg); opacity: 0 } 70% { transform: scale(1.12) rotate(4deg); opacity: 1 } 100% { transform: scale(1) rotate(0) } }
+@keyframes cmp-bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+@keyframes cmp-ring { 0% { transform: scale(1); opacity: .55 } 100% { transform: scale(1.7); opacity: 0 } }
+@keyframes cmp-panel-in { 0% { transform: translateY(16px) scale(.92); opacity: 0 } 100% { transform: none; opacity: 1 } }
+@keyframes cmp-msg-in { 0% { transform: translateY(8px); opacity: 0 } 100% { transform: none; opacity: 1 } }
+@keyframes cmp-teaser-in { 0% { transform: translateY(10px) scale(.9); opacity: 0 } 100% { transform: none; opacity: 1 } }
+@keyframes cmp-wave { 0%, 60%, 100% { transform: rotate(0) } 10%, 30% { transform: rotate(16deg) } 20%, 40% { transform: rotate(-10deg) } }
+.cmp-bubble { animation: cmp-pop-in .55s cubic-bezier(.2,1.4,.4,1) both, cmp-bob 3.2s ease-in-out 1.2s infinite }
+.cmp-ring { animation: cmp-ring 1.8s ease-out infinite }
+.cmp-panel { animation: cmp-panel-in .28s cubic-bezier(.2,1.2,.4,1) both; transform-origin: bottom right }
+.cmp-msg { animation: cmp-msg-in .25s ease-out both }
+.cmp-teaser { animation: cmp-teaser-in .35s cubic-bezier(.2,1.3,.4,1) both; transform-origin: bottom right }
+.cmp-wave { display: inline-block; animation: cmp-wave 2.4s ease-in-out 1 }
+@media (prefers-reduced-motion: reduce) { .cmp-bubble, .cmp-ring, .cmp-panel, .cmp-msg, .cmp-teaser, .cmp-wave { animation: none !important } }
+`;
+
+/** the little greeting next to the bubble, matched to what the visitor is looking at */
+function teaserFor(path: string, signedIn: boolean) {
+  if (path.startsWith('/companions/')) return 'Questions about this host? Ask me 👋';
+  if (path.startsWith('/become-a-companion') || path.startsWith('/companion')) return 'Thinking of hosting? Ask me anything 💬';
+  if (path.startsWith('/wallet')) return 'Need help with coins or payouts?';
+  if (path.startsWith('/bookings')) return 'Questions about a meetup? I’m here 🙂';
+  if (path.startsWith('/explore')) return 'Looking for the right buddy? I can help you choose ✨';
+  if (path.startsWith('/safety')) return 'Any safety questions? Ask me 🛡️';
+  return signedIn ? 'Hi again! 👋 Need anything?' : 'Hi! 👋 Need help finding a buddy?';
+}
+const TEASER_SEEN = 'companio.assistant.teaser';
 const KEY = 'companio.assistant.key';
 const read = () => {
   try {
@@ -63,7 +93,32 @@ export function AssistantWidget() {
   const [busy, setBusy] = useState(false);
   const [rated, setRated] = useState<1 | -1 | null>(null);
   const [key, setKey] = useState<string | undefined>(undefined);
+  const [teaser, setTeaser] = useState<string | null>(null);
+  const [muted, setMuted] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    primeSounds();
+    setMuted(soundMuted());
+  }, []);
+
+  // a friendly nudge a few seconds after landing — once per visit, and never while the chat is open
+  useEffect(() => {
+    if (!on || open) return;
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem(TEASER_SEEN) === '1';
+    } catch {}
+    if (seen) return;
+    const t = setTimeout(() => {
+      setTeaser(teaserFor(path ?? '/', !!user));
+      playHello();
+      try {
+        sessionStorage.setItem(TEASER_SEEN, '1');
+      } catch {}
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [on, open, path, user]);
 
   // switched on from Admin → Assistant (and only once the server has an AI key)
   useEffect(() => {
@@ -112,6 +167,7 @@ export function AssistantWidget() {
   const send = async (message: string) => {
     const m = message.trim();
     if (!m || busy) return;
+    playSend();
     setText('');
     setMsgs((x) => [...x, { role: 'user', content: m }]);
     setBusy(true);
@@ -120,6 +176,7 @@ export function AssistantWidget() {
       setKey(r.conversationKey);
       save(r.conversationKey);
       setMsgs((x) => [...x, { role: 'assistant', content: r.reply }]);
+      playReceive();
       if (r.handoff) handOver(r.summary ?? m);
     } catch (e) {
       setMsgs((x) => [...x, { role: 'note', content: errMsg(e) }]);
@@ -161,33 +218,66 @@ export function AssistantWidget() {
 
   return (
     <>
+      <style>{STYLES}</style>
       {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={`Chat with ${name}, Companio’s assistant`}
-          className="fixed bottom-24 right-4 z-[55] flex h-16 w-16 items-center justify-center rounded-full border-3 border-ink bg-pink shadow-brutal transition-transform hover:-translate-y-0.5 sm:bottom-6 sm:right-6"
-        >
-          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden>
-            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.2 3.6c-.5.4-1.3.1-1.3-.6V16A2.5 2.5 0 0 1 4 13.5z" fill="#fff" stroke="#141414" strokeWidth="1.8" strokeLinejoin="round" />
-            <circle cx="9" cy="9.6" r="1.2" fill="#141414" />
-            <circle cx="12" cy="9.6" r="1.2" fill="#141414" />
-            <circle cx="15" cy="9.6" r="1.2" fill="#141414" />
-          </svg>
-        </button>
+        <div className="fixed bottom-24 right-4 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+          {teaser && (
+            <div className="cmp-teaser relative flex max-w-[250px] items-start gap-2 rounded-2xl rounded-br-sm border-3 border-ink bg-white px-3 py-2 text-sm font-semibold shadow-brutal-sm">
+              <button type="button" onClick={() => (setTeaser(null), setOpen(true))} className="text-left">
+                {teaser}
+              </button>
+              <button type="button" onClick={() => setTeaser(null)} aria-label="Dismiss" className="-mr-1 -mt-0.5 px-1 text-ink-mute hover:text-ink">
+                ×
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => (setTeaser(null), setOpen(true))}
+            aria-label={`Chat with ${name}, Companio’s assistant`}
+            className="cmp-bubble group relative flex h-16 w-16 items-center justify-center rounded-full border-3 border-ink bg-pink shadow-brutal transition-transform hover:scale-110 active:scale-95"
+          >
+            {teaser && <span className="cmp-ring pointer-events-none absolute inset-0 rounded-full border-4 border-pink" aria-hidden />}
+            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden className="transition-transform group-hover:-rotate-6">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.2 3.6c-.5.4-1.3.1-1.3-.6V16A2.5 2.5 0 0 1 4 13.5z" fill="#fff" stroke="#141414" strokeWidth="1.8" strokeLinejoin="round" />
+              <circle cx="9" cy="9.6" r="1.2" fill="#141414" />
+              <circle cx="12" cy="9.6" r="1.2" fill="#141414" />
+              <circle cx="15" cy="9.6" r="1.2" fill="#141414" />
+            </svg>
+            {teaser && (
+              <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-lime text-xs font-extrabold" aria-label="1 new message">
+                1
+              </span>
+            )}
+          </button>
+        </div>
       )}
       {open && (
         <div
           role="dialog"
           aria-label={`Chat with ${name}`}
-          className="fixed inset-0 z-[70] flex flex-col bg-paper sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[calc(100vh-48px)] sm:w-[390px] sm:rounded-blob sm:border-3 sm:border-ink sm:shadow-brutal"
+          className="cmp-panel fixed inset-0 z-[70] flex flex-col bg-paper sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[calc(100vh-48px)] sm:w-[390px] sm:rounded-blob sm:border-3 sm:border-ink sm:shadow-brutal"
         >
           <div className="flex items-center gap-3 border-b-3 border-ink bg-pink px-4 py-3 sm:rounded-t-[1.6rem]">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border-3 border-ink bg-white text-lg">✨</span>
+            <span className="relative flex h-10 w-10 items-center justify-center rounded-full border-3 border-ink bg-white text-lg">
+              ✨<span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-ink bg-lime" aria-label="online" />
+            </span>
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-extrabold leading-tight">{name}</p>
               <p className="text-xs font-semibold">Companio AI assistant · replies instantly</p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSoundMuted(!muted);
+                setMuted(!muted);
+              }}
+              aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
+              title={muted ? 'Sound off' : 'Sound on'}
+              className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink bg-white text-base"
+            >
+              {muted ? '🔇' : '🔊'}
+            </button>
             <button type="button" onClick={fresh} className="rounded-full px-2 text-xs font-bold underline" title="Start a new chat">
               New
             </button>
@@ -197,13 +287,13 @@ export function AssistantWidget() {
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-[15px]">
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm border-2 border-ink bg-white px-3 py-2">
-              Hi{user?.name ? ` ${user.name.split(' ')[0]}` : ''}! 👋 I’m {name}, Companio’s AI assistant. Ask me anything about meetups, safety, hosting or your account — or tap “Talk to a person”.
+            <div className="cmp-msg max-w-[85%] rounded-2xl rounded-tl-sm border-2 border-ink bg-white px-3 py-2">
+              Hi{user?.name ? ` ${user.name.split(' ')[0]}` : ''}! <span className="cmp-wave">👋</span> I’m {name}, Companio’s AI assistant. Ask me anything about meetups, safety, hosting or your account — or tap “Talk to a person”.
             </div>
             {msgs.length === 0 && (
               <div className="flex flex-wrap gap-2">
                 {starters.map((s) => (
-                  <button key={s} type="button" onClick={() => send(s)} className="rounded-full border-2 border-ink bg-sunny-soft px-3 py-1.5 text-sm font-semibold hover:bg-sunny">
+                  <button key={s} type="button" onClick={() => send(s)} className="cmp-msg rounded-full border-2 border-ink bg-sunny-soft px-3 py-1.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 hover:bg-sunny active:scale-95">
                     {s}
                   </button>
                 ))}
@@ -215,7 +305,7 @@ export function AssistantWidget() {
                   {m.content}
                 </p>
               ) : (
-                <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div key={i} className={cn('cmp-msg flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                   <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl border-2 border-ink px-3 py-2', m.role === 'user' ? 'rounded-tr-sm bg-pink-soft' : 'rounded-tl-sm bg-white')}>
                     {m.role === 'assistant' ? <Rich text={m.content} /> : m.content}
                   </div>
@@ -224,10 +314,13 @@ export function AssistantWidget() {
             )}
             {busy && (
               <div className="flex">
-                <div className="flex gap-1 rounded-2xl rounded-tl-sm border-2 border-ink bg-white px-3 py-3" aria-label={`${name} is typing`}>
-                  {[0, 1, 2].map((d) => (
-                    <span key={d} className="h-2 w-2 animate-bounce rounded-full bg-ink" style={{ animationDelay: `${d * 150}ms` }} />
-                  ))}
+                <div className="cmp-msg flex items-center gap-2 rounded-2xl rounded-tl-sm border-2 border-ink bg-white px-3 py-2.5" aria-label={`${name} is typing`}>
+                  <span className="flex gap-1">
+                    {[0, 1, 2].map((d) => (
+                      <span key={d} className="h-2 w-2 animate-bounce rounded-full bg-pink" style={{ animationDelay: `${d * 150}ms` }} />
+                    ))}
+                  </span>
+                  <span className="text-xs font-semibold text-ink-soft">{name} is typing…</span>
                 </div>
               </div>
             )}

@@ -29,23 +29,47 @@ let loaded = false;
  * Tawk.to live-chat bubble on the website (never in the admin panel, and never while an admin is viewing as someone).
  * Signed-in people are introduced to the agent by name and email — never their phone number.
  */
+/** Loads the Tawk.to script once (resolves when it's loaded); the bubble stays hidden until shown. */
+function loadTawk() {
+  if (!TAWK_PROPERTY_ID || !TAWK_WIDGET_ID) return;
+  if (loaded) return;
+  loaded = true;
+  const api: TawkApi = (window.Tawk_API = window.Tawk_API || {});
+  window.Tawk_LoadStart = new Date();
+  // sit a little higher on phones so the bubble never covers chat inputs and buttons at the bottom of the screen
+  api.customStyle = { visibility: { mobile: { position: 'br', xOffset: 12, yOffset: 84 } } };
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
+  s.charset = 'UTF-8';
+  s.setAttribute('crossorigin', '*');
+  document.body.appendChild(s);
+  // who the agent is talking to (set again on sign-in, below)
+  whenLoaded(() => pendingAttrs && window.Tawk_API?.setAttributes?.(pendingAttrs, () => {}));
+  whenLoaded(() => window.dispatchEvent(new Event(TAWK_READY)));
+}
+
+let pendingAttrs: Record<string, string> | null = null;
+const TAWK_READY = 'companio:tawk-ready';
+
+/**
+ * Tawk.to live chat. While our own assistant is on, Tawk isn't loaded at all during browsing — only when someone asks
+ * for a person (openHumanChat) — so its bubble can never show up next to ours, and pages load faster.
+ */
 export function LiveChat() {
-  const { user, ready, viewAs } = useAuth();
+  const { api, user, ready, viewAs } = useAuth();
 
   useEffect(() => {
     if (!TAWK_PROPERTY_ID || !TAWK_WIDGET_ID || !ready || viewAs || loaded) return;
-    loaded = true;
-    const api: TawkApi = (window.Tawk_API = window.Tawk_API || {});
-    window.Tawk_LoadStart = new Date();
-    // sit a little higher on phones so the bubble never covers chat inputs and buttons at the bottom of the screen
-    api.customStyle = { visibility: { mobile: { position: 'br', xOffset: 12, yOffset: 84 } } };
-    const s = document.createElement('script');
-    s.async = true;
-    s.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
-    s.charset = 'UTF-8';
-    s.setAttribute('crossorigin', '*');
-    document.body.appendChild(s);
-  }, [ready, viewAs]);
+    let cancelled = false;
+    api.assistant
+      .status()
+      .then((st) => !st.enabled && !cancelled && loadTawk())
+      .catch(() => !cancelled && loadTawk());
+    return () => {
+      cancelled = true;
+    };
+  }, [api, ready, viewAs]);
 
   // The bubble stays hidden while the cookie banner is open (it would cover it on phones), and whenever our own
   // assistant is on — then Tawk only appears when someone asks for a person (openHumanChat).
@@ -59,20 +83,21 @@ export function LiveChat() {
       else api.showWidget?.();
     };
     window.addEventListener(ASSISTANT_CHANGED, sync);
-    whenLoaded(sync);
     window.addEventListener(CONSENT_CHANGED, sync);
+    window.addEventListener(TAWK_READY, sync);
     return () => {
+      window.removeEventListener(TAWK_READY, sync);
       window.removeEventListener(CONSENT_CHANGED, sync);
       window.removeEventListener(ASSISTANT_CHANGED, sync);
     };
   }, [ready, viewAs]);
 
-  // tell the agent who they're talking to (once the widget is up, and again after signing in)
+  // tell the agent who they're talking to
   useEffect(() => {
-    if (!loaded || !user) return;
-    const attrs: Record<string, string> = { name: user.name ?? 'Member', id: user.id, role: user.companion ? 'Host' : 'Member' };
-    if (user.email && user.emailVerified) attrs.email = user.email;
-    whenLoaded(() => window.Tawk_API?.setAttributes?.(attrs, () => {}));
+    if (!user) return;
+    pendingAttrs = { name: user.name ?? 'Member', id: user.id, role: user.companion ? 'Host' : 'Member' };
+    if (user.email && user.emailVerified) pendingAttrs.email = user.email;
+    if (loaded) whenLoaded(() => window.Tawk_API?.setAttributes?.(pendingAttrs!, () => {}));
   }, [user]);
 
   return null;
@@ -99,15 +124,18 @@ let humanOpen = false;
  * the agent. Returns false when Tawk isn't set up (the caller shows another way to reach the team).
  */
 export function openHumanChat(summary: string) {
-  const api = window.Tawk_API;
-  if (!TAWK_PROPERTY_ID || !api?.maximize) return false;
+  if (!TAWK_PROPERTY_ID || !TAWK_WIDGET_ID) return false;
   humanOpen = true;
-  api.showWidget?.();
-  api.maximize();
-  api.addEvent?.('from-assistant', { summary: summary.slice(0, 250) }, () => {});
-  api.onChatMinimized = () => {
-    humanOpen = false;
-    if (document.documentElement.dataset.assistant === 'on') api.hideWidget?.();
-  };
+  loadTawk(); // first time someone asks for a person on this page
+  whenLoaded(() => {
+    const api = window.Tawk_API!;
+    api.showWidget?.();
+    api.maximize?.();
+    api.addEvent?.('from-assistant', { summary: summary.slice(0, 250) }, () => {});
+    api.onChatMinimized = () => {
+      humanOpen = false;
+      if (document.documentElement.dataset.assistant === 'on') api.hideWidget?.();
+    };
+  });
   return true;
 }
