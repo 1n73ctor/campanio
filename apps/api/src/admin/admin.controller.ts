@@ -6,8 +6,17 @@ import { AuthGuard, CurrentUser, Roles } from '../common/auth';
 import { AdminService } from './admin.service';
 import { AuthService } from '../auth/auth.service';
 import { kycOptions } from '../kyc/cashfree';
-import { IsString, Length } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 
+class AdminProfileDto {
+  @IsOptional() @IsString() @Length(2, 60) name?: string;
+  @IsOptional() @IsEmail({}, { message: 'Enter a valid email address' }) @MaxLength(254) email?: string;
+  @IsOptional() @IsString() @MaxLength(200) currentPassword?: string;
+}
+class AdminPasswordDto {
+  @IsString() @MaxLength(200) currentPassword: string;
+  @IsString() @Length(12, 128, { message: 'Use 12 to 128 characters' }) newPassword: string;
+}
 class TotpDto {
   @IsString() @Length(6, 6) code: string;
 }
@@ -120,6 +129,10 @@ export class AdminController {
   }
 
   // two-factor sign-in for the signed-in admin
+  /** your own admin account: name, sign-in email, password */
+  @Patch('me') updateMe(@CurrentUser() a: User, @Body() dto: AdminProfileDto) { return this.auth.adminUpdateProfile(a, dto); }
+  @Post('me/password') @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  changePassword(@CurrentUser() a: User, @Body() dto: AdminPasswordDto) { return this.auth.adminChangePassword(a, dto.currentPassword, dto.newPassword); }
   @Get('2fa') twoFactor(@CurrentUser() a: User) { return this.auth.twoFactorStatus(a); }
   @Post('2fa/setup') twoFactorSetup(@CurrentUser() a: User) { return this.auth.twoFactorSetup(a); }
   @Post('2fa/enable') twoFactorEnable(@CurrentUser() a: User, @Body() dto: TotpDto) { return this.auth.twoFactorEnable(a, dto.code); }

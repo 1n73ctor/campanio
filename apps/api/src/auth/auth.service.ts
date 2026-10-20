@@ -13,6 +13,9 @@ import { verifyFirebasePhoneToken } from './firebase';
 import { newTotpSecret, otpauthUrl, verifyTotp } from './totp';
 import { decryptDoc, encryptDoc } from '../files/uploads';
 import * as QRCode from 'qrcode';
+import { AuditService } from '../common/audit.service';
+import { MailService } from '../mail/mail.service';
+import { notificationEmail } from '../mail/templates';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_MAX_PER_HOUR = 5;
@@ -34,6 +37,8 @@ export class AuthService {
     private jwt: JwtService,
     private sms: SmsService,
     private referrals: ReferralsService,
+    private audit: AuditService,
+    private mail: MailService,
   ) {}
 
   private hash(phone: string, code: string) {
@@ -217,6 +222,54 @@ export class AuthService {
     const minutes = 30;
     const token = await this.jwt.signAsync({ sub: target.id, role: target.role, v: target.tokenVersion, imp: admin.id, iv: admin.tokenVersion }, { expiresIn: `${minutes}m` });
     return { token, expiresAt: new Date(Date.now() + minutes * 60_000).toISOString() };
+  }
+
+  // ---------- admin's own account ----------
+
+  private async checkAdminPassword(admin: User, password: string) {
+    const u = await this.prisma.user.findUniqueOrThrow({ where: { id: admin.id } });
+    if (!u.passwordHash || !(await bcrypt.compare(password ?? '', u.passwordHash))) throw new BadRequestException('Your current password is incorrect');
+    return u;
+  }
+
+  /** Name and sign-in email. Changing the email needs the current password (it's how you sign in). */
+  async adminUpdateProfile(admin: User, input: { name?: string; email?: string; currentPassword?: string }) {
+    const data: { name?: string; email?: string } = {};
+    if (input.name !== undefined && input.name.trim() !== (admin.name ?? '')) data.name = input.name.trim();
+    const email = input.email?.trim().toLowerCase();
+    if (email && email !== admin.email) {
+      await this.checkAdminPassword(admin, input.currentPassword ?? '');
+      if (await this.prisma.user.findFirst({ where: { email, id: { not: admin.id } } })) throw new BadRequestException('That email is already used by another account');
+      data.email = email;
+    }
+    if (!Object.keys(data).length) throw new BadRequestException('Nothing changed');
+    const u = await this.prisma.user.update({ where: { id: admin.id }, data, include: { companion: true } });
+    await this.audit.log(admin.id, 'admin.profile', 'user', admin.id, { name: data.name ? { from: admin.name, to: data.name } : undefined, email: data.email ? { from: admin.email, to: data.email } : undefined });
+    if (data.email && admin.email) {
+      // tell the old address, so a takeover can't go unnoticed
+      void this.mail.send(admin.email, notificationEmail({ firstName: admin.name?.split(' ')[0] ?? 'there', title: 'Your Companio admin email was changed', body: `The sign-in email for your admin account was changed to ${data.email}. If this wasn't you, contact the other admins immediately.`, siteUrl: config.webUrl }));
+    }
+    return toUserDto(u);
+  }
+
+  /**
+   * New password (12+ characters). Signs out every other device using this account (their tokens stop working) and
+   * returns a fresh token for this one.
+   */
+  async adminChangePassword(admin: User, currentPassword: string, newPassword: string) {
+    const u = await this.checkAdminPassword(admin, currentPassword);
+    if (newPassword.length < 12) throw new BadRequestException('Use at least 12 characters');
+    if (newPassword === currentPassword) throw new BadRequestException('The new password must be different from the current one');
+    if (u.email && newPassword.toLowerCase().includes(u.email.split('@')[0].toLowerCase())) throw new BadRequestException('Don’t use your email name in your password');
+    const updated = await this.prisma.user.update({
+      where: { id: admin.id },
+      data: { passwordHash: await bcrypt.hash(newPassword, 12), tokenVersion: { increment: 1 }, failedLogins: 0, lockedUntil: null },
+      include: { companion: true },
+    });
+    await this.audit.log(admin.id, 'admin.password', 'user', admin.id, {});
+    if (u.email)
+      void this.mail.send(u.email, notificationEmail({ firstName: u.name?.split(' ')[0] ?? 'there', title: 'Your Companio admin password was changed', body: "Your admin password was just changed and other devices were signed out. If this wasn't you, reset it right away and contact the other admins.", siteUrl: config.webUrl }));
+    return { token: await this.sign(updated), user: toUserDto(updated) };
   }
 
   /** A fresh session token for this user (current session version). */

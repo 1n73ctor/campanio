@@ -365,6 +365,10 @@ export function createApiClient(opts: ClientOptions) {
       assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
       saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
       deleteAssistantKnowledge: (id: string) => del<{ ok: true }>(`/admin/assistant/knowledge/${id}`),
+      /** your own admin account */
+      updateMe: (input: { name?: string; email?: string; currentPassword?: string }) => patch<UserDto>('/admin/me', input),
+      /** returns a fresh token for this session (other devices are signed out) */
+      changePassword: (currentPassword: string, newPassword: string) => post<{ token: string; user: UserDto }>('/admin/me/password', { currentPassword, newPassword }),
       /** one click: the whole site under maintenance, or back */
       setMaintenance: (on: boolean) => post<{ maintenance: boolean }>('/admin/maintenance', { on }),
       impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),

@@ -29,6 +29,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
   { href: '/admin/audit', label: 'Audit log', icon: '🧾' },
+  { href: '/admin/account', label: 'My account', icon: '👤' },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
