@@ -53,6 +53,21 @@ export const Impersonator = createParamDecorator((_: unknown, ctx: ExecutionCont
   return ctx.switchToHttp().getRequest().impersonator;
 });
 
+/** Same checks as AuthGuard when a token is sent, but signed-out requests are let through (req.user stays empty). */
+@Injectable()
+export class OptionalAuthGuard implements CanActivate {
+  constructor(
+    private jwt: JwtService,
+    private prisma: PrismaService,
+    private reflector: Reflector,
+  ) {}
+  async canActivate(ctx: ExecutionContext) {
+    const req = ctx.switchToHttp().getRequest();
+    if (!req.headers.authorization) return true;
+    return new AuthGuard(this.jwt, this.prisma, this.reflector).canActivate(ctx);
+  }
+}
+
 /** Verifies the bearer token, loads the user, blocks suspended/banned/deleted accounts and enforces @Roles(). */
 @Injectable()
 export class AuthGuard implements CanActivate {

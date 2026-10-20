@@ -1,0 +1,302 @@
+import { BadRequestException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import type { User } from '@prisma/client';
+import Anthropic from '@anthropic-ai/sdk';
+import { createHash, randomBytes } from 'crypto';
+import { CATEGORIES, formatINR } from '@companio/types';
+import { PrismaService } from '../common/prisma.service';
+import { SettingsService } from '../common/settings.service';
+import { WalletLedger } from '../common/wallet-ledger.service';
+import { config } from '../common/config';
+import { ASSISTANT_NAME, systemPrompt } from './assistant.prompt';
+
+const HISTORY = 16; // messages sent to the model per turn
+const PER_DAY = 40; // user messages per person (or IP) per 24h
+const PER_CONVERSATION = 80;
+const KEEP_DAYS = 90;
+const DAY = 86_400_000;
+const IST = { timeZone: 'Asia/Kolkata' } as const;
+const when = (d: Date) => d.toLocaleString('en-IN', { ...IST, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const first = (n: string | null | undefined) => n?.trim().split(/\s+/)[0] ?? 'someone';
+
+/** Read-only lookups the assistant can make about the signed-in user — never anyone else, never a change. */
+const TOOLS: Anthropic.Tool[] = [
+  { name: 'get_my_account', description: "The signed-in user's own account: name, email & whether verified, city, member since, and host status (verification status and reason, listed or not).", input_schema: { type: 'object', properties: {} } },
+  { name: 'get_my_meetups', description: "The signed-in user's recent meetups (as member and as host): status, who with (first name), when, activity, amounts, cancellation/refund details, disputes.", input_schema: { type: 'object', properties: {} } },
+  { name: 'get_my_wallet', description: "The signed-in user's wallet: balance, how much is spend-only credit/coins vs withdrawable, recent transactions, payouts, and coin top-ups waiting for approval.", input_schema: { type: 'object', properties: {} } },
+  {
+    name: 'handoff_to_human',
+    description: 'Pass the conversation to a person on the Companio team. Use when the user asks for a human, or for money problems you cannot resolve, safety concerns, complaints, or anything you are unsure about.',
+    input_schema: { type: 'object', properties: { summary: { type: 'string', description: 'One or two sentences for the team: who, what they need, what you already checked.' } }, required: ['summary'] },
+  },
+];
+
+export interface AssistantReply {
+  conversationKey: string;
+  reply: string;
+  handoff: boolean;
+  summary: string | null;
+}
+
+@Injectable()
+export class AssistantService implements OnModuleInit, OnModuleDestroy {
+  private log = new Logger('Assistant');
+  private client: Anthropic | null = null;
+  private timer: NodeJS.Timeout | null = null;
+
+  constructor(
+    private prisma: PrismaService,
+    private settings: SettingsService,
+    private wallet: WalletLedger,
+  ) {}
+
+  onModuleInit() {
+    if (config.assistant.apiKey && config.assistant.apiKey !== 'mock') this.client = new Anthropic({ apiKey: config.assistant.apiKey });
+    if (process.env.DISABLE_JOBS === 'true') return;
+    // conversations are kept for 90 days, then deleted
+    this.timer = setInterval(() => void this.prisma.assistantConversation.deleteMany({ where: { lastAt: { lt: new Date(Date.now() - KEEP_DAYS * DAY) } } }).catch(() => {}), 6 * 3600_000);
+  }
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  get configured() {
+    return !!config.assistant.apiKey;
+  }
+
+  async status() {
+    const s = await this.settings.get();
+    return { enabled: s.assistantEnabled === 1 && this.configured, name: ASSISTANT_NAME };
+  }
+
+  /** The conversation so far (to restore the chat window after a reload). */
+  async history(key: string, viewer?: User) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'asc' }, take: 100 } } });
+    if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
+    return { handoff: c.handoff, rating: c.rating, messages: c.messages.map((m) => ({ role: m.role, content: m.content, at: m.createdAt.toISOString() })) };
+  }
+
+  async rate(key: string, rating: 1 | -1, viewer?: User) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { key } });
+    if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
+    await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { rating } });
+    return { ok: true };
+  }
+
+  /** The user asked for a person from the chat window's button (no AI call needed). */
+  async requestHuman(key: string, viewer?: User) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'desc' }, take: 6 } } });
+    if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
+    const lastAsk = c.messages.find((m) => m.role === 'user')?.content;
+    const summary = c.summary ?? (lastAsk ? `Asked for a person. Last question: “${lastAsk.slice(0, 200)}”` : 'Asked for a person.');
+    await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, summary } });
+    return { summary };
+  }
+
+  async chat(input: { key?: string; message: string; ip?: string }, viewer?: User): Promise<AssistantReply> {
+    const s = await this.settings.get();
+    if (s.assistantEnabled !== 1 || !this.configured) throw new ServiceUnavailableException('The assistant is not available right now');
+    const message = input.message.trim();
+    if (!message) throw new BadRequestException('Type a message');
+    const ipHash = input.ip ? createHash('sha256').update(`assistant:${input.ip}`).digest('hex').slice(0, 32) : null;
+
+    // continue the visitor's conversation, or start a new one
+    let c = input.key ? await this.prisma.assistantConversation.findUnique({ where: { key: input.key } }) : null;
+    if (c && c.userId && c.userId !== viewer?.id) c = null; // someone else's — start fresh
+    if (!c) c = await this.prisma.assistantConversation.create({ data: { key: randomBytes(24).toString('base64url'), userId: viewer?.id ?? null, ipHash } });
+    else if (!c.userId && viewer) c = await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { userId: viewer.id } });
+
+    // cost limits
+    const since = new Date(Date.now() - DAY);
+    const today = await this.prisma.assistantMessage.count({
+      where: { role: 'user', createdAt: { gt: since }, conversation: viewer ? { userId: viewer.id } : { ipHash: ipHash ?? '-' } },
+    });
+    if (today >= PER_DAY) throw new HttpException(`You've reached today's limit for the assistant — tap "Talk to a person" and the team will help.`, HttpStatus.TOO_MANY_REQUESTS);
+    if ((await this.prisma.assistantMessage.count({ where: { conversationId: c.id } })) >= PER_CONVERSATION)
+      throw new HttpException('This chat is very long — start a new one, or tap "Talk to a person".', HttpStatus.TOO_MANY_REQUESTS);
+
+    await this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'user', content: message.slice(0, 1000) } });
+    const past = await this.prisma.assistantMessage.findMany({ where: { conversationId: c.id }, orderBy: { createdAt: 'desc' }, take: HISTORY });
+    const messages: Anthropic.MessageParam[] = past.reverse().map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    while (messages.length && messages[0].role !== 'user') messages.shift(); // the model needs to start with the user
+
+    const knowledge = await this.prisma.assistantKnowledge.findMany({ where: { active: true }, orderBy: { updatedAt: 'desc' }, take: 60, select: { question: true, answer: true } });
+    const system = systemPrompt(s, knowledge, !!viewer);
+    let handoff: string | null = null;
+    let reply = '';
+    try {
+      reply = await this.run(system, messages, viewer, (summary) => (handoff = summary));
+    } catch (e) {
+      this.log.error(`assistant failed: ${(e as Error).message}`);
+      reply = 'Sorry — I’m having trouble answering right now. Tap “Talk to a person” and someone from the team will help you.';
+    }
+    reply = reply.trim() || 'Sorry, could you say that another way?';
+    await this.prisma.$transaction([
+      this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: reply } }),
+      this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date(), ...(handoff ? { handoff: true, summary: handoff } : {}) } }),
+    ]);
+    return { conversationKey: c.key, reply, handoff: !!handoff, summary: handoff };
+  }
+
+  /** The model, with up to 4 rounds of tool use. */
+  private async run(system: string, messages: Anthropic.MessageParam[], viewer: User | undefined, onHandoff: (s: string) => void) {
+    if (config.assistant.apiKey === 'mock') return this.mock(messages, viewer, onHandoff);
+    const tools = viewer ? TOOLS : TOOLS.filter((t) => t.name === 'handoff_to_human');
+    for (let round = 0; round < 4; round++) {
+      const res = await this.client!.messages.create({
+        model: config.assistant.model,
+        max_tokens: 600,
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        tools,
+        messages,
+      });
+      const text = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n');
+      const calls = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+      if (res.stop_reason !== 'tool_use' || !calls.length) return text;
+      messages.push({ role: 'assistant', content: res.content });
+      const results: Anthropic.ToolResultBlockParam[] = [];
+      for (const call of calls) results.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(await this.tool(call.name, call.input as Record<string, unknown>, viewer, onHandoff)) });
+      messages.push({ role: 'user', content: results });
+    }
+    return 'Let me get someone from the team to help with this.';
+  }
+
+  /** Read-only lookups, always for the signed-in user only. */
+  private async tool(name: string, input: Record<string, unknown>, viewer: User | undefined, onHandoff: (s: string) => void): Promise<unknown> {
+    if (name === 'handoff_to_human') {
+      onHandoff(String(input.summary ?? 'The user asked for a person.').slice(0, 500));
+      return { ok: true, note: 'A team member will reply in this chat.' };
+    }
+    if (!viewer) return { error: 'Not signed in' };
+    if (name === 'get_my_account') {
+      const u = await this.prisma.user.findUniqueOrThrow({ where: { id: viewer.id }, include: { companion: true, kycSubmissions: { orderBy: { createdAt: 'desc' }, take: 1 } } });
+      return {
+        name: u.name,
+        email: u.contactEmail,
+        emailVerified: !!u.contactEmailVerifiedAt,
+        city: u.city,
+        memberSince: when(u.createdAt),
+        isHost: !!u.companion,
+        host: u.companion && { verification: u.companion.kycStatus, listed: u.companion.isListed, hourlyRate: u.companion.hourlyRate, lastVerificationNote: u.kycSubmissions[0]?.reviewNote ?? null },
+      };
+    }
+    if (name === 'get_my_meetups') {
+      const rows = await this.prisma.booking.findMany({
+        where: { OR: [{ userId: viewer.id }, { companionUserId: viewer.id }], status: { not: 'PENDING_PAYMENT' } },
+        orderBy: { startAt: 'desc' },
+        take: 10,
+        include: { user: true, companion: true, dispute: true },
+      });
+      return rows.map((b) => ({
+        role: b.userId === viewer.id ? 'member' : 'host',
+        with: first(b.userId === viewer.id ? b.companion.name : b.user.name),
+        activity: CATEGORIES.find((c) => c.slug === b.category)?.name ?? b.category,
+        when: when(b.startAt),
+        hours: b.hours,
+        status: b.status,
+        total: b.userId === viewer.id ? formatINR(b.total) : undefined,
+        hostEarns: b.companionUserId === viewer.id ? formatINR(b.companionPayout) : undefined,
+        cancelled: b.cancelledAt ? { by: b.cancelledBy, reason: b.cancelReason, at: when(b.cancelledAt) } : undefined,
+        dispute: b.dispute ? { status: b.dispute.status, reason: b.dispute.reason } : undefined,
+      }));
+    }
+    if (name === 'get_my_wallet') {
+      const w = await this.prisma.wallet.findUnique({ where: { userId: viewer.id }, include: { txns: { orderBy: { createdAt: 'desc' }, take: 10 } } });
+      const b = await this.wallet.balances(viewer.id);
+      const [payouts, topups] = await Promise.all([
+        this.prisma.payout.findMany({ where: { userId: viewer.id }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        this.prisma.topUpRequest.findMany({ where: { userId: viewer.id, status: { not: 'CANCELLED' } }, orderBy: { createdAt: 'desc' }, take: 5 }),
+      ]);
+      return {
+        balance: formatINR(b.balance),
+        spendOnlyCreditAndCoins: formatINR(b.promoBalance),
+        withdrawable: formatINR(b.withdrawable),
+        recent: (w?.txns ?? []).map((t) => ({ when: when(t.createdAt), type: t.type, amount: formatINR(t.amount), reason: t.reason })),
+        payouts: payouts.map((p) => ({ amount: formatINR(p.amount), status: p.status, requested: when(p.createdAt), note: p.note })),
+        coinTopUps: topups.map((t) => ({ amount: formatINR(t.amount), code: t.ref, status: t.status, note: t.reviewNote })),
+      };
+    }
+    return { error: 'Unknown tool' };
+  }
+
+  /** ANTHROPIC_API_KEY=mock: predictable answers for tests (no AI calls). */
+  private async mock(messages: Anthropic.MessageParam[], viewer: User | undefined, onHandoff: (s: string) => void) {
+    const last = String(messages[messages.length - 1].content).toLowerCase();
+    if (/bot|real/.test(last)) return `I’m ${ASSISTANT_NAME}, Companio’s AI assistant — happy to connect you with a person from the team anytime.`;
+    if (/human|person|agent|insaan/.test(last)) {
+      onHandoff('User asked for a person.');
+      return 'Sure — I’ve asked someone from the team to join. They’ll reply right here.';
+    }
+    if (/wallet|balance|coins/.test(last) && viewer) {
+      const w = (await this.tool('get_my_wallet', {}, viewer, onHandoff)) as { balance: string };
+      return `Your wallet balance is ${w.balance}.`;
+    }
+    if (/meetup|booking|refund/.test(last) && viewer) {
+      const m = (await this.tool('get_my_meetups', {}, viewer, onHandoff)) as unknown[];
+      return `You have ${m.length} recent meetup(s).`;
+    }
+    return `Hi! I’m ${ASSISTANT_NAME}, Companio’s assistant. How can I help?`;
+  }
+
+  // ---------- admin ----------
+
+  async adminConversations(q: { page?: number; filter?: string }) {
+    const pageSize = 25;
+    const page = q.page ?? 1;
+    const where = q.filter === 'handoff' ? { handoff: true } : q.filter === 'disliked' ? { rating: -1 } : q.filter === 'liked' ? { rating: 1 } : {};
+    const [total, rows] = await Promise.all([
+      this.prisma.assistantConversation.count({ where }),
+      this.prisma.assistantConversation.findMany({
+        where,
+        orderBy: { lastAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { user: { select: { id: true, name: true } }, messages: { where: { role: 'user' }, orderBy: { createdAt: 'asc' }, take: 1 }, _count: { select: { messages: true } } },
+      }),
+    ]);
+    return {
+      items: rows.map((c) => ({
+        id: c.id,
+        user: c.user,
+        firstQuestion: c.messages[0]?.content ?? '',
+        messages: c._count.messages,
+        handoff: c.handoff,
+        summary: c.summary,
+        rating: c.rating,
+        lastAt: c.lastAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async adminConversation(id: string) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { id }, include: { user: { select: { id: true, name: true } }, messages: { orderBy: { createdAt: 'asc' } } } });
+    if (!c) throw new NotFoundException('Conversation not found');
+    return { id: c.id, user: c.user, handoff: c.handoff, summary: c.summary, rating: c.rating, messages: c.messages.map((m) => ({ id: m.id, role: m.role, content: m.content, at: m.createdAt.toISOString() })) };
+  }
+
+  async adminStats() {
+    const since = new Date(Date.now() - 7 * DAY);
+    const [conversations, handoffs, liked, disliked, knowledge] = await Promise.all([
+      this.prisma.assistantConversation.count({ where: { createdAt: { gt: since } } }),
+      this.prisma.assistantConversation.count({ where: { createdAt: { gt: since }, handoff: true } }),
+      this.prisma.assistantConversation.count({ where: { createdAt: { gt: since }, rating: 1 } }),
+      this.prisma.assistantConversation.count({ where: { createdAt: { gt: since }, rating: -1 } }),
+      this.prisma.assistantKnowledge.count({ where: { active: true } }),
+    ]);
+    return { configured: this.configured, model: config.assistant.model, last7Days: { conversations, handoffs, liked, disliked }, knowledge };
+  }
+
+  knowledgeList() {
+    return this.prisma.assistantKnowledge.findMany({ orderBy: { updatedAt: 'desc' } });
+  }
+  knowledgeSave(admin: User, input: { id?: string; question: string; answer: string; active?: boolean }) {
+    const data = { question: input.question.trim(), answer: input.answer.trim(), active: input.active ?? true };
+    return input.id ? this.prisma.assistantKnowledge.update({ where: { id: input.id }, data }) : this.prisma.assistantKnowledge.create({ data: { ...data, createdBy: admin.id } });
+  }
+  async knowledgeDelete(id: string) {
+    await this.prisma.assistantKnowledge.delete({ where: { id } });
+    return { ok: true };
+  }
+}

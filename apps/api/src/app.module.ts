@@ -14,6 +14,7 @@ import { CompanionSelfController, CompanionsController } from './companions/comp
 import { CompanionsService } from './companions/companions.service';
 import { BookingsModule } from './bookings/bookings.module';
 import { ChatsModule } from './chats/chats.module';
+import { AssistantModule } from './assistant/assistant.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WalletController } from './wallet/wallet.controller';
 import { AdminTopUpsController, TopUpsController } from './wallet/topups.controller';
@@ -45,6 +46,7 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     AuthModule,
     BookingsModule,
     ChatsModule,
+    AssistantModule,
     PaymentsModule,
     ReferralsModule,
     CompanionFeeModule,

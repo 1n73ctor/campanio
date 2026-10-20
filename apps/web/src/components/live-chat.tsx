@@ -11,6 +11,9 @@ type TawkApi = {
   customStyle?: unknown;
   hideWidget?: () => void;
   showWidget?: () => void;
+  maximize?: () => void;
+  addEvent?: (name: string, meta: Record<string, string>, cb?: (err?: unknown) => void) => void;
+  onChatMinimized?: () => void;
   onLoadCallbacks?: (() => void)[];
 };
 declare global {
@@ -44,18 +47,24 @@ export function LiveChat() {
     document.body.appendChild(s);
   }, [ready, viewAs]);
 
-  // the bubble would cover the cookie banner on phones: keep it hidden until the visitor has answered it
+  // The bubble stays hidden while the cookie banner is open (it would cover it on phones), and whenever our own
+  // assistant is on — then Tawk only appears when someone asks for a person (openHumanChat).
   useEffect(() => {
-    if (!TAWK_PROPERTY_ID || !TRACKING_ENABLED) return;
+    if (!TAWK_PROPERTY_ID) return;
     const sync = () => {
       const api = window.Tawk_API;
       if (!api?.hideWidget) return;
-      if (getConsent() === null) api.hideWidget();
+      if (humanOpen) return;
+      if (document.documentElement.dataset.assistant === 'on' || (TRACKING_ENABLED && getConsent() === null)) api.hideWidget();
       else api.showWidget?.();
     };
+    window.addEventListener(ASSISTANT_CHANGED, sync);
     whenLoaded(sync);
     window.addEventListener(CONSENT_CHANGED, sync);
-    return () => window.removeEventListener(CONSENT_CHANGED, sync);
+    return () => {
+      window.removeEventListener(CONSENT_CHANGED, sync);
+      window.removeEventListener(ASSISTANT_CHANGED, sync);
+    };
   }, [ready, viewAs]);
 
   // tell the agent who they're talking to (once the widget is up, and again after signing in)
@@ -79,4 +88,26 @@ function whenLoaded(fn: () => void) {
     api.onLoad = () => api.onLoadCallbacks!.forEach((f) => f());
   }
   api.onLoadCallbacks.push(fn);
+}
+
+/** fired when our assistant switches on or off, so the Tawk bubble hides or shows */
+export const ASSISTANT_CHANGED = 'companio:assistant-changed';
+let humanOpen = false;
+
+/**
+ * Hand a conversation from our assistant to a person on Tawk.to: opens the Tawk chat with the summary attached for
+ * the agent. Returns false when Tawk isn't set up (the caller shows another way to reach the team).
+ */
+export function openHumanChat(summary: string) {
+  const api = window.Tawk_API;
+  if (!TAWK_PROPERTY_ID || !api?.maximize) return false;
+  humanOpen = true;
+  api.showWidget?.();
+  api.maximize();
+  api.addEvent?.('from-assistant', { summary: summary.slice(0, 250) }, () => {});
+  api.onChatMinimized = () => {
+    humanOpen = false;
+    if (document.documentElement.dataset.assistant === 'on') api.hideWidget?.();
+  };
+  return true;
 }

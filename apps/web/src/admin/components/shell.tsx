@@ -24,6 +24,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/users', label: 'Users', icon: '👥' },
   { href: '/admin/topups', label: 'Coin top-ups', icon: '🪙', count: 'pendingTopups' },
   { href: '/admin/chats', label: 'Paid chats', icon: '💬' },
+  { href: '/admin/assistant', label: 'Assistant', icon: '🤖' },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },

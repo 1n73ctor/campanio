@@ -546,6 +546,8 @@ export interface PlatformSettings {
   chatRefundHours: number;
   /** % of each chat payment the host earns (withdrawable) once they reply; the rest is platform revenue */
   chatHostSharePct: number;
+  /** 1 = the AI support assistant chat bubble is on (needs ANTHROPIC_API_KEY on the server) */
+  assistantEnabled: number;
   /** 1 = members add coins by paying the platform's UPI QR and an admin approves it; 0 = through the payment gateway */
   manualTopup: number;
   /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */

@@ -95,6 +95,11 @@ export type AdminChatConversation = {
   unlocks: { id: string; kind: string; price: number; hours: number | null; status: string; hostEarning: number; createdAt: string; refundedAt: string | null }[];
 };
 
+export type AdminAssistantStats = { configured: boolean; model: string; last7Days: { conversations: number; handoffs: number; liked: number; disliked: number }; knowledge: number };
+export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; summary: string | null; rating: number | null; lastAt: string };
+export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; at: string }[] };
+export type AdminAssistantKnowledge = { id: string; question: string; answer: string; active: boolean; createdAt: string; updatedAt: string };
+
 export type AdminEditUserInput = {
   name?: string;
   /** '' removes it */
@@ -195,6 +200,14 @@ export function createApiClient(opts: ClientOptions) {
 
   return {
     request,
+    /** the AI support assistant (works signed in or out; `key` is the browser's secret for its conversation) */
+    assistant: {
+      status: () => get<{ enabled: boolean; name: string }>('/assistant/status'),
+      chat: (message: string, key?: string) => post<{ conversationKey: string; reply: string; handoff: boolean; summary: string | null }>('/assistant/chat', { message, key }),
+      history: (key: string) => post<{ handoff: boolean; rating: number | null; messages: { role: 'user' | 'assistant'; content: string; at: string }[] }>('/assistant/history', { key }),
+      rate: (key: string, rating: 1 | -1) => post<{ ok: true }>('/assistant/rate', { key, rating }),
+      human: (key: string) => post<{ summary: string }>('/assistant/human', { key }),
+    },
     meta: {
       catalog: () => get<{ categories: Category[]; cities: City[]; languages: string[] }>('/meta/catalog'),
       pricing: () => get<{ connectionFee: number; gstPct: number; freeCancelHours: number; lateCancelRefundPct: number }>('/meta/pricing'),
@@ -340,6 +353,12 @@ export function createApiClient(opts: ClientOptions) {
       topups: (q: { status?: string; page?: number }) => get<Paginated<AdminTopUpDto>>('/admin/topups', q),
       approveTopup: (id: string, input: { amount?: number; note?: string }) => post<{ ok: true }>(`/admin/topups/${id}/approve`, input),
       rejectTopup: (id: string, reason: string) => post<{ ok: true }>(`/admin/topups/${id}/reject`, { reason }),
+      assistantStats: () => get<AdminAssistantStats>('/admin/assistant/stats'),
+      assistantConversations: (q: { page?: number; filter?: string }) => get<Paginated<AdminAssistantConversation>>('/admin/assistant/conversations', q),
+      assistantConversation: (id: string) => get<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}`),
+      assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
+      saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
+      deleteAssistantKnowledge: (id: string) => del<{ ok: true }>(`/admin/assistant/knowledge/${id}`),
       /** one click: the whole site under maintenance, or back */
       setMaintenance: (on: boolean) => post<{ maintenance: boolean }>('/admin/maintenance', { on }),
       impersonate: (id: string, reason: string) => post<{ token: string; expiresAt: string }>(`/admin/users/${id}/impersonate`, { reason }),

@@ -14,10 +14,10 @@ datasource db {
 }
 
 model User {
-  id                     String          @id @default(cuid())
-  phone                  String?         @unique
+  id                     String                  @id @default(cuid())
+  phone                  String?                 @unique
   // admin sign-in email (unique). Members' email lives in contactEmail so typing one can't collide with, or reveal, an admin login.
-  email                  String?         @unique
+  email                  String?                 @unique
   contactEmail           String?
   // set when they click the link we emailed to contactEmail; cleared when the address changes. Only verified addresses get our emails.
   contactEmailVerifiedAt DateTime?
@@ -28,17 +28,17 @@ model User {
   city                   String?
   bio                    String?
   avatarUrl              String?
-  role                   String          @default("USER")
-  status                 String          @default("ACTIVE")
+  role                   String                  @default("USER")
+  status                 String                  @default("ACTIVE")
   statusReason           String?
-  onboarded              Boolean         @default(false)
+  onboarded              Boolean                 @default(false)
   guidelinesAccepted     DateTime?
-  warnings               Int             @default(0)
+  warnings               Int                     @default(0)
   // referrals: code is generated lazily; reward is paid once, when the referred user's first booking is released
-  referralCode           String?         @unique
+  referralCode           String?                 @unique
   referredById           String?
-  referredBy             User?           @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals              User[]          @relation("Referrals")
+  referredBy             User?                   @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]                  @relation("Referrals")
   referralRewardedAt     DateTime?
   // companion registration fee (amount incl. GST); a refund reopens the fee, so re-applying means paying again
   companionFeePaid       Int?
@@ -46,23 +46,24 @@ model User {
   companionFeeRefundedAt DateTime?
   // one-time welcome credit (set when it's paid so it can never be paid twice)
   welcomeCreditAt        DateTime?
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   deletedAt              DateTime?
   // on deletion the phone moves here: frees the number for a new sign-up, but admins still see who it was
   deletedPhone           String?
   // bumped by "log out of all other devices": tokens carrying an older version stop working
-  tokenVersion           Int             @default(0)
+  tokenVersion           Int                     @default(0)
   // admin sign-in protection: lock after repeated wrong passwords; optional authenticator-app 2FA
-  failedLogins           Int             @default(0)
+  failedLogins           Int                     @default(0)
   lockedUntil            DateTime?
   totpSecret             String?
   totpEnabledAt          DateTime?
   totpLastStep           Int?
-  chatsAsUser            Conversation[]  @relation("ConversationUser")
-  topUpRequests          TopUpRequest[]  @relation("TopUpRequests")
-  chatsAsHost            Conversation[]  @relation("ConversationHost")
-  directMessages         DirectMessage[] @relation("DirectMessageSender")
+  chatsAsUser            Conversation[]          @relation("ConversationUser")
+  topUpRequests          TopUpRequest[]          @relation("TopUpRequests")
+  assistantChats         AssistantConversation[] @relation("AssistantConversations")
+  chatsAsHost            Conversation[]          @relation("ConversationHost")
+  directMessages         DirectMessage[]         @relation("DirectMessageSender")
 
   companion         CompanionProfile?
   wallet            Wallet?
@@ -562,4 +563,51 @@ model TopUpRequest {
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@index([utr])
+}
+
+/// A conversation with the AI support assistant (signed in or anonymous). `key` is the secret the browser keeps to
+/// continue it; signed-in conversations also belong to the user.
+model AssistantConversation {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  userId    String?
+  user      User?    @relation("AssistantConversations", fields: [userId], references: [id], onDelete: SetNull)
+  /// sha256 of the visitor's IP — rate limits for signed-out visitors, never the IP itself
+  ipHash    String?
+  /// asked for (or was passed to) a human
+  handoff   Boolean  @default(false)
+  summary   String?
+  /// 1 = 👍, -1 = 👎 from the user
+  rating    Int?
+  createdAt DateTime @default(now())
+  lastAt    DateTime @default(now())
+
+  messages AssistantMessage[]
+
+  @@index([lastAt])
+  @@index([userId, lastAt])
+  @@index([ipHash, lastAt])
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// user | assistant
+  role           String
+  content        String
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+/// Answers an admin has approved for the assistant to use (the way it "learns" from past chats).
+model AssistantKnowledge {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  active    Boolean  @default(true)
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -6,6 +6,7 @@ import { FlashToast, ToastProvider } from './toast';
 import { PwaRegister } from './pwa';
 import { Analytics } from './analytics';
 import { LiveChat } from './live-chat';
+import { AssistantWidget } from './assistant-widget';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <PwaRegister />
         <Analytics />
         <LiveChat />
+        <AssistantWidget />
         <FlashToast />
       </ToastProvider>
     </AuthProvider>

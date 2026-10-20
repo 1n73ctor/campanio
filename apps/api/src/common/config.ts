@@ -61,6 +61,11 @@ export const config = {
     from: process.env.MAIL_FROM || `Companio <${process.env.SMTP_USER || 'info@getcompanio.in'}>`,
     replyTo: process.env.MAIL_REPLY_TO || process.env.SMTP_USER || undefined,
   },
+  /** AI support assistant (Claude). Empty key = the assistant is off. */
+  assistant: {
+    apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+    model: process.env.ASSISTANT_MODEL || 'claude-haiku-4-5-20251001',
+  },
   /** the platform's UPI ID and name for coin top-ups by QR (until the payment gateway is live). Empty = off. */
   upiPayee: {
     vpa: (process.env.UPI_PAYEE_VPA ?? '').trim(),
