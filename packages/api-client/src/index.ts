@@ -349,7 +349,7 @@ export function createApiClient(opts: ClientOptions) {
       broadcast: (msg: { title: string; body: string; link?: string; audience: 'ALL' | 'MEMBERS' | 'HOSTS'; city?: string; expectedCount: number }) =>
         post<{ ok: true; sent: number }>('/admin/broadcast', msg),
       /** message shown in the person's notifications */
-      messageUser: (id: string, msg: { title: string; body: string; link?: string }) => post<{ ok: true; id: string }>(`/admin/users/${id}/message`, msg),
+      messageUser: (id: string, msg: { title: string; body: string; link?: string; email?: boolean }) => post<{ ok: true; id: string; emailedTo: string | null }>(`/admin/users/${id}/message`, msg),
       /** correct someone's profile; only the fields sent change. `reason` goes in the audit log */
       editUser: (id: string, input: AdminEditUserInput) => patch<{ ok: true; changed: string[] }>(`/admin/users/${id}/profile`, input),
       /** "log in as": a 30-minute read-only session as this user (audited with the reason) */

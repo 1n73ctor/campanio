@@ -21,6 +21,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
   const [busy, setBusy] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const [msg, setMsg] = useState({ title: '', body: '', link: '' });
+  const [alsoEmail, setAlsoEmail] = useState(true);
   const [sending, setSending] = useState(false);
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
@@ -128,6 +129,17 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
               </Select>
             </Field>
           </div>
+          {u.email ? (
+            <label className="mt-3 flex cursor-pointer items-center gap-2">
+              <input type="checkbox" className="h-4 w-4 accent-ink" checked={alsoEmail} onChange={(e) => setAlsoEmail(e.target.checked)} />
+              <span>
+                Also email it to <b>{u.email}</b>
+                {!u.emailVerified && <span className="text-ink-soft"> (not verified yet)</span>}
+              </span>
+            </label>
+          ) : (
+            <p className="mt-3 text-ink-soft">No email on their profile, so this goes in the app only.</p>
+          )}
           <Button
             className="mt-3"
             loading={sending}
@@ -135,8 +147,10 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
             onClick={async () => {
               setSending(true);
               try {
-                await api.admin.messageUser(u.id, { title: msg.title.trim(), body: msg.body.trim(), link: msg.link || undefined });
-                toast('Message sent');
+                const r = await api.admin.messageUser(u.id, { title: msg.title.trim(), body: msg.body.trim(), link: msg.link || undefined, email: alsoEmail && !!u.email });
+                if (!alsoEmail || !u.email) toast('Message sent in the app');
+                else if (r.emailedTo) toast(`Message sent in the app and emailed to ${r.emailedTo}`);
+                else toast('Sent in the app, but the email couldn’t be sent — check the mail settings', 'error');
                 setMsg({ title: '', body: '', link: '' });
               } catch (e) {
                 toast(errMsg(e), 'error');

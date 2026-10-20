@@ -10,7 +10,8 @@ import { emailVerifyUrl } from './email-verify';
 
 /**
  * Notifications that also go out by email — things people need even when the app is closed. Chat, location and
- * small wallet extras stay in-app only. Admin broadcasts aren't emailed (one message to everyone would hit the
+ * small wallet extras stay in-app only. A message from an admin to one person is emailed separately (sendAdminMessage),
+ * when the admin ticks "also email". Admin broadcasts aren't emailed (one message to everyone would hit the
  * mailbox's sending limits and land in spam).
  */
 const EMAIL_TYPES: Record<string, string> = {
@@ -39,7 +40,6 @@ const EMAIL_TYPES: Record<string, string> = {
   'moderation.warning': 'Read the guidelines',
   'report.update': 'Open notifications',
   'review.new': 'See the review',
-  'admin.message': 'Open Companio',
   sos: 'Open SOS alerts',
 };
 const IST = { timeZone: 'Asia/Kolkata' } as const;
@@ -113,6 +113,20 @@ export class MailService {
     } catch (e) {
       this.log.error(`notification email failed: ${(e as Error).message}`);
     }
+  }
+
+  /**
+   * An admin's message to one person, by email as well. Goes to the address on their profile even if it isn't confirmed
+   * yet: the admin wrote it and sees which address it goes to. Returns that address, or null if nothing was sent.
+   */
+  async sendAdminMessage(userId: string, n: { title: string; body: string; link?: string }) {
+    if (!this.enabled || !this.prisma) return null;
+    const u = await this.prisma.user.findUnique({ where: { id: userId } });
+    const to = u && u.status !== 'DELETED' ? mailTo(u) ?? u.contactEmail : null;
+    if (!u || !to) return null;
+    const url = n.link ? `${config.webUrl}${n.link}` : config.webUrl;
+    const sent = await this.send(to, notificationEmail({ firstName: firstName(u.name), title: n.title, body: n.body, button: { url, label: 'Open Companio' }, siteUrl: config.webUrl }));
+    return sent ? to : null;
   }
 
   /** Activity, when, where and the amount — from the reader's side (member pays, host earns). No start code. */

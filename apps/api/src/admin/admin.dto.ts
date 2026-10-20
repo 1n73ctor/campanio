@@ -25,6 +25,8 @@ export class AdminMessageDto {
   @IsString() @Length(3, 1000) body: string;
   // only pages on our own site (e.g. /wallet), so a message can never link people off to another website
   @IsOptional() @IsString() @MaxLength(200) @Matches(/^\/(?![\/\\])[\w\-\/?=&#.%]*$/, { message: 'Link must be a page on this site, like /wallet' }) link?: string;
+  // also send it by email (default: yes)
+  @IsOptional() @IsBoolean() email?: boolean;
 }
 
 export const BROADCAST_AUDIENCES = ['ALL', 'MEMBERS', 'HOSTS'] as const;
