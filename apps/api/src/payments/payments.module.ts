@@ -11,6 +11,7 @@ import { CashfreeProvider } from './providers/cashfree.provider';
 @Module({
   imports: [BookingsModule],
   controllers: [PaymentsController],
+  exports: [PaymentsService],
   providers: [
     PaymentsService,
     {

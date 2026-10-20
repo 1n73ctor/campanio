@@ -9,6 +9,8 @@ import { TopUpsService } from './topups.service';
 
 class StartDto {
   @Type(() => Number) @IsInt() @Min(1) amount: number;
+  /** topping up to pay this meetup */
+  @IsOptional() @IsString() bookingId?: string;
 }
 class PaidDto {
   @IsOptional() @IsString() @MaxLength(40) utr?: string;
@@ -41,7 +43,7 @@ export class TopUpsController {
   }
   @Post() @Throttle({ default: { limit: 10, ttl: 60_000 } })
   start(@CurrentUser() u: User, @Body() dto: StartDto) {
-    return this.svc.start(u, dto.amount);
+    return this.svc.start(u, dto.amount, dto.bookingId);
   }
   @Post(':id/paid') paid(@CurrentUser() u: User, @Param('id') id: string, @Body() dto: PaidDto) {
     return this.svc.submit(u, id, dto.utr);

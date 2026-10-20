@@ -681,6 +681,8 @@ export interface TopUpRequestDto {
   status: TopUpStatus;
   credited: Rupees | null;
   reviewNote: string | null;
+  /** topping up to pay this meetup (paid automatically once approved) */
+  bookingId: string | null;
   createdAt: string;
   submittedAt: string | null;
   reviewedAt: string | null;
@@ -699,4 +701,6 @@ export interface AdminTopUpDto extends TopUpRequestDto {
   user: { id: string; name: string | null; phone: string | null };
   /** another approved request already used this transaction ID */
   utrUsedBy: string | null;
+  /** the meetup this top-up pays for once approved */
+  forMeetup: { id: string; total: Rupees; status: string } | null;
 }

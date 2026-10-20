@@ -225,6 +225,7 @@ model Booking {
   sosAlerts    SosAlert[]
   locations    LiveLocation[]
   safetyShares SafetyShare[]
+  topUps       TopUpRequest[]
   reports      Report[]
 
   @@index([userId, status])
@@ -551,6 +552,9 @@ model TopUpRequest {
   note         String
   /// UPI transaction ID (UTR), if the member entered it
   utr          String?
+  /// topping up to pay this meetup: once approved, it's paid from the wallet automatically
+  bookingId    String?
+  booking      Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   /// STARTED (QR shown) · PENDING (member says they paid) · APPROVED · REJECTED · CANCELLED
   status       String    @default("STARTED")
   credited     Int?

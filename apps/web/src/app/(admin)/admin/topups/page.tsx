@@ -71,7 +71,14 @@ export default function TopUpsPage() {
                   <Link href={`/admin/users/${r.user.id}`} className="font-bold underline">{r.user.name ?? '—'}</Link>
                   <span className="block text-xs text-ink-mute">{r.user.phone}</span>
                 </Td>
-                <Td className="font-bold tabular-nums">{formatINR(r.amount)}</Td>
+                <Td className="font-bold tabular-nums">
+                  {formatINR(r.amount)}
+                  {r.forMeetup && (
+                    <Link href={`/admin/bookings/${r.forMeetup.id}`} className="block whitespace-nowrap font-sans text-xs font-semibold text-ink-soft underline">
+                      for a meetup ({formatINR(r.forMeetup.total)}){r.forMeetup.status === 'PENDING_PAYMENT' ? ' · paid on approval' : ` · ${r.forMeetup.status.toLowerCase()}`}
+                    </Link>
+                  )}
+                </Td>
                 <Td className="whitespace-nowrap font-mono text-sm font-bold">{r.note}</Td>
                 <Td className="font-mono text-sm">
                   {r.utr ?? <span className="text-ink-mute">—</span>}
@@ -124,6 +131,9 @@ export default function TopUpsPage() {
               .
             </p>
             {approving.utrUsedBy && <p className="font-bold text-danger">⚠️ This transaction ID was already approved for {approving.utrUsedBy}.</p>}
+            {approving.forMeetup?.status === 'PENDING_PAYMENT' && (
+              <p className="rounded-xl border-2 border-ink bg-sky-soft p-2">This top-up is for a meetup ({formatINR(approving.forMeetup.total)}). Approving it also pays the meetup from their wallet and sends the request to the host.</p>
+            )}
             <Field label="Coins to add (the amount you actually received)">
               <Input type="number" min={1} max={10000} value={amount} onChange={(e) => setAmount(e.target.value)} />
             </Field>

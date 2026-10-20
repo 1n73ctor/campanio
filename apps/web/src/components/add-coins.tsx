@@ -147,7 +147,7 @@ function TopUpRow({ r, onChange }: { r: TopUpRequestDto; onChange: () => void })
 }
 
 /** QR (amount + note filled in), the note to write, a button for phones, then "I've paid". */
-function PayByUpi({ request: r, onClose }: { request: TopUpStartDto; onClose: () => void }) {
+export function PayByUpi({ request: r, onClose }: { request: TopUpStartDto; onClose: () => void }) {
   const toast = useToast();
   const phone = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const [step, setStep] = useState<'pay' | 'paid'>('pay');
@@ -202,7 +202,7 @@ function PayByUpi({ request: r, onClose }: { request: TopUpStartDto; onClose: ()
   );
 }
 
-function PaidForm({ request: r, onDone, onClose }: { request: TopUpRequestDto; onDone: () => void; onClose: () => void }) {
+export function PaidForm({ request: r, onDone, onClose }: { request: TopUpRequestDto; onDone: () => void; onClose: () => void }) {
   const { api } = useAuth();
   const toast = useToast();
   const [utr, setUtr] = useState('');

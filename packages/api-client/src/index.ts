@@ -297,7 +297,8 @@ export function createApiClient(opts: ClientOptions) {
     topups: {
       mode: () => get<{ coins: boolean; manual: boolean; payeeName: string | null; min: number; max: number }>('/wallet/topups/mode'),
       mine: () => get<TopUpRequestDto[]>('/wallet/topups'),
-      start: (amount: number) => post<TopUpStartDto>('/wallet/topups', { amount }),
+      /** `bookingId`: top up to pay that meetup (it's paid automatically once the top-up is approved) */
+      start: (amount: number, bookingId?: string) => post<TopUpStartDto>('/wallet/topups', { amount, bookingId }),
       paid: (id: string, utr?: string) => post<TopUpRequestDto>(`/wallet/topups/${id}/paid`, { utr: utr || undefined }),
       cancel: (id: string) => post<TopUpRequestDto>(`/wallet/topups/${id}/cancel`),
     },

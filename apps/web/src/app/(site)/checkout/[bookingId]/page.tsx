@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BOOKING_STATUS_LABEL, CATEGORIES, formatINR, type BookingDto, type CheckoutResponse } from '@companio/types';
+import { BOOKING_STATUS_LABEL, CATEGORIES, formatINR, type BookingDto, type CheckoutResponse, type TopUpRequestDto, type TopUpStartDto } from '@companio/types';
 import { Avatar, Button, Callout, Card, Modal, Toggle } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader } from '@/components/misc';
@@ -11,6 +11,7 @@ import { errMsg, fmtDateTime } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { loadRazorpay } from '@/lib/razorpay';
 import { payWithCashfree } from '@/lib/cashfree';
+import { PayByUpi } from '@/components/add-coins';
 
 
 export default function CheckoutPage({ params }: { params: Promise<{ bookingId: string }> }) {
@@ -25,20 +26,44 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState<Extract<CheckoutResponse, { provider: 'mock' }> | null>(null);
   const [method, setMethod] = useState<'upi' | 'card'>('upi');
+  // while online payment is off, members pay from their wallet and top it up by UPI QR
+  const [manual, setManual] = useState(false);
+  const [topup, setTopup] = useState<TopUpRequestDto | null>(null);
+  const [qr, setQr] = useState<TopUpStartDto | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([api.bookings.get(bookingId), api.wallet.get()])
-      .then(([bk, w]) => {
+    Promise.all([api.bookings.get(bookingId), api.wallet.get(), api.topups.mode().catch(() => null), api.topups.mine().catch(() => [] as TopUpRequestDto[])])
+      .then(([bk, w, mode, mine]) => {
         if (bk.status !== 'PENDING_PAYMENT') router.replace(`/bookings/${bk.id}`);
         setB(bk);
         setBalance(w.balance);
+        setManual(!!mode?.manual);
+        setTopup(mine.find((t) => t.bookingId === bk.id && (t.status === 'STARTED' || t.status === 'PENDING')) ?? null);
       })
       .catch((e) => toast(errMsg(e), 'error'));
   }, [user, api, bookingId, router, toast]);
 
   if (!user || !b) return <FullLoader />;
-  const walletUse = useWallet ? Math.min(balance, b.total) : 0;
+  const walletUse = manual ? Math.min(balance, b.total) : useWallet ? Math.min(balance, b.total) : 0;
+  const shortfall = Math.max(0, b.total - balance);
+  const topupAmount = Math.max(50, shortfall);
+
+  const startTopup = async () => {
+    setBusy(true);
+    try {
+      setQr(await api.topups.start(topupAmount, b.id));
+    } catch (e) {
+      toast(errMsg(e), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const refreshTopup = () =>
+    api.topups
+      .mine()
+      .then((mine) => setTopup(mine.find((t) => t.bookingId === b.id && (t.status === 'STARTED' || t.status === 'PENDING')) ?? null))
+      .catch(() => {});
   const cat = CATEGORIES.find((c) => c.slug === b.category);
 
   const done = () => {
@@ -106,7 +131,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
   return (
     <div className="container-x max-w-3xl py-10">
       <h1 className="text-3xl font-extrabold">Checkout</h1>
-      <p className="mt-1 text-ink-soft">{BOOKING_STATUS_LABEL[b.status]} · complete within 30 minutes to hold the slot.</p>
+      <p className="mt-1 text-ink-soft">
+        {BOOKING_STATUS_LABEL[b.status]} · {manual ? 'pay from your wallet to send the request.' : 'complete within 30 minutes to hold the slot.'}
+      </p>
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_300px]">
         <Card className="space-y-4 p-6">
           <div className="flex items-center gap-3">
@@ -135,20 +162,69 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
             Your money is released to {b.companion.name?.split(' ')[0]} only after the meetup. Declined, expired or no-show = automatic refund to your wallet.
           </Callout>
         </Card>
-        <div className="space-y-4">
-          <Card tone="lime" className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-bold">Use wallet</p>
-              <p className="text-xs">Balance {formatINR(balance)}</p>
-            </div>
-            <Toggle checked={useWallet} onChange={setUseWallet} disabled={balance === 0} label="Use wallet balance" />
-          </Card>
-          <Button size="lg" className="w-full" loading={busy} onClick={pay}>
-            Pay {formatINR(b.total - walletUse)}
-          </Button>
-          <p className="text-center text-xs text-ink-mute">UPI · Cards · Netbanking · Wallet</p>
-        </div>
+        {manual ? (
+          <div className="space-y-4">
+            <Card tone="lime" className="p-4">
+              <p className="text-sm font-bold">Your wallet</p>
+              <p className="font-display text-2xl font-extrabold tabular-nums">{formatINR(balance)}</p>
+              {shortfall > 0 && <p className="text-xs">{formatINR(shortfall)} more needed for this meetup</p>}
+            </Card>
+            {shortfall === 0 ? (
+              <Button size="lg" className="w-full" loading={busy} onClick={pay}>
+                Pay {formatINR(b.total)} from wallet
+              </Button>
+            ) : topup ? (
+              <Card tone="sunny" className="space-y-2 p-4 text-sm">
+                <p className="font-bold">{topup.status === 'PENDING' ? '⏳ Checking your UPI payment' : 'Waiting for your UPI payment'}</p>
+                <p>
+                  {formatINR(topup.amount)} · note <b className="font-mono">{topup.note}</b>
+                </p>
+                <p className="text-ink-soft">
+                  {topup.status === 'PENDING'
+                    ? `Once it’s confirmed, this meetup is paid from your wallet and the request goes to ${b.companion.name?.split(' ')[0]} automatically — we’ll notify you. We hold it for up to 24 hours.`
+                    : 'Finish paying with the QR, then tap “I’ve paid” in your Wallet.'}
+                </p>
+                <Button size="sm" variant="white" onClick={refreshTopup}>
+                  Check status
+                </Button>
+              </Card>
+            ) : (
+              <>
+                <Button size="lg" className="w-full" loading={busy} onClick={startTopup}>
+                  Add {formatINR(topupAmount)} by UPI & pay
+                </Button>
+                <p className="text-center text-xs text-ink-mute">
+                  Pay by UPI QR, then we confirm it and send your request to {b.companion.name?.split(' ')[0]} automatically. Online card payments are coming soon.
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Card tone="lime" className="flex items-center justify-between p-4">
+              <div>
+                <p className="text-sm font-bold">Use wallet</p>
+                <p className="text-xs">Balance {formatINR(balance)}</p>
+              </div>
+              <Toggle checked={useWallet} onChange={setUseWallet} disabled={balance === 0} label="Use wallet balance" />
+            </Card>
+            <Button size="lg" className="w-full" loading={busy} onClick={pay}>
+              Pay {formatINR(b.total - walletUse)}
+            </Button>
+            <p className="text-center text-xs text-ink-mute">UPI · Cards · Netbanking · Wallet</p>
+          </div>
+        )}
       </div>
+
+      {qr && (
+        <PayByUpi
+          request={qr}
+          onClose={() => {
+            setQr(null);
+            void refreshTopup();
+          }}
+        />
+      )}
 
       <Modal open={!!mock} onClose={() => setMock(null)} title="Test payment gateway">
         <Callout tone="lavender">This is the local mock gateway (PAYMENT_PROVIDER=mock). No real money moves.</Callout>
