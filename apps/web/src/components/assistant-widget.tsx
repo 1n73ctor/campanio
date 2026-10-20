@@ -272,10 +272,10 @@ export function AssistantWidget() {
               </button>
             </form>
             <div className="mt-2 flex items-center justify-between text-xs text-ink-soft">
-              <button type="button" onClick={askHuman} className="font-bold text-ink underline">
+              <button type="button" onClick={askHuman} className="shrink-0 whitespace-nowrap font-bold text-ink underline">
                 🙋 Talk to a person
               </button>
-              <span>AI answers can be wrong — check important details.</span>
+              <span className="text-right">AI can make mistakes</span>
             </div>
           </div>
         </div>
