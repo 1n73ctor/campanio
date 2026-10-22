@@ -7,11 +7,12 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { AdminStatsDto } from '@companio/types';
 import { Avatar, Button, Card, Field, Input, Logo, cn } from '@companio/ui';
 import { AdminProvider, errMsg, useAdmin } from '@/admin/lib/api';
+import { playHello, playReceive, primeSounds } from '@/lib/chat-sounds';
 import { useAdminRealtime } from '@/admin/lib/realtime';
 import { ToastProvider, useToast } from './toast';
 import { Loading } from './ui';
 
-type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'pendingTopups'>;
+type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'pendingTopups' | 'assistantWaiting'>;
 
 const NAV: { href: string; label: string; icon: string; count?: keyof Counts; urgent?: boolean }[] = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -24,7 +25,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/users', label: 'Users', icon: '👥' },
   { href: '/admin/topups', label: 'Coin top-ups', icon: '🪙', count: 'pendingTopups' },
   { href: '/admin/chats', label: 'Paid chats', icon: '💬' },
-  { href: '/admin/assistant', label: 'Assistant', icon: '🤖' },
+  { href: '/admin/assistant', label: 'Assistant', icon: '🤖', count: 'assistantWaiting', urgent: true },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
@@ -63,6 +64,9 @@ function Frame({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [refresh, pathname]);
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    primeSounds();
+  }, []);
 
   useAdminRealtime({
     'sos:new': () => {
@@ -74,6 +78,16 @@ function Frame({ children }: { children: ReactNode }) {
       refresh();
     },
     'report:new': () => refresh(),
+    // someone tapped "Talk to a person" in the chat bubble (or Riya passed them on)
+    'assistant:waiting': (d) => {
+      playHello();
+      toast(`🙋 ${(d as { who?: string }).who ?? 'Someone'} wants to talk to the team — Assistant`, 'info');
+      refresh();
+    },
+    'assistant:message': () => {
+      if (!pathname.startsWith('/admin/assistant')) playReceive();
+      refresh();
+    },
     'message:flagged': () => refresh(),
   });
 

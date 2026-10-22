@@ -580,6 +580,9 @@ model AssistantConversation {
   ipHash    String?
   /// asked for (or was passed to) a human
   handoff   Boolean  @default(false)
+  /// talking to the team instead of the AI: null = with the AI · "waiting" = their last message is unanswered ·
+  /// "answered" = the team replied last · "closed" = the team ended it (the AI answers again)
+  humanStatus String?
   summary   String?
   /// 1 = 👍, -1 = 👎 from the user
   rating    Int?
@@ -591,14 +594,17 @@ model AssistantConversation {
   @@index([lastAt])
   @@index([userId, lastAt])
   @@index([ipHash, lastAt])
+  @@index([humanStatus, lastAt])
 }
 
 model AssistantMessage {
   id             String                @id @default(cuid())
   conversationId String
   conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  /// user | assistant
+  /// user | assistant | agent (someone from the team) | note (a status line, e.g. "the team ended this chat")
   role           String
+  /// agent messages: the team member's first name, shown to the user
+  authorName     String?
   content        String
   /// assistant replies: "ai" (the model answered) or "instant" (a free built-in / approved answer, no AI call)
   source         String?

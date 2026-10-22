@@ -488,6 +488,8 @@ export interface AdminStatsDto {
   pendingPayouts: number;
   /** coin top-ups paid by UPI QR, waiting for an admin to check and approve */
   pendingTopups: number;
+  /** chat-bubble conversations waiting for a reply from the team */
+  assistantWaiting: number;
   series: { date: string; bookings: number; gmv: Rupees; signups: number }[];
 }
 

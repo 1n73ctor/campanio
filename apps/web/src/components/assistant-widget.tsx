@@ -6,10 +6,11 @@ import { cn } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
 import { CONSENT_CHANGED, TRACKING_ENABLED, getConsent } from '@/lib/analytics';
-import { ASSISTANT_CHANGED, openHumanChat } from './live-chat';
 import { playHello, playReceive, playSend, primeSounds, setSoundMuted, soundMuted } from '@/lib/chat-sounds';
 
-type Msg = { role: 'user' | 'assistant' | 'note'; content: string };
+type Msg = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name?: string | null };
+/** talking to the team (their messages wait for a person instead of the AI) */
+const LIVE = ['waiting', 'answered'];
 
 const STYLES = `
 @keyframes cmp-pop-in { 0% { transform: scale(0) rotate(-20deg); opacity: 0 } 70% { transform: scale(1.12) rotate(4deg); opacity: 1 } 100% { transform: scale(1) rotate(0) } }
@@ -79,7 +80,8 @@ function Rich({ text }: { text: string }) {
 
 /**
  * "Riya", Companio's AI assistant: a chat bubble on every page. Signed-in people get answers about their own account
- * (read-only); "Talk to a person" hands the conversation to the team on Tawk.to with a summary.
+ * (read-only); "Talk to a person" hands the conversation to the team, who reply from Admin → Assistant into this same
+ * window (it checks for replies every few seconds while the chat is with the team).
  */
 export function AssistantWidget() {
   const { api, user, ready, viewAs } = useAuth();
@@ -95,6 +97,9 @@ export function AssistantWidget() {
   const [key, setKey] = useState<string | undefined>(undefined);
   const [teaser, setTeaser] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
+  const [human, setHuman] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0);
+  const seen = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -128,13 +133,11 @@ export function AssistantWidget() {
       .then((s) => {
         setOn(s.enabled);
         setName(s.name);
-        document.documentElement.dataset.assistant = s.enabled ? 'on' : 'off';
-        window.dispatchEvent(new Event(ASSISTANT_CHANGED));
       })
       .catch(() => {});
   }, [api, ready, viewAs]);
 
-  // like the Tawk bubble: wait until the cookie banner has been answered (it would cover it on phones)
+  // wait until the cookie banner has been answered (it would cover it on phones)
   useEffect(() => {
     const sync = () => setHiddenForCookies(TRACKING_ENABLED && getConsent() === null);
     sync();
@@ -151,11 +154,56 @@ export function AssistantWidget() {
     api.assistant
       .history(k)
       .then((h) => {
-        setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content })));
+        setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+        seen.current = h.messages.length;
+        setHuman(h.human);
         setRated((h.rating as 1 | -1 | null) ?? null);
       })
       .catch(() => save(undefined));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // after a reload, find out whether this browser's chat is with the team (to keep checking for their replies)
+  useEffect(() => {
+    if (!on) return;
+    const k = read();
+    if (!k) return;
+    setKey(k);
+    api.assistant
+      .history(k)
+      .then((h) => {
+        setHuman(h.human);
+        seen.current = h.messages.length;
+      })
+      .catch(() => {});
+  }, [api, on]);
+
+  // while the team has the chat: check for their replies every few seconds (open) or now and then (closed → badge)
+  useEffect(() => {
+    if (!key || !human || !LIVE.includes(human)) return;
+    let stop = false;
+    const tick = async () => {
+      const h = await api.assistant.history(key).catch(() => null);
+      if (!h || stop) return;
+      setHuman(h.human);
+      if (h.messages.length === seen.current) return;
+      const fresh = h.messages.slice(seen.current);
+      seen.current = h.messages.length;
+      setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+      if (fresh.some((m) => m.role === 'agent' || m.role === 'note')) {
+        playReceive();
+        if (!open) setUnread((n) => n + fresh.filter((m) => m.role === 'agent').length);
+      }
+    };
+    const t = setInterval(tick, open ? 3000 : 15000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [api, key, human, open]);
+
+  useEffect(() => {
+    if (open) setUnread(0);
   }, [open]);
 
   useEffect(() => {
@@ -175,9 +223,14 @@ export function AssistantWidget() {
       const r = await api.assistant.chat(m, key);
       setKey(r.conversationKey);
       save(r.conversationKey);
-      setMsgs((x) => [...x, { role: 'assistant', content: r.reply }]);
-      playReceive();
-      if (r.handoff) handOver(r.summary ?? m);
+      setHuman(r.human);
+      seen.current += 1;
+      if (r.reply !== null) {
+        setMsgs((x) => [...x, { role: 'assistant', content: r.reply as string }]);
+        seen.current += 1;
+        playReceive();
+      }
+      if (r.handoff) await reload(r.conversationKey);
     } catch (e) {
       setMsgs((x) => [...x, { role: 'note', content: errMsg(e) }]);
     } finally {
@@ -185,19 +238,30 @@ export function AssistantWidget() {
     }
   };
 
-  const handOver = (summary: string) => {
-    if (openHumanChat(summary)) {
-      setOpen(false);
-      return;
-    }
-    setMsgs((x) => [...x, { role: 'note', content: 'Our team will get back to you — email info@getcompanio.in and mention this chat.' }]);
+  const reload = async (k: string) => {
+    const h = await api.assistant.history(k).catch(() => null);
+    if (!h) return;
+    setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+    seen.current = h.messages.length;
+    setHuman(h.human);
   };
 
   const askHuman = async () => {
-    let summary = msgs.filter((m) => m.role === 'user').slice(-1)[0]?.content ?? 'Wants to talk to a person';
-    if (key) summary = (await api.assistant.human(key).catch(() => ({ summary }))).summary;
-    handOver(summary);
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.assistant.human(key);
+      setKey(r.conversationKey);
+      save(r.conversationKey);
+      await reload(r.conversationKey);
+      playReceive();
+    } catch (e) {
+      setMsgs((x) => [...x, { role: 'note', content: errMsg(e) }]);
+    } finally {
+      setBusy(false);
+    }
   };
+  const withTeam = !!human && LIVE.includes(human);
 
   const rate = async (r: 1 | -1) => {
     if (!key) return;
@@ -210,6 +274,8 @@ export function AssistantWidget() {
     setKey(undefined);
     setMsgs([]);
     setRated(null);
+    setHuman(null);
+    seen.current = 0;
   };
 
   const starters = user
@@ -244,9 +310,9 @@ export function AssistantWidget() {
               <circle cx="12" cy="9.6" r="1.2" fill="#141414" />
               <circle cx="15" cy="9.6" r="1.2" fill="#141414" />
             </svg>
-            {teaser && (
-              <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-lime text-xs font-extrabold" aria-label="1 new message">
-                1
+            {(teaser || unread > 0) && (
+              <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-lime text-xs font-extrabold" aria-label={`${unread || 1} new message${unread > 1 ? 's' : ''}`}>
+                {unread || 1}
               </span>
             )}
           </button>
@@ -260,11 +326,11 @@ export function AssistantWidget() {
         >
           <div className="flex items-center gap-3 border-b-3 border-ink bg-pink px-4 py-3 sm:rounded-t-[1.6rem]">
             <span className="relative flex h-10 w-10 items-center justify-center rounded-full border-3 border-ink bg-white text-lg">
-              ✨<span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-ink bg-lime" aria-label="online" />
+              {withTeam ? '🙋' : '✨'}<span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-ink bg-lime" aria-label="online" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg font-extrabold leading-tight">{name}</p>
-              <p className="text-xs font-semibold">Companio AI assistant · replies instantly</p>
+              <p className="font-display text-lg font-extrabold leading-tight">{withTeam ? 'Companio team' : name}</p>
+              <p className="text-xs font-semibold">{withTeam ? 'A person will reply in this chat' : 'Companio AI assistant · replies instantly'}</p>
             </div>
             <button
               type="button"
@@ -306,7 +372,8 @@ export function AssistantWidget() {
                 </p>
               ) : (
                 <div key={i} className={cn('cmp-msg flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl border-2 border-ink px-3 py-2', m.role === 'user' ? 'rounded-tr-sm bg-pink-soft' : 'rounded-tl-sm bg-white')}>
+                  <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl border-2 border-ink px-3 py-2', m.role === 'user' ? 'rounded-tr-sm bg-pink-soft' : m.role === 'agent' ? 'rounded-tl-sm bg-lime-soft' : 'rounded-tl-sm bg-white')}>
+                    {m.role === 'agent' && <p className="mb-0.5 text-xs font-extrabold">{m.name ?? 'Companio'} · Companio team</p>}
                     {m.role === 'assistant' ? <Rich text={m.content} /> : m.content}
                   </div>
                 </div>
@@ -324,7 +391,13 @@ export function AssistantWidget() {
                 </div>
               </div>
             )}
-            {key && msgs.some((m) => m.role === 'assistant') && !busy && (
+            {withTeam && (
+              <p className="cmp-msg rounded-xl border-2 border-dashed border-ink/30 px-3 py-2 text-center text-xs text-ink-soft">
+                Write your message here and someone from the team will reply in this chat. It’s saved on this device, so you can close it and come back.
+                {!user && ' Add your email or phone number if you’d like us to reach you another way.'}
+              </p>
+            )}
+            {key && !withTeam && msgs.some((m) => m.role === 'assistant') && !busy && (
               <div className="flex items-center justify-center gap-2 text-xs text-ink-soft">
                 {rated ? (
                   'Thanks for the feedback!'
@@ -356,7 +429,7 @@ export function AssistantWidget() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 maxLength={1000}
-                placeholder="Type your question…"
+                placeholder={withTeam ? 'Write to the team…' : 'Type your question…'}
                 aria-label="Your message"
                 className="min-w-0 flex-1 rounded-full border-2 border-ink px-4 py-2 outline-none focus:ring-2 focus:ring-pink"
               />
@@ -365,10 +438,14 @@ export function AssistantWidget() {
               </button>
             </form>
             <div className="mt-2 flex items-center justify-between text-xs text-ink-soft">
-              <button type="button" onClick={askHuman} className="shrink-0 whitespace-nowrap font-bold text-ink underline">
-                🙋 Talk to a person
-              </button>
-              <span className="text-right">AI can make mistakes</span>
+              {withTeam ? (
+                <span className="font-bold text-ink">🙋 You’re chatting with the team</span>
+              ) : (
+                <button type="button" onClick={askHuman} disabled={busy} className="shrink-0 whitespace-nowrap font-bold text-ink underline disabled:opacity-50">
+                  🙋 Talk to a person
+                </button>
+              )}
+              <span className="text-right">{withTeam ? 'Replies come here' : 'AI can make mistakes'}</span>
             </div>
           </div>
         </div>

@@ -9,6 +9,8 @@ import { WalletLedger } from '../common/wallet-ledger.service';
 import { config } from '../common/config';
 import { ASSISTANT_NAME, systemPrompt, type HostFacts } from './assistant.prompt';
 import { instantAnswer } from './assistant.instant';
+import { RealtimeService } from '../realtime/realtime.service';
+import { MailService } from '../mail/mail.service';
 
 // cost controls: the model sees only the recent chat, writes short replies, and each person gets a daily allowance
 const HISTORY = 8; // messages sent to the model per turn
@@ -21,6 +23,8 @@ const PERSONAL = /\b(my|mine|mera|meri|mere|refund|wallet|coin|balance|booking|m
 const PRICE_IN = 1;
 const PRICE_OUT = 5;
 const PER_CONVERSATION = 80;
+const PER_HUMAN_CONVERSATION = 300; // talking to the team costs nothing, so a longer chat is fine
+const LIVE = ['waiting', 'answered'];
 const KEEP_DAYS = 90;
 const DAY = 86_400_000;
 const IST = { timeZone: 'Asia/Kolkata' } as const;
@@ -41,10 +45,16 @@ const TOOLS: Anthropic.Tool[] = [
 
 export interface AssistantReply {
   conversationKey: string;
-  reply: string;
+  /** null while they're talking to the team: their message waits for a person */
+  reply: string | null;
   handoff: boolean;
   summary: string | null;
+  /** talking to the team (see AssistantConversation.humanStatus) */
+  human: string | null;
 }
+
+type ChatLine = { role: string; content: string; authorName: string | null; createdAt: Date };
+const toLine = (m: ChatLine) => ({ role: m.role, content: m.content, name: m.authorName, at: m.createdAt.toISOString() });
 
 @Injectable()
 export class AssistantService implements OnModuleInit, OnModuleDestroy {
@@ -57,6 +67,8 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     private prisma: PrismaService,
     private settings: SettingsService,
     private wallet: WalletLedger,
+    private rt: RealtimeService,
+    private mail: MailService,
   ) {}
 
   onModuleInit() {
@@ -80,9 +92,10 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
 
   /** The conversation so far (to restore the chat window after a reload). */
   async history(key: string, viewer?: User) {
-    const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'asc' }, take: 100 } } });
+    const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'desc' }, take: 150 } } });
+    c?.messages.reverse();
     if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
-    return { handoff: c.handoff, rating: c.rating, messages: c.messages.map((m) => ({ role: m.role, content: m.content, at: m.createdAt.toISOString() })) };
+    return { handoff: c.handoff, human: c.humanStatus, rating: c.rating, messages: c.messages.map(toLine) };
   }
 
   async rate(key: string, rating: 1 | -1, viewer?: User) {
@@ -92,14 +105,33 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  /** The user asked for a person from the chat window's button (no AI call needed). */
-  async requestHuman(key: string, viewer?: User) {
-    const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'desc' }, take: 6 } } });
-    if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
-    const lastAsk = c.messages.find((m) => m.role === 'user')?.content;
-    const summary = c.summary ?? (lastAsk ? `Asked for a person. Last question: “${lastAsk.slice(0, 200)}”` : 'Asked for a person.');
-    await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, summary } });
-    return { summary };
+  /** The user tapped "Talk to a person" (no AI call needed). Starts a conversation if they hadn't written yet. */
+  async requestHuman(key: string | undefined, viewer?: User, ip?: string) {
+    let c = key ? await this.prisma.assistantConversation.findUnique({ where: { key } }) : null;
+    if (c && c.userId && c.userId !== viewer?.id) throw new NotFoundException('Conversation not found');
+    if (!c) c = await this.prisma.assistantConversation.create({ data: { key: randomBytes(24).toString('base64url'), userId: viewer?.id ?? null, ipHash: this.ipHash(ip) } });
+    const lastAsk = (await this.prisma.assistantMessage.findFirst({ where: { conversationId: c.id, role: 'user' }, orderBy: { createdAt: 'desc' } }))?.content;
+    const summary = lastAsk ? `Asked for a person. Last message: “${lastAsk.slice(0, 200)}”` : 'Asked for a person.';
+    await this.toTeam(c, c.summary && c.humanStatus ? c.summary : summary, viewer);
+    return { conversationKey: c.key, summary, human: 'waiting' };
+  }
+
+  private ipHash(ip?: string) {
+    return ip ? createHash('sha256').update(`assistant:${ip}`).digest('hex').slice(0, 32) : null;
+  }
+
+  /**
+   * Hands the conversation to the team: from now on the user's messages wait for a person in Admin → Assistant
+   * instead of going to the AI. Admins get a live alert, and an email when it's a new request.
+   */
+  private async toTeam(c: { id: string; humanStatus: string | null }, summary: string, viewer?: User) {
+    const isNew = !c.humanStatus || !LIVE.includes(c.humanStatus);
+    await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, humanStatus: 'waiting', summary, lastAt: new Date() } });
+    if (!isNew) return;
+    await this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'note', content: 'You’re now chatting with the Companio team.' } });
+    const who = viewer?.name?.trim() || (viewer ? 'A member' : 'A visitor');
+    this.rt.toAdmins('assistant:waiting', { id: c.id, who, summary });
+    void this.mail.toAdmins(`${who} wants to talk to the team`, `${summary}\n\nReply in Admin → Assistant — it appears in their chat window.`, `/admin/assistant?chat=${c.id}`);
   }
 
   async chat(input: { key?: string; message: string; ip?: string }, viewer?: User): Promise<AssistantReply> {
@@ -107,13 +139,25 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     if (s.assistantEnabled !== 1 || !this.configured) throw new ServiceUnavailableException('The assistant is not available right now');
     const message = input.message.trim();
     if (!message) throw new BadRequestException('Type a message');
-    const ipHash = input.ip ? createHash('sha256').update(`assistant:${input.ip}`).digest('hex').slice(0, 32) : null;
+    const ipHash = this.ipHash(input.ip);
 
     // continue the visitor's conversation, or start a new one
     let c = input.key ? await this.prisma.assistantConversation.findUnique({ where: { key: input.key } }) : null;
     if (c && c.userId && c.userId !== viewer?.id) c = null; // someone else's — start fresh
     if (!c) c = await this.prisma.assistantConversation.create({ data: { key: randomBytes(24).toString('base64url'), userId: viewer?.id ?? null, ipHash } });
     else if (!c.userId && viewer) c = await this.prisma.assistantConversation.update({ where: { id: c.id }, data: { userId: viewer.id } });
+
+    // talking to the team: the message waits for a person (no AI, no daily allowance)
+    if (c.humanStatus && LIVE.includes(c.humanStatus)) {
+      if ((await this.prisma.assistantMessage.count({ where: { conversationId: c.id } })) >= PER_HUMAN_CONVERSATION)
+        throw new HttpException('This chat is very long — tap “New” to start another one.', HttpStatus.TOO_MANY_REQUESTS);
+      await this.prisma.$transaction([
+        this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'user', content: message.slice(0, 1000) } }),
+        this.prisma.assistantConversation.update({ where: { id: c.id }, data: { humanStatus: 'waiting', lastAt: new Date() } }),
+      ]);
+      this.rt.toAdmins('assistant:message', { id: c.id, who: viewer?.name?.trim() || (viewer ? 'A member' : 'A visitor'), text: message.slice(0, 140) });
+      return { conversationKey: c.key, reply: null, handoff: false, summary: null, human: 'waiting' };
+    }
 
     // cost limits
     const since = new Date(Date.now() - DAY);
@@ -147,12 +191,13 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
         this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: instant, source: 'instant' } }),
         this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date() } }),
       ]);
-      return { conversationKey: c.key, reply: instant, handoff: false, summary: null };
+      return { conversationKey: c.key, reply: instant, handoff: false, summary: null, human: c.humanStatus };
     }
     if (today >= PER_DAY) throw new HttpException(`You've reached today's limit for the assistant — tap "Talk to a person" and the team will help.`, HttpStatus.TOO_MANY_REQUESTS);
 
-    const past = await this.prisma.assistantMessage.findMany({ where: { conversationId: c.id }, orderBy: { createdAt: 'desc' }, take: HISTORY });
-    const messages: Anthropic.MessageParam[] = past.reverse().map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    const past = await this.prisma.assistantMessage.findMany({ where: { conversationId: c.id, role: { not: 'note' } }, orderBy: { createdAt: 'desc' }, take: HISTORY });
+    // the team's replies count as the assistant's side of the chat
+    const messages: Anthropic.MessageParam[] = past.reverse().map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
     while (messages.length && messages[0].role !== 'user') messages.shift(); // the model needs to start with the user
 
     const lookups = !!viewer && PERSONAL.test(message);
@@ -169,9 +214,10 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     reply = reply.trim() || 'Sorry, could you say that another way?';
     await this.prisma.$transaction([
       this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'assistant', content: reply, source: 'ai', inputTokens: usage.in, outputTokens: usage.out } }),
-      this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date(), ...(handoff ? { handoff: true, summary: handoff } : {}) } }),
+      this.prisma.assistantConversation.update({ where: { id: c.id }, data: { lastAt: new Date() } }),
     ]);
-    return { conversationKey: c.key, reply, handoff: !!handoff, summary: handoff };
+    if (handoff) await this.toTeam(c, handoff, viewer);
+    return { conversationKey: c.key, reply, handoff: !!handoff, summary: handoff, human: handoff ? 'waiting' : c.humanStatus };
   }
 
   /** Live host numbers for the prompt (count, rate range, cities), cached for 10 minutes. */
@@ -297,7 +343,8 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
   async adminConversations(q: { page?: number; filter?: string }) {
     const pageSize = 25;
     const page = q.page ?? 1;
-    const where = q.filter === 'handoff' ? { handoff: true } : q.filter === 'disliked' ? { rating: -1 } : q.filter === 'liked' ? { rating: 1 } : {};
+    const where =
+      q.filter === 'waiting' ? { humanStatus: 'waiting' } : q.filter === 'team' ? { humanStatus: { in: LIVE } } : q.filter === 'handoff' ? { handoff: true } : q.filter === 'disliked' ? { rating: -1 } : q.filter === 'liked' ? { rating: 1 } : {};
     const [total, rows] = await Promise.all([
       this.prisma.assistantConversation.count({ where }),
       this.prisma.assistantConversation.findMany({
@@ -315,6 +362,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
         firstQuestion: c.messages[0]?.content ?? '',
         messages: c._count.messages,
         handoff: c.handoff,
+        human: c.humanStatus,
         summary: c.summary,
         rating: c.rating,
         lastAt: c.lastAt.toISOString(),
@@ -328,7 +376,39 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
   async adminConversation(id: string) {
     const c = await this.prisma.assistantConversation.findUnique({ where: { id }, include: { user: { select: { id: true, name: true } }, messages: { orderBy: { createdAt: 'asc' } } } });
     if (!c) throw new NotFoundException('Conversation not found');
-    return { id: c.id, user: c.user, handoff: c.handoff, summary: c.summary, rating: c.rating, messages: c.messages.map((m) => ({ id: m.id, role: m.role, content: m.content, at: m.createdAt.toISOString() })) };
+    return { id: c.id, user: c.user, handoff: c.handoff, human: c.humanStatus, summary: c.summary, rating: c.rating, messages: c.messages.map((m) => ({ id: m.id, ...toLine(m) })) };
+  }
+
+  /** A team member's reply: shows up in the user's chat window within seconds (it checks for replies while open). */
+  async adminReply(admin: User, id: string, text: string) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException('Conversation not found');
+    const name = admin.name?.trim().split(/\s+/)[0] || 'Companio team';
+    await this.prisma.$transaction([
+      ...(c.humanStatus && LIVE.includes(c.humanStatus) ? [] : [this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'note', content: 'You’re now chatting with the Companio team.' } })]),
+      this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'agent', content: text.trim(), authorName: name } }),
+      this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, humanStatus: 'answered', lastAt: new Date() } }),
+    ]);
+    this.rt.toAdmins('assistant:message', { id: c.id });
+    return this.adminConversation(id);
+  }
+
+  /** The team is done: the chat goes back to the AI (the user sees a note). */
+  async adminClose(id: string) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException('Conversation not found');
+    if (c.humanStatus && LIVE.includes(c.humanStatus))
+      await this.prisma.$transaction([
+        this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'note', content: 'The team closed this chat. Riya (AI) will answer from here — tap “Talk to a person” any time.' } }),
+        this.prisma.assistantConversation.update({ where: { id: c.id }, data: { humanStatus: 'closed' } }),
+      ]);
+    this.rt.toAdmins('assistant:message', { id: c.id });
+    return this.adminConversation(id);
+  }
+
+  /** For the admin sidebar badge. */
+  waitingCount() {
+    return this.prisma.assistantConversation.count({ where: { humanStatus: 'waiting' } });
   }
 
   async adminStats() {
@@ -348,6 +428,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     ]);
     return {
       configured: this.configured,
+      waiting: await this.waitingCount(),
       model: config.assistant.model,
       last7Days: { conversations, handoffs, liked, disliked, aiReplies: ai._count, freeReplies: instant, tokensIn, tokensOut, costUsd: Math.round(((tokensIn * PRICE_IN + tokensOut * PRICE_OUT) / 1e6) * 100) / 100 },
       knowledge,

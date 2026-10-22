@@ -14,12 +14,18 @@ class ChatDto {
 class KeyDto {
   @IsString() @MaxLength(64) key: string;
 }
+class HumanDto {
+  @IsOptional() @IsString() @MaxLength(64) key?: string;
+}
+class ReplyDto {
+  @IsString() @Length(1, 2000) text: string;
+}
 class RateDto extends KeyDto {
   @Type(() => Number) @IsIn([1, -1]) rating: 1 | -1;
 }
 class ListDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
-  @IsOptional() @IsIn(['all', 'handoff', 'liked', 'disliked']) filter?: string;
+  @IsOptional() @IsIn(['all', 'waiting', 'team', 'handoff', 'liked', 'disliked']) filter?: string;
 }
 class KnowledgeDto {
   @IsOptional() @IsString() id?: string;
@@ -48,8 +54,9 @@ export class AssistantController {
   @Post('rate') rate(@Body() dto: RateDto, @Req() req: { user?: User }) {
     return this.svc.rate(dto.key, dto.rating, req.user);
   }
-  @Post('human') human(@Body() dto: KeyDto, @Req() req: { user?: User }) {
-    return this.svc.requestHuman(dto.key, req.user);
+  @Post('human') @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  human(@Body() dto: HumanDto, @Ip() ip: string, @Req() req: { user?: User }) {
+    return this.svc.requestHuman(dto.key, req.user, ip);
   }
 }
 
@@ -69,6 +76,12 @@ export class AdminAssistantController {
   }
   @Get('conversations/:id') conversation(@Param('id') id: string) {
     return this.svc.adminConversation(id);
+  }
+  @Post('conversations/:id/reply') reply(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: ReplyDto) {
+    return this.svc.adminReply(a, id, dto.text);
+  }
+  @Post('conversations/:id/close') close(@Param('id') id: string) {
+    return this.svc.adminClose(id);
   }
   @Get('knowledge') knowledge() {
     return this.svc.knowledgeList();

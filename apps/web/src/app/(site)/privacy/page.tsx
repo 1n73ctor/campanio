@@ -28,8 +28,10 @@ export default function Privacy() {
           verification provider regulated in India. DigiLocker only shares your Aadhaar after you sign in and allow it.
         </p>
         <p>
-          Our live support chat is provided by Tawk.to. When you chat with us, your messages — and, if you’re signed in, your name and verified email — are
-          shared with Tawk.to so our team can reply. Your phone number, ID documents and location are never shared with it.
+          The chat bubble is answered first by Riya, our AI assistant. Her replies are written by Anthropic’s Claude AI, so what you type to her — and, if
+          you’re signed in and ask about your account, the details she looks up to answer (like your wallet balance or meetups) — is sent to Anthropic to
+          produce the reply. When you tap “Talk to a person”, your messages go only to our own team. Chats are kept for 90 days, then deleted. Your ID
+          documents and location are never shared through the chat.
         </p>
         <h2>Cookies & advertising</h2>
         <p>

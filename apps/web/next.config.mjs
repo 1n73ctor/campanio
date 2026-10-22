@@ -4,9 +4,6 @@ import path from 'path';
 const isProd = process.env.NODE_ENV === 'production';
 const apiOrigin = new URL(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').origin;
 const wsOrigin = apiOrigin.replace(/^http/, 'ws');
-// Tawk.to live chat: only allowed once its IDs are set (https://help.tawk.to — Content Security Policy)
-const tawk = !!(process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID && process.env.NEXT_PUBLIC_TAWK_WIDGET_ID);
-const T = (s) => (tawk ? ` ${s}` : '');
 const firebaseAuthDomain =
   process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com` : '');
 
@@ -14,24 +11,24 @@ const firebaseAuthDomain =
  * Content Security Policy: the only places this site may load code, frames and data from. If a script were ever
  * injected, the browser still refuses to load anything from, or send data to, anywhere else.
  * Allowed: our API (+ websocket), Firebase/reCAPTCHA (phone sign-in), Razorpay/Cashfree (payments), GA + Meta Pixel (with
- * cookie consent), OpenStreetMap (trusted-contact map) and Tawk.to (live chat, when configured). 'unsafe-inline' scripts are needed by Next.js's inline
+ * cookie consent), OpenStreetMap (trusted-contact map). 'unsafe-inline' scripts are needed by Next.js's inline
  * bootstrap; React's escaping is the primary defence against injected markup.
  * Production only — `next dev` needs eval() for hot reload.
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://*.razorpay.com https://sdk.cashfree.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com${T('https://*.tawk.to https://cdn.jsdelivr.net')}`,
-  `style-src 'self' 'unsafe-inline'${T('https://*.tawk.to https://fonts.googleapis.com')}`,
-  `img-src 'self' data: blob: ${apiOrigin} https://*.cashfree.com https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com${T('https://*.tawk.to https://cdn.jsdelivr.net https://tawk.link https://s3.amazonaws.com')}`,
-  `font-src 'self' data:${T('https://*.tawk.to https://fonts.gstatic.com')}`,
-  `connect-src 'self' ${apiOrigin} ${wsOrigin} https://*.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.facebook.com https://*.razorpay.com https://*.cashfree.com https://www.google.com${T('https://*.tawk.to wss://*.tawk.to')}`,
-  `frame-src https://*.razorpay.com https://*.cashfree.com https://www.google.com https://recaptcha.google.com https://www.openstreetmap.org${T('https://*.tawk.to')}${firebaseAuthDomain ? ` https://${firebaseAuthDomain}` : ''}`,
-  `media-src 'self' blob: mediastream:${T('https://*.tawk.to')}`,
+  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://*.razorpay.com https://sdk.cashfree.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
+  `style-src 'self' 'unsafe-inline'`,
+  `img-src 'self' data: blob: ${apiOrigin} https://*.cashfree.com https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com`,
+  `font-src 'self' data:`,
+  `connect-src 'self' ${apiOrigin} ${wsOrigin} https://*.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.facebook.com https://*.razorpay.com https://*.cashfree.com https://www.google.com`,
+  `frame-src https://*.razorpay.com https://*.cashfree.com https://www.google.com https://recaptcha.google.com https://www.openstreetmap.org${firebaseAuthDomain ? ` https://${firebaseAuthDomain}` : ''}`,
+  `media-src 'self' blob: mediastream:`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  `form-action 'self'${T('https://*.tawk.to')}`,
+  `form-action 'self'`,
   "frame-ancestors 'none'",
   ...(apiOrigin.startsWith('https:') ? ['upgrade-insecure-requests'] : []),
 ].join('; ');

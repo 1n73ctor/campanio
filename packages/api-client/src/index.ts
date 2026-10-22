@@ -96,13 +96,16 @@ export type AdminChatConversation = {
 };
 
 export type AdminAssistantStats = {
+  /** chats waiting for a reply from the team */
+  waiting: number;
   configured: boolean;
   model: string;
   last7Days: { conversations: number; handoffs: number; liked: number; disliked: number; aiReplies: number; freeReplies: number; tokensIn: number; tokensOut: number; costUsd: number };
   knowledge: number;
 };
-export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; summary: string | null; rating: number | null; lastAt: string };
-export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; at: string }[] };
+export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; human: string | null; summary: string | null; rating: number | null; lastAt: string };
+export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; human: string | null; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; name: string | null; at: string }[] };
+export type AssistantLine = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name: string | null; at: string };
 export type AdminAssistantKnowledge = { id: string; question: string; answer: string; active: boolean; createdAt: string; updatedAt: string };
 
 export type AdminEditUserInput = {
@@ -208,10 +211,10 @@ export function createApiClient(opts: ClientOptions) {
     /** the AI support assistant (works signed in or out; `key` is the browser's secret for its conversation) */
     assistant: {
       status: () => get<{ enabled: boolean; name: string }>('/assistant/status'),
-      chat: (message: string, key?: string) => post<{ conversationKey: string; reply: string; handoff: boolean; summary: string | null }>('/assistant/chat', { message, key }),
-      history: (key: string) => post<{ handoff: boolean; rating: number | null; messages: { role: 'user' | 'assistant'; content: string; at: string }[] }>('/assistant/history', { key }),
+      chat: (message: string, key?: string) => post<{ conversationKey: string; reply: string | null; handoff: boolean; summary: string | null; human: string | null }>('/assistant/chat', { message, key }),
+      history: (key: string) => post<{ handoff: boolean; human: string | null; rating: number | null; messages: AssistantLine[] }>('/assistant/history', { key }),
       rate: (key: string, rating: 1 | -1) => post<{ ok: true }>('/assistant/rate', { key, rating }),
-      human: (key: string) => post<{ summary: string }>('/assistant/human', { key }),
+      human: (key?: string) => post<{ conversationKey: string; summary: string; human: string }>('/assistant/human', { key }),
     },
     meta: {
       catalog: () => get<{ categories: Category[]; cities: City[]; languages: string[] }>('/meta/catalog'),
@@ -365,6 +368,8 @@ export function createApiClient(opts: ClientOptions) {
       assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
       saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
       deleteAssistantKnowledge: (id: string) => del<{ ok: true }>(`/admin/assistant/knowledge/${id}`),
+      replyAssistant: (id: string, text: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/reply`, { text }),
+      closeAssistant: (id: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/close`),
       /** your own admin account */
       updateMe: (input: { name?: string; email?: string; currentPassword?: string }) => patch<UserDto>('/admin/me', input),
       /** returns a fresh token for this session (other devices are signed out) */
