@@ -155,17 +155,17 @@ function LoginInner() {
         <h1 className="text-3xl font-extrabold">{step === 'phone' ? 'Hey there 👋' : 'Enter your code'}</h1>
         {step === 'phone' ? (
           <p className="mt-1 text-ink-soft">Log in or sign up with your mobile number.</p>
-        ) : via === 'whatsapp' ? (
-          <p className="mt-2 flex items-start gap-2 text-ink-soft">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#25D366]" aria-hidden>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.1.3.7 1.1 1.4 1.8.9.8 1.7 1.1 2 1.2.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.7-.1 1.5z" /></svg>
-            </span>
-            <span>
-              We sent a 6-digit code on <b className="text-ink">WhatsApp</b> to +91 {phone.slice(-10)}. Open WhatsApp and tap <b className="text-ink">Copy code</b>.
-            </span>
-          </p>
         ) : (
-          <p className="mt-1 text-ink-soft">We sent a 6-digit code by SMS to +91 {phone.slice(-10)}.</p>
+          <p className={`mt-3 inline-flex items-center gap-2 rounded-full border-2 border-ink px-3 py-1 text-sm font-bold ${via === 'whatsapp' ? 'bg-[#DCF8C6]' : 'bg-lime-soft'}`}>
+            {via === 'whatsapp' ? (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#25D366]" aria-hidden>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.1.3.7 1.1 1.4 1.8.9.8 1.7 1.1 2 1.2.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.7-.1 1.5z" /></svg>
+              </span>
+            ) : (
+              <span aria-hidden>✉️</span>
+            )}
+            {via === 'whatsapp' ? 'Code sent on WhatsApp ✓' : 'Code sent by SMS ✓'}
+          </p>
         )}
         {invited && step === 'phone' && (
           <Callout tone="lime" title="🎁 You were invited!" className="mt-5">
