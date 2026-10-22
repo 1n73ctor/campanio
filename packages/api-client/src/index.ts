@@ -225,7 +225,8 @@ export function createApiClient(opts: ClientOptions) {
       status: () => get<{ maintenance: boolean }>('/meta/status'),
     },
     auth: {
-      requestOtp: (phone: string) => post<OtpRequestResponse>('/auth/otp/request', { phone }),
+      requestOtp: (phone: string, channel?: 'whatsapp' | 'sms') => post<OtpRequestResponse>('/auth/otp/request', { phone, channel }),
+      otpStatus: (phone: string) => post<{ status: 'sent' | 'delivered' | 'failed' | 'unknown' }>('/auth/otp/status', { phone }),
       verifyOtp: (phone: string, code: string, ref?: string) => post<AuthResponse>('/auth/otp/verify', { phone, code, ref }),
       firebase: (idToken: string, ref?: string) => post<AuthResponse>('/auth/firebase', { idToken, ref }),
       /** returns { twoFactorRequired: true } when the admin has 2FA on and no code was given */

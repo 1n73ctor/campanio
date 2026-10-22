@@ -8,7 +8,7 @@ import { impersonatorOf, type JwtPayload } from './auth';
  * Still reachable while the site is under maintenance: status and health checks, admin sign-in and the admin panel,
  * images, and payment confirmations — a payment that's already under way must still be recorded, or money is lost.
  */
-const ALWAYS_OPEN = [/^\/assistant\//, /^\/meta\//, /^\/auth\/admin\//, /^\/admin(\/|$)/, /^\/payments\/webhook\//, /^\/payments\/verify$/, /^\/files\//, /^\/uploads\//];
+const ALWAYS_OPEN = [/^\/assistant\//, /^\/meta\//, /^\/auth\/admin\//, /^\/admin(\/|$)/, /^\/payments\/webhook\//, /^\/payments\/verify$/, /^\/files\//, /^\/uploads\//, /^\/whatsapp\/webhook$/];
 
 export const MAINTENANCE_MESSAGE = 'Companio is under maintenance — you can keep browsing, but changes are paused. Please try again in a few minutes.';
 

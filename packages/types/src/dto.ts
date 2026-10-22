@@ -56,7 +56,10 @@ export interface AuthResponse {
 }
 
 export interface OtpRequestResponse {
-  sent: true;
+  /** false: we couldn't send it ourselves — the website sends the code by SMS through Firebase instead */
+  sent: boolean;
+  /** how the code went out */
+  channel?: 'whatsapp' | 'sms';
   /** Only present when the API runs with OTP_DEV_ECHO=true (local dev). */
   devCode?: string;
 }

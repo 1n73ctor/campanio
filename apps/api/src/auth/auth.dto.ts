@@ -1,9 +1,14 @@
-import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 
 export class OtpRequestDto {
   @IsString()
   @Matches(/^(\+?91)?[6-9]\d{9}$/, { message: 'Enter a valid 10-digit Indian mobile number' })
   phone: string;
+
+  /** WhatsApp first (when set up); "sms" to skip it */
+  @IsOptional()
+  @IsIn(['whatsapp', 'sms'])
+  channel?: 'whatsapp' | 'sms';
 }
 
 export class OtpVerifyDto extends OtpRequestDto {

@@ -14,6 +14,19 @@ export const config = {
   filesBaseUrl: (process.env.FILES_BASE_URL || process.env.PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, ''),
   otpDevEcho: bool(process.env.OTP_DEV_ECHO) && process.env.NODE_ENV !== 'production',
   smsProvider: process.env.SMS_PROVIDER ?? 'console',
+  /** login codes on WhatsApp (Meta WhatsApp Cloud API); empty token = off, SMS (Firebase) only */
+  whatsapp: {
+    token: process.env.WHATSAPP_TOKEN ?? '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
+    template: process.env.WHATSAPP_OTP_TEMPLATE || 'companio_login_otp',
+    language: process.env.WHATSAPP_OTP_LANGUAGE || 'en',
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v21.0',
+    // only for tests (a fake Meta server)
+    apiBase: (process.env.WHATSAPP_API_BASE || 'https://graph.facebook.com').replace(/\/$/, ''),
+    // webhook (delivery receipts): the app secret checks Meta's signature; the verify token is any string you choose
+    appSecret: process.env.WHATSAPP_APP_SECRET ?? '',
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? '',
+  },
   /** Firebase project whose phone sign-ins we accept (web sends the SMS through Firebase). Empty = disabled. */
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? '',
   paymentProvider: (process.env.PAYMENT_PROVIDER ?? 'mock') as 'mock' | 'razorpay' | 'cashfree',

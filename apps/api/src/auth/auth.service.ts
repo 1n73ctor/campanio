@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { config } from '../common/config';
 import { toUserDto } from '../common/mappers';
 import { SmsService } from './sms.service';
+import { WhatsAppService } from './whatsapp.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { verifyFirebasePhoneToken } from './firebase';
 import { newTotpSecret, otpauthUrl, verifyTotp } from './totp';
@@ -36,6 +37,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private sms: SmsService,
+    private wa: WhatsAppService,
     private referrals: ReferralsService,
     private audit: AuditService,
     private mail: MailService,
@@ -45,20 +47,47 @@ export class AuthService {
     return createHmac('sha256', config.jwtSecret).update(`${phone}:${code}`).digest('hex');
   }
 
-  async requestOtp(rawPhone: string): Promise<OtpRequestResponse> {
-    // In production without a real SMS provider these codes would only be written to the server log, where anyone
-    // with log access could use them — so the endpoint is off there (Firebase handles phone sign-in instead).
-    if (process.env.NODE_ENV === 'production' && config.smsProvider === 'console') {
-      throw new ServiceUnavailableException('Phone codes are sent through Firebase sign-in');
-    }
+  /**
+   * Sends a login code: on WhatsApp when it's set up (and `channel` isn't "sms"), otherwise by our SMS provider.
+   * In production without either, returns { sent: false } and the website uses Firebase SMS instead — codes are never
+   * only written to the server log there, where anyone with log access could use them.
+   */
+  async requestOtp(rawPhone: string, channel: 'whatsapp' | 'sms' = 'whatsapp'): Promise<OtpRequestResponse> {
+    const viaWhatsApp = channel === 'whatsapp' && this.wa.enabled;
+    if (!viaWhatsApp && process.env.NODE_ENV === 'production' && config.smsProvider === 'console') return { sent: false };
     const phone = normalizePhone(rawPhone);
     const recent = await this.prisma.otpCode.count({ where: { phone, createdAt: { gte: new Date(Date.now() - 3600_000) } } });
     if (recent >= OTP_MAX_PER_HOUR) throw new HttpException('Too many codes requested. Try again in an hour.', HttpStatus.TOO_MANY_REQUESTS);
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    await this.prisma.otpCode.create({ data: { phone, codeHash: this.hash(phone, code), expiresAt: new Date(Date.now() + OTP_TTL_MS) } });
+    const row = await this.prisma.otpCode.create({
+      data: { phone, codeHash: this.hash(phone, code), expiresAt: new Date(Date.now() + OTP_TTL_MS), channel: viaWhatsApp ? 'whatsapp' : 'sms' },
+    });
+    if (viaWhatsApp) {
+      try {
+        const id = await this.wa.sendOtp(phone, code);
+        await this.prisma.otpCode.update({ where: { id: row.id }, data: { waMessageId: id, waStatus: 'accepted' } });
+      } catch {
+        // not sent (e.g. Meta refused it): don't count it, and let the website send an SMS instead
+        await this.prisma.otpCode.delete({ where: { id: row.id } });
+        if (process.env.NODE_ENV === 'production' && config.smsProvider === 'console') return { sent: false };
+        return this.requestOtp(rawPhone, 'sms');
+      }
+      return config.otpDevEcho ? { sent: true, channel: 'whatsapp', devCode: code } : { sent: true, channel: 'whatsapp' };
+    }
     await this.sms.send(phone, `${code} is your Companio code. It expires in 5 minutes. Never share it.`);
-    return config.otpDevEcho ? { sent: true, devCode: code } : { sent: true };
+    return config.otpDevEcho ? { sent: true, channel: 'sms', devCode: code } : { sent: true, channel: 'sms' };
+  }
+
+  /**
+   * Whether the latest WhatsApp code to this number arrived (from Meta's delivery receipts), so the login page can
+   * switch to SMS when it failed — e.g. the number isn't on WhatsApp.
+   */
+  async otpStatus(rawPhone: string) {
+    const phone = normalizePhone(rawPhone);
+    const otp = await this.prisma.otpCode.findFirst({ where: { phone, usedAt: null, createdAt: { gte: new Date(Date.now() - OTP_TTL_MS) } }, orderBy: { createdAt: 'desc' } });
+    if (!otp || otp.channel !== 'whatsapp') return { status: 'unknown' as const };
+    return { status: (otp.waStatus === 'failed' ? 'failed' : otp.waStatus === 'delivered' || otp.waStatus === 'read' ? 'delivered' : 'sent') as 'failed' | 'delivered' | 'sent' };
   }
 
   async verifyOtp(rawPhone: string, code: string, ref?: string): Promise<AuthResponse> {

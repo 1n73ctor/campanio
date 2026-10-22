@@ -128,7 +128,8 @@ export function AssistantWidget() {
 
   // a friendly nudge a few seconds after landing — once per visit, and never while the chat is open
   useEffect(() => {
-    if (!on || open) return;
+    // not while they're signing in: on phones it would cover the code box and buttons
+    if (!on || open || path?.startsWith('/login') || path?.startsWith('/onboarding')) return;
     let seen = false;
     try {
       seen = sessionStorage.getItem(TEASER_SEEN) === '1';

@@ -13,7 +13,15 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   request(@Body() dto: OtpRequestDto) {
-    return this.auth.requestOtp(dto.phone);
+    return this.auth.requestOtp(dto.phone, dto.channel);
+  }
+
+  /** Did the WhatsApp code arrive? (the login page checks every few seconds and switches to SMS if it failed) */
+  @Post('otp/status')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 40, ttl: 60_000 } })
+  status(@Body() dto: OtpRequestDto) {
+    return this.auth.otpStatus(dto.phone);
   }
 
   @Post('firebase')

@@ -94,8 +94,15 @@ model OtpCode {
   attempts  Int       @default(0)
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  /// how it was sent: "whatsapp" or "sms"
+  channel     String?
+  /// WhatsApp: Meta's message id and its latest delivery status (sent / delivered / read / failed), from the webhook
+  waMessageId String?
+  waStatus    String?
+  waError     String?
 
   @@index([phone, createdAt])
+  @@index([waMessageId])
 }
 
 model CompanionProfile {
