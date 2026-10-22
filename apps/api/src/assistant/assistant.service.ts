@@ -11,6 +11,7 @@ import { ASSISTANT_NAME, systemPrompt, type HostFacts } from './assistant.prompt
 import { instantAnswer } from './assistant.instant';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MailService } from '../mail/mail.service';
+import { notificationEmail } from '../mail/templates';
 
 // cost controls: the model sees only the recent chat, writes short replies, and each person gets a daily allowance
 const HISTORY = 8; // messages sent to the model per turn
@@ -95,7 +96,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     const c = await this.prisma.assistantConversation.findUnique({ where: { key }, include: { messages: { orderBy: { createdAt: 'desc' }, take: 150 } } });
     c?.messages.reverse();
     if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
-    return { handoff: c.handoff, human: c.humanStatus, rating: c.rating, messages: c.messages.map(toLine) };
+    return { handoff: c.handoff, human: c.humanStatus, contactEmail: c.contactEmail, rating: c.rating, messages: c.messages.map(toLine) };
   }
 
   async rate(key: string, rating: 1 | -1, viewer?: User) {
@@ -114,6 +115,21 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     const summary = lastAsk ? `Asked for a person. Last message: “${lastAsk.slice(0, 200)}”` : 'Asked for a person.';
     await this.toTeam(c, c.summary && c.humanStatus ? c.summary : summary, viewer);
     return { conversationKey: c.key, summary, human: 'waiting' };
+  }
+
+  /** No one from the team was free: the visitor leaves an email, and the team's replies go there too. */
+  async leaveEmail(key: string, email: string, viewer?: User) {
+    const c = await this.prisma.assistantConversation.findUnique({ where: { key } });
+    if (!c || (c.userId && c.userId !== viewer?.id)) throw new NotFoundException('Conversation not found');
+    if (!c.humanStatus) throw new BadRequestException('Tap “Talk to a person” first');
+    const e = email.trim().toLowerCase();
+    if (e !== c.contactEmail)
+      await this.prisma.$transaction([
+        this.prisma.assistantConversation.update({ where: { id: c.id }, data: { contactEmail: e } }),
+        this.prisma.assistantMessage.create({ data: { conversationId: c.id, role: 'note', content: `Thanks! We’ll reply to ${e} as soon as someone from the team is free.` } }),
+      ]);
+    this.rt.toAdmins('assistant:message', { id: c.id });
+    return { contactEmail: e };
   }
 
   private ipHash(ip?: string) {
@@ -363,6 +379,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
         messages: c._count.messages,
         handoff: c.handoff,
         human: c.humanStatus,
+        contactEmail: c.contactEmail,
         summary: c.summary,
         rating: c.rating,
         lastAt: c.lastAt.toISOString(),
@@ -376,7 +393,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
   async adminConversation(id: string) {
     const c = await this.prisma.assistantConversation.findUnique({ where: { id }, include: { user: { select: { id: true, name: true } }, messages: { orderBy: { createdAt: 'asc' } } } });
     if (!c) throw new NotFoundException('Conversation not found');
-    return { id: c.id, user: c.user, handoff: c.handoff, human: c.humanStatus, summary: c.summary, rating: c.rating, messages: c.messages.map((m) => ({ id: m.id, ...toLine(m) })) };
+    return { id: c.id, user: c.user, handoff: c.handoff, human: c.humanStatus, contactEmail: c.contactEmail, summary: c.summary, rating: c.rating, messages: c.messages.map((m) => ({ id: m.id, ...toLine(m) })) };
   }
 
   /** A team member's reply: shows up in the user's chat window within seconds (it checks for replies while open). */
@@ -390,6 +407,20 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
       this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, humanStatus: 'answered', lastAt: new Date() } }),
     ]);
     this.rt.toAdmins('assistant:message', { id: c.id });
+    // they left an email because no one was free: send the reply there too, so it reaches them even if they've left
+    if (c.contactEmail) {
+      const u = c.userId ? await this.prisma.user.findUnique({ where: { id: c.userId }, select: { name: true } }) : null;
+      void this.mail.send(
+        c.contactEmail,
+        notificationEmail({
+          firstName: u?.name?.trim().split(/\s+/)[0] || 'there',
+          title: `${name} from the Companio team replied`,
+          body: `${text.trim()}\n\nYou can reply by email, or open the chat bubble on our website to continue.`,
+          button: { url: config.webUrl, label: 'Open Companio' },
+          siteUrl: config.webUrl,
+        }),
+      );
+    }
     return this.adminConversation(id);
   }
 

@@ -103,8 +103,8 @@ export type AdminAssistantStats = {
   last7Days: { conversations: number; handoffs: number; liked: number; disliked: number; aiReplies: number; freeReplies: number; tokensIn: number; tokensOut: number; costUsd: number };
   knowledge: number;
 };
-export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; human: string | null; summary: string | null; rating: number | null; lastAt: string };
-export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; human: string | null; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; name: string | null; at: string }[] };
+export type AdminAssistantConversation = { id: string; user: { id: string; name: string | null } | null; firstQuestion: string; messages: number; handoff: boolean; human: string | null; contactEmail: string | null; summary: string | null; rating: number | null; lastAt: string };
+export type AdminAssistantTranscript = { id: string; user: { id: string; name: string | null } | null; handoff: boolean; human: string | null; contactEmail: string | null; summary: string | null; rating: number | null; messages: { id: string; role: string; content: string; name: string | null; at: string }[] };
 export type AssistantLine = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name: string | null; at: string };
 export type AdminAssistantKnowledge = { id: string; question: string; answer: string; active: boolean; createdAt: string; updatedAt: string };
 
@@ -212,8 +212,9 @@ export function createApiClient(opts: ClientOptions) {
     assistant: {
       status: () => get<{ enabled: boolean; name: string }>('/assistant/status'),
       chat: (message: string, key?: string) => post<{ conversationKey: string; reply: string | null; handoff: boolean; summary: string | null; human: string | null }>('/assistant/chat', { message, key }),
-      history: (key: string) => post<{ handoff: boolean; human: string | null; rating: number | null; messages: AssistantLine[] }>('/assistant/history', { key }),
+      history: (key: string) => post<{ handoff: boolean; human: string | null; contactEmail: string | null; rating: number | null; messages: AssistantLine[] }>('/assistant/history', { key }),
       rate: (key: string, rating: 1 | -1) => post<{ ok: true }>('/assistant/rate', { key, rating }),
+      contact: (key: string, email: string) => post<{ contactEmail: string }>('/assistant/contact', { key, email }),
       human: (key?: string) => post<{ conversationKey: string; summary: string; human: string }>('/assistant/human', { key }),
     },
     meta: {

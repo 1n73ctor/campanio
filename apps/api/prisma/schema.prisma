@@ -583,6 +583,8 @@ model AssistantConversation {
   /// talking to the team instead of the AI: null = with the AI · "waiting" = their last message is unanswered ·
   /// "answered" = the team replied last · "closed" = the team ended it (the AI answers again)
   humanStatus String?
+  /// left by the visitor when no one from the team was free — the team's replies are emailed here too
+  contactEmail String?
   summary   String?
   /// 1 = 👍, -1 = 👎 from the user
   rating    Int?

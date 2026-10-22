@@ -2,8 +2,8 @@ import { Body, Controller, Delete, Get, Ip, Param, Post, Query, Req, UseGuards }
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
-import { Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 import { AuthGuard, CurrentUser, OptionalAuthGuard, Roles } from '../common/auth';
 import { AssistantService } from './assistant.service';
 
@@ -16,6 +16,9 @@ class KeyDto {
 }
 class HumanDto {
   @IsOptional() @IsString() @MaxLength(64) key?: string;
+}
+class ContactDto extends KeyDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)) @IsEmail({}, { message: 'Enter a valid email address' }) @MaxLength(254) email: string;
 }
 class ReplyDto {
   @IsString() @Length(1, 2000) text: string;
@@ -53,6 +56,10 @@ export class AssistantController {
   }
   @Post('rate') rate(@Body() dto: RateDto, @Req() req: { user?: User }) {
     return this.svc.rate(dto.key, dto.rating, req.user);
+  }
+  @Post('contact') @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  contact(@Body() dto: ContactDto, @Req() req: { user?: User }) {
+    return this.svc.leaveEmail(dto.key, dto.email, req.user);
   }
   @Post('human') @Throttle({ default: { limit: 6, ttl: 60_000 } })
   human(@Body() dto: HumanDto, @Ip() ip: string, @Req() req: { user?: User }) {

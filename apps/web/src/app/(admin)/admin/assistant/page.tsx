@@ -147,6 +147,7 @@ export default function AssistantAdminPage() {
                         ) : (
                           c.handoff && <span className="rounded-full bg-sunny px-2">🙋 needed a person</span>
                         )}
+                        {c.contactEmail && <span className="rounded-full bg-lavender px-2">📧 left email</span>}
                         {c.rating === 1 && <span className="rounded-full bg-lime px-2">👍</span>}
                         {c.rating === -1 && <span className="rounded-full bg-pink px-2">👎</span>}
                       </span>
@@ -334,6 +335,11 @@ function Transcript({ id, tick, onChanged, onClose, onTeach }: { id: string; tic
       ) : (
         <div className="max-h-[55vh] space-y-2 overflow-y-auto text-sm">
           {c.summary && <Callout tone="sunny">🙋 Passed to a person: {c.summary}</Callout>}
+          {c.contactEmail && (
+            <Callout tone="lavender">
+              📧 No one was free, so they left their email: <b>{c.contactEmail}</b>. Your replies here are also emailed to them.
+            </Callout>
+          )}
           {c.messages.map((m) =>
             m.role === 'note' ? (
               <p key={m.id} className="text-center text-xs font-semibold text-ink-soft">

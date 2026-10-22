@@ -8,7 +8,13 @@ import { errMsg } from '@/lib/format';
 import { CONSENT_CHANGED, TRACKING_ENABLED, getConsent } from '@/lib/analytics';
 import { playHello, playReceive, playSend, primeSounds, setSoundMuted, soundMuted } from '@/lib/chat-sounds';
 
-type Msg = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name?: string | null };
+type Msg = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name?: string | null; at?: string };
+/** no reply from the team for this long → "all our agents are busy", and we ask for their email */
+const BUSY_AFTER = 5 * 60_000;
+const TRANSFER_MS = 2800;
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const toMsg = (m: { role: Msg['role']; content: string; name: string | null; at: string }): Msg => ({ role: m.role, content: m.content, name: m.name, at: m.at });
+const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
 /** talking to the team (their messages wait for a person instead of the AI) */
 const LIVE = ['waiting', 'answered'];
 
@@ -26,7 +32,15 @@ const STYLES = `
 .cmp-msg { animation: cmp-msg-in .25s ease-out both }
 .cmp-teaser { animation: cmp-teaser-in .35s cubic-bezier(.2,1.3,.4,1) both; transform-origin: bottom right }
 .cmp-wave { display: inline-block; animation: cmp-wave 2.4s ease-in-out 1 }
-@media (prefers-reduced-motion: reduce) { .cmp-bubble, .cmp-ring, .cmp-panel, .cmp-msg, .cmp-teaser, .cmp-wave { animation: none !important } }
+@keyframes cmp-fill { 0% { width: 4% } 100% { width: 100% } }
+@keyframes cmp-hop { 0%, 100% { transform: translateY(0) } 40% { transform: translateY(-7px) } }
+@keyframes cmp-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,122,198,.55) } 50% { box-shadow: 0 0 0 8px rgba(255,122,198,0) } }
+@keyframes cmp-stripes { 0% { background-position: 0 0 } 100% { background-position: 28px 0 } }
+.cmp-fill { animation: cmp-fill ${TRANSFER_MS}ms cubic-bezier(.4,.1,.3,1) forwards; background-image: repeating-linear-gradient(45deg, #FF7AC6 0 10px, #ff9bd4 10px 14px); background-size: 28px 100%; }
+.cmp-fill-run { animation: cmp-fill ${TRANSFER_MS}ms cubic-bezier(.4,.1,.3,1) forwards, cmp-stripes .6s linear infinite }
+.cmp-hop { animation: cmp-hop 1.1s ease-in-out infinite }
+.cmp-glow { animation: cmp-glow 1.8s ease-out infinite }
+@media (prefers-reduced-motion: reduce) { .cmp-bubble, .cmp-ring, .cmp-panel, .cmp-msg, .cmp-teaser, .cmp-wave, .cmp-hop, .cmp-glow { animation: none !important } .cmp-fill, .cmp-fill-run { animation: none !important; width: 100% } }
 `;
 
 /** the little greeting next to the bubble, matched to what the visitor is looking at */
@@ -98,6 +112,11 @@ export function AssistantWidget() {
   const [teaser, setTeaser] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [human, setHuman] = useState<string | null>(null);
+  const [transferring, setTransferring] = useState(false);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [unread, setUnread] = useState(0);
   const seen = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
@@ -154,9 +173,10 @@ export function AssistantWidget() {
     api.assistant
       .history(k)
       .then((h) => {
-        setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+        setMsgs(h.messages.map(toMsg));
         seen.current = h.messages.length;
         setHuman(h.human);
+        setContactEmail(h.contactEmail);
         setRated((h.rating as 1 | -1 | null) ?? null);
       })
       .catch(() => save(undefined));
@@ -189,7 +209,7 @@ export function AssistantWidget() {
       if (h.messages.length === seen.current) return;
       const fresh = h.messages.slice(seen.current);
       seen.current = h.messages.length;
-      setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+      setMsgs(h.messages.map(toMsg));
       if (fresh.some((m) => m.role === 'agent' || m.role === 'note')) {
         playReceive();
         if (!open) setUnread((n) => n + fresh.filter((m) => m.role === 'agent').length);
@@ -206,6 +226,26 @@ export function AssistantWidget() {
     if (open) setUnread(0);
   }, [open]);
 
+  // how long they've been waiting for the team: since their first message (or the transfer) after the team's last reply
+  const lastAgent = msgs.map((m) => m.role).lastIndexOf('agent');
+  const waitingSince = human === 'waiting' ? msgs.slice(lastAgent + 1).find((m) => (m.role === 'user' || m.role === 'note') && m.at)?.at : undefined;
+  const waited = waitingSince ? Math.max(0, now - new Date(waitingSince).getTime()) : 0;
+  const agentsBusy = !!waitingSince && waited >= BUSY_AFTER && !contactEmail;
+
+  // signed-in members: suggest the email on their account
+  useEffect(() => {
+    if (agentsBusy && !email && user?.email) setEmail(user.email);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentsBusy]);
+
+  // the waiting timer (and the "all our agents are busy" switch) while the team hasn't replied yet
+  useEffect(() => {
+    if (human !== 'waiting' || !open) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [human, open]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [msgs.length, busy, open]);
@@ -217,7 +257,7 @@ export function AssistantWidget() {
     if (!m || busy) return;
     playSend();
     setText('');
-    setMsgs((x) => [...x, { role: 'user', content: m }]);
+    setMsgs((x) => [...x, { role: 'user', content: m, at: new Date().toISOString() }]);
     setBusy(true);
     try {
       const r = await api.assistant.chat(m, key);
@@ -241,27 +281,48 @@ export function AssistantWidget() {
   const reload = async (k: string) => {
     const h = await api.assistant.history(k).catch(() => null);
     if (!h) return;
-    setMsgs(h.messages.map((m) => ({ role: m.role, content: m.content, name: m.name })));
+    setMsgs(h.messages.map(toMsg));
     seen.current = h.messages.length;
     setHuman(h.human);
+    setContactEmail(h.contactEmail);
   };
 
+  // "Transferring you to an agent…" plays for a moment while the request goes through
   const askHuman = async () => {
-    if (busy) return;
-    setBusy(true);
+    if (busy || transferring) return;
+    setTransferring(true);
+    const minWait = new Promise((r) => setTimeout(r, TRANSFER_MS));
     try {
       const r = await api.assistant.human(key);
       setKey(r.conversationKey);
       save(r.conversationKey);
+      await minWait;
       await reload(r.conversationKey);
-      playReceive();
+      playHello();
     } catch (e) {
       setMsgs((x) => [...x, { role: 'note', content: errMsg(e) }]);
     } finally {
-      setBusy(false);
+      setTransferring(false);
     }
   };
   const withTeam = !!human && LIVE.includes(human);
+
+
+  const leaveEmail = async () => {
+    const e = email.trim();
+    if (!key || !EMAIL_OK.test(e)) return;
+    setSavingEmail(true);
+    try {
+      const r = await api.assistant.contact(key, e);
+      setContactEmail(r.contactEmail);
+      await reload(key);
+      playSend();
+    } catch (err) {
+      setMsgs((x) => [...x, { role: 'note', content: errMsg(err) }]);
+    } finally {
+      setSavingEmail(false);
+    }
+  };
 
   const rate = async (r: 1 | -1) => {
     if (!key) return;
@@ -275,6 +336,7 @@ export function AssistantWidget() {
     setMsgs([]);
     setRated(null);
     setHuman(null);
+    setContactEmail(null);
     seen.current = 0;
   };
 
@@ -356,7 +418,7 @@ export function AssistantWidget() {
             <div className="cmp-msg max-w-[85%] rounded-2xl rounded-tl-sm border-2 border-ink bg-white px-3 py-2">
               Hi{user?.name ? ` ${user.name.split(' ')[0]}` : ''}! <span className="cmp-wave">👋</span> I’m {name}, Companio’s AI assistant. Ask me anything about meetups, safety, hosting or your account — or tap “Talk to a person”.
             </div>
-            {msgs.length === 0 && (
+            {msgs.length === 0 && !transferring && (
               <div className="flex flex-wrap gap-2">
                 {starters.map((s) => (
                   <button key={s} type="button" onClick={() => send(s)} className="cmp-msg rounded-full border-2 border-ink bg-sunny-soft px-3 py-1.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 hover:bg-sunny active:scale-95">
@@ -371,11 +433,18 @@ export function AssistantWidget() {
                   {m.content}
                 </p>
               ) : (
-                <div key={i} className={cn('cmp-msg flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div key={i}>
+                {m.role === 'agent' && msgs.findIndex((x) => x.role === 'agent') === i && (
+                  <p className="cmp-msg mb-2 text-center text-xs font-bold text-ink">
+                    <span className="rounded-full border-2 border-ink bg-lime px-2.5 py-0.5">👋 {m.name ?? 'An agent'} joined the chat</span>
+                  </p>
+                )}
+                <div className={cn('cmp-msg flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                   <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl border-2 border-ink px-3 py-2', m.role === 'user' ? 'rounded-tr-sm bg-pink-soft' : m.role === 'agent' ? 'rounded-tl-sm bg-lime-soft' : 'rounded-tl-sm bg-white')}>
                     {m.role === 'agent' && <p className="mb-0.5 text-xs font-extrabold">{m.name ?? 'Companio'} · Companio team</p>}
                     {m.role === 'assistant' ? <Rich text={m.content} /> : m.content}
                   </div>
+                </div>
                 </div>
               ),
             )}
@@ -391,11 +460,66 @@ export function AssistantWidget() {
                 </div>
               </div>
             )}
-            {withTeam && (
-              <p className="cmp-msg rounded-xl border-2 border-dashed border-ink/30 px-3 py-2 text-center text-xs text-ink-soft">
-                Write your message here and someone from the team will reply in this chat. It’s saved on this device, so you can close it and come back.
-                {!user && ' Add your email or phone number if you’d like us to reach you another way.'}
-              </p>
+            {transferring && (
+              <div className="cmp-msg rounded-2xl border-2 border-ink bg-white p-4 text-center" role="status">
+                <div className="flex justify-center -space-x-2">
+                  {['🙋‍♀️', '🧑‍💼', '🙋‍♂️'].map((e, d) => (
+                    <span key={e} className="cmp-hop flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-pink-soft text-xl" style={{ animationDelay: `${d * 160}ms` }}>
+                      {e}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 font-display font-extrabold">Transferring you to an agent…</p>
+                <p className="text-xs text-ink-soft">Hang tight, connecting you to the Companio team</p>
+                <div className="mx-auto mt-3 h-2.5 w-full overflow-hidden rounded-full border-2 border-ink bg-paper">
+                  <div className="cmp-fill cmp-fill-run h-full rounded-full" />
+                </div>
+              </div>
+            )}
+            {!transferring && human === 'waiting' && !agentsBusy && !contactEmail && (
+              <div className="cmp-msg flex items-center gap-3 rounded-2xl border-2 border-ink bg-white px-3 py-2.5" role="status">
+                <span className="cmp-glow relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-pink-soft text-lg">🧑‍💼</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-extrabold">An agent will join shortly</p>
+                  <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+                    <span className="flex gap-0.5">
+                      {[0, 1, 2].map((d) => (
+                        <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink" style={{ animationDelay: `${d * 150}ms` }} />
+                      ))}
+                    </span>
+                    Waiting {mmss(waited)}
+                  </p>
+                </div>
+              </div>
+            )}
+            {!transferring && agentsBusy && (
+              <div className="cmp-msg rounded-2xl border-2 border-ink bg-sunny-soft p-3.5">
+                <p className="font-display font-extrabold">😔 All our agents are busy right now</p>
+                <p className="mt-1 text-sm">Leave your email and we’ll contact you directly as soon as someone’s free.</p>
+                <form
+                  className="mt-3 flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void leaveEmail();
+                  }}
+                >
+                  <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    maxLength={254}
+                    placeholder="you@example.com"
+                    aria-label="Your email"
+                    className="min-w-0 flex-1 rounded-full border-2 border-ink bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink"
+                  />
+                  <button type="submit" disabled={savingEmail || !EMAIL_OK.test(email.trim())} className="rounded-full border-2 border-ink bg-lime px-3 text-sm font-bold disabled:opacity-50">
+                    {savingEmail ? '…' : 'Send'}
+                  </button>
+                </form>
+                <p className="mt-2 text-xs text-ink-soft">You can still write here too. We only use your email to reply to this chat.</p>
+              </div>
             )}
             {key && !withTeam && msgs.some((m) => m.role === 'assistant') && !busy && (
               <div className="flex items-center justify-center gap-2 text-xs text-ink-soft">
@@ -441,7 +565,7 @@ export function AssistantWidget() {
               {withTeam ? (
                 <span className="font-bold text-ink">🙋 You’re chatting with the team</span>
               ) : (
-                <button type="button" onClick={askHuman} disabled={busy} className="shrink-0 whitespace-nowrap font-bold text-ink underline disabled:opacity-50">
+                <button type="button" onClick={askHuman} disabled={busy || transferring} className="shrink-0 whitespace-nowrap font-bold text-ink underline disabled:opacity-50">
                   🙋 Talk to a person
                 </button>
               )}
