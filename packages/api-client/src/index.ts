@@ -214,6 +214,8 @@ export function createApiClient(opts: ClientOptions) {
       chat: (message: string, key?: string) => post<{ conversationKey: string; reply: string | null; handoff: boolean; summary: string | null; human: string | null }>('/assistant/chat', { message, key }),
       history: (key: string) => post<{ handoff: boolean; human: string | null; contactEmail: string | null; rating: number | null; messages: AssistantLine[] }>('/assistant/history', { key }),
       rate: (key: string, rating: 1 | -1) => post<{ ok: true }>('/assistant/rate', { key, rating }),
+      /** the signed-in member's latest chat (or null) */
+      mine: () => get<{ key: string; human: string | null } | null>('/assistant/mine'),
       contact: (key: string, email: string) => post<{ contactEmail: string }>('/assistant/contact', { key, email }),
       human: (key?: string) => post<{ conversationKey: string; summary: string; human: string }>('/assistant/human', { key }),
     },
@@ -371,6 +373,8 @@ export function createApiClient(opts: ClientOptions) {
       deleteTopUpOffer: (id: string) => del<{ ok: true }>(`/admin/coins/offers/${id}`),
       deleteAssistantKnowledge: (id: string) => del<{ ok: true }>(`/admin/assistant/knowledge/${id}`),
       replyAssistant: (id: string, text: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/reply`, { text }),
+      /** a message from the team into this member's chat bubble */
+      messageInBubble: (userId: string, text: string) => post<AdminAssistantTranscript>(`/admin/assistant/users/${userId}/message`, { text }),
       closeAssistant: (id: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/close`),
       /** your own admin account */
       updateMe: (input: { name?: string; email?: string; currentPassword?: string }) => patch<UserDto>('/admin/me', input),

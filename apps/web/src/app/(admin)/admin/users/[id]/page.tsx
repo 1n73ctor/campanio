@@ -6,7 +6,7 @@ import { ageFromDob, cityBySlug, type UserStatus } from '@companio/types';
 import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
-import { EditUserModal, ViewAsModal } from '@/admin/components/user-admin-actions';
+import { BubbleMessage, EditUserModal, ViewAsModal } from '@/admin/components/user-admin-actions';
 import { USER_TEMPLATES } from '@/admin/lib/message-templates';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, d, dt, dtIST, formatINR, humanize } from '@/admin/lib/format';
@@ -163,6 +163,8 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
           </Button>
         </Card>
       )}
+
+      {u.status === 'ACTIVE' && u.role !== 'ADMIN' && <BubbleMessage userId={u.id} name={u.name} />}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="space-y-2 p-5 text-sm">

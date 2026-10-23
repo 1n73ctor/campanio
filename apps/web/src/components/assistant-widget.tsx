@@ -6,6 +6,7 @@ import { cn } from '@companio/ui';
 import { useAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/format';
 import { CONSENT_CHANGED, TRACKING_ENABLED, getConsent } from '@/lib/analytics';
+import { useRealtime } from '@/lib/socket';
 import { playHello, playReceive, playSend, primeSounds, setSoundMuted, soundMuted } from '@/lib/chat-sounds';
 
 type Msg = { role: 'user' | 'assistant' | 'agent' | 'note'; content: string; name?: string | null; at?: string };
@@ -119,6 +120,7 @@ export function AssistantWidget() {
   const [now, setNow] = useState(() => Date.now());
   const [unread, setUnread] = useState(0);
   const seen = useRef(0);
+  const openRef = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -184,20 +186,69 @@ export function AssistantWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // after a reload, find out whether this browser's chat is with the team (to keep checking for their replies)
+  // after a reload, find out whether this chat is with the team (to keep checking for their replies). Signed-in members
+  // pick up their latest chat from any device — e.g. a message the team sent them from the admin panel.
   useEffect(() => {
-    if (!on) return;
-    const k = read();
-    if (!k) return;
-    setKey(k);
-    api.assistant
-      .history(k)
-      .then((h) => {
-        setHuman(h.human);
-        seen.current = h.messages.length;
-      })
-      .catch(() => {});
-  }, [api, on]);
+    if (!on || viewAs) return;
+    let cancelled = false;
+    (async () => {
+      let k = read();
+      if (user) {
+        const mine = await api.assistant.mine().catch(() => null);
+        if (mine && (!k || (mine.key !== k && mine.human && LIVE.includes(mine.human)))) {
+          k = mine.key;
+          save(k);
+        }
+      }
+      if (!k || cancelled) return;
+      setKey(k);
+      const h = await api.assistant.history(k).catch(() => null);
+      if (!h || cancelled) return;
+      setHuman(h.human);
+      setContactEmail(h.contactEmail);
+      setMsgs(h.messages.map(toMsg)); // also fills the window if it opened first (e.g. from the notification link)
+      seen.current = h.messages.length;
+      const last = h.messages[h.messages.length - 1];
+      // the team's last word hasn't been answered: show it on the bubble
+      if (last?.role === 'agent' && !openRef.current) {
+        setUnread(1);
+        setTeaser(`💬 ${last.name ?? 'Companio team'}: ${last.content.slice(0, 90)}${last.content.length > 90 ? '…' : ''}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, on, user?.id]);
+
+  // a message from the team, live (signed-in members)
+  useRealtime({
+    'assistant:team': (d: { key: string; name: string; text: string }) => {
+      if (viewAs) return;
+      save(d.key);
+      setHuman('answered');
+      playReceive();
+      if (d.key !== key) {
+        setKey(d.key);
+        setMsgs([]);
+        seen.current = 0;
+      }
+      if (open) void reload(d.key);
+      else {
+        setUnread((n) => n + 1);
+        setTeaser(`💬 ${d.name}: ${d.text}`);
+      }
+    },
+  });
+
+  // the "New message from the Companio team" notification links to /?chat=open
+  useEffect(() => {
+    if (!on || !path) return;
+    if (new URLSearchParams(window.location.search).get('chat') === 'open') {
+      setOpen(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [on, path]);
 
   // while the team has the chat: check for their replies every few seconds (open) or now and then (closed → badge)
   useEffect(() => {
@@ -224,6 +275,7 @@ export function AssistantWidget() {
   }, [api, key, human, open]);
 
   useEffect(() => {
+    openRef.current = open;
     if (open) setUnread(0);
   }, [open]);
 

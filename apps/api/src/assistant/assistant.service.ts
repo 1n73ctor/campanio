@@ -11,6 +11,7 @@ import { ASSISTANT_NAME, systemPrompt, type HostFacts } from './assistant.prompt
 import { instantAnswer } from './assistant.instant';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { notificationEmail } from '../mail/templates';
 
 // cost controls: the model sees only the recent chat, writes short replies, and each person gets a daily allowance
@@ -70,6 +71,7 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     private wallet: WalletLedger,
     private rt: RealtimeService,
     private mail: MailService,
+    private notifications: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -403,6 +405,8 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
       this.prisma.assistantConversation.update({ where: { id: c.id }, data: { handoff: true, humanStatus: 'answered', lastAt: new Date() } }),
     ]);
     this.rt.toAdmins('assistant:message', { id: c.id });
+    // signed-in members get it straight away in their chat bubble (whichever device they're on)
+    if (c.userId) this.rt.toUser(c.userId, 'assistant:team', { key: c.key, name, text: text.trim().slice(0, 140) });
     // they left an email because no one was free: send the reply there too, so it reaches them even if they've left
     if (c.contactEmail) {
       const u = c.userId ? await this.prisma.user.findUnique({ where: { id: c.userId }, select: { name: true } }) : null;
@@ -418,6 +422,33 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
       );
     }
     return this.adminConversation(id);
+  }
+
+  /**
+   * Admin → Users → "Message in chat bubble": a message from the team into this member's chat bubble. Continues their
+   * latest chat (or starts one); they see it live if they're on the site, and get a notification that opens the chat.
+   */
+  async adminMessageUser(admin: User, userId: string, text: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!u || u.status === 'DELETED') throw new NotFoundException('User not found');
+    if (u.role === 'ADMIN') throw new BadRequestException('That’s an admin account');
+    let c = await this.prisma.assistantConversation.findFirst({ where: { userId }, orderBy: { lastAt: 'desc' } });
+    if (!c) c = await this.prisma.assistantConversation.create({ data: { key: randomBytes(24).toString('base64url'), userId, handoff: true, summary: 'Message from the team' } });
+    const t = await this.adminReply(admin, c.id, text);
+    await this.notifications.notify(userId, {
+      type: 'admin.chat',
+      title: 'New message from the Companio team 💬',
+      body: text.trim().slice(0, 140),
+      link: '/?chat=open',
+    });
+    return t;
+  }
+
+  /** A signed-in member's latest chat (so the bubble on any of their devices finds the team's messages). */
+  async mine(viewer?: User) {
+    if (!viewer) return null;
+    const c = await this.prisma.assistantConversation.findFirst({ where: { userId: viewer.id }, orderBy: { lastAt: 'desc' } });
+    return c ? { key: c.key, human: c.humanStatus } : null;
   }
 
   /** The team is done: the chat goes back to the AI (the user sees a note). */

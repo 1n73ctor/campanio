@@ -54,6 +54,10 @@ export class AssistantController {
   @Post('history') history(@Body() dto: KeyDto, @Req() req: { user?: User }) {
     return this.svc.history(dto.key, req.user);
   }
+  /** the signed-in member's latest chat, so their bubble finds messages from the team on any device */
+  @Get('mine') mine(@Req() req: { user?: User }) {
+    return this.svc.mine(req.user);
+  }
   @Post('rate') rate(@Body() dto: RateDto, @Req() req: { user?: User }) {
     return this.svc.rate(dto.key, dto.rating, req.user);
   }
@@ -86,6 +90,10 @@ export class AdminAssistantController {
   }
   @Post('conversations/:id/reply') reply(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: ReplyDto) {
     return this.svc.adminReply(a, id, dto.text);
+  }
+  @Post('users/:userId/message') @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  messageUser(@CurrentUser() a: User, @Param('userId') userId: string, @Body() dto: ReplyDto) {
+    return this.svc.adminMessageUser(a, userId, dto.text);
   }
   @Post('conversations/:id/close') close(@Param('id') id: string) {
     return this.svc.adminClose(id);

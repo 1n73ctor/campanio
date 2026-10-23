@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { CATEGORIES, CITIES, GENDERS, LANGUAGES, humanize, type UserDto } from '@companio/types';
 import type { AdminEditUserInput } from '@companio/api-client';
-import { Button, Field, Input, Modal, Select, Textarea } from '@companio/ui';
+import { Button, Card, Field, Input, Modal, Select, Textarea } from '@companio/ui';
 import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin } from '@/admin/lib/api';
 
@@ -243,3 +243,58 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
     </Modal>
   );
 }
+
+/**
+ * A message from the team into this member's chat bubble (bottom-right on the website). They see it live if they're on
+ * the site (signed in), otherwise the next time they open it — plus a notification that opens the chat. Their reply
+ * comes to Admin → Assistant.
+ */
+export function BubbleMessage({ userId, name }: { userId: string; name: string | null }) {
+  const { api } = useAdmin();
+  const toast = useToast();
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const first = name?.split(' ')[0] ?? 'them';
+  const send = async () => {
+    setBusy(true);
+    try {
+      const t = await api.admin.messageInBubble(userId, text.trim());
+      setSentTo(t.id);
+      setText('');
+      toast(`Sent to ${first}’s chat bubble`);
+    } catch (e) {
+      toast(errMsg(e), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="mt-6 p-5 text-sm">
+      <h2 className="font-display text-lg font-extrabold">💬 Message in their chat bubble</h2>
+      <p className="mt-1 text-ink-soft">
+        Appears in {first}’s chat bubble on the website as you (“Companio team”) — instantly if they’re online, otherwise next time they open the site signed in. They also
+        get a notification. Their reply comes to Assistant.
+      </p>
+      <Textarea
+        className="mt-3 min-h-[90px]"
+        value={text}
+        maxLength={2000}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={`Hi ${first}! …`}
+        aria-label="Chat message"
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button loading={busy} disabled={text.trim().length < 1} onClick={send}>
+          Send to chat bubble
+        </Button>
+        {sentTo && (
+          <a href={`/admin/assistant?chat=${sentTo}`} className="font-semibold underline">
+            Open the conversation →
+          </a>
+        )}
+      </div>
+    </Card>
+  );
+}
+
