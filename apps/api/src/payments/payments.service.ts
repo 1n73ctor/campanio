@@ -126,7 +126,14 @@ export class PaymentsService {
       await this.markPaid(orderId, r.paymentId);
       return { status: 'PAID' as const, bookingId: p.bookingId, purpose: p.purpose };
     }
+    if (p.status === 'PAID') return { status: 'PAID' as const, bookingId: p.bookingId, purpose: p.purpose };
     if (!this.provider.verifySignature(orderId, paymentId, signature)) {
+      await this.prisma.payment.update({ where: { id: p.id }, data: { status: 'FAILED' } });
+      throw new BadRequestException('Payment verification failed');
+    }
+    // the signature proves Razorpay sent it; we still check with Razorpay what was actually paid before giving anything
+    if (this.provider instanceof RazorpayProvider && !(await this.provider.confirm(paymentId, orderId, p.amount))) {
+      this.log.warn(`razorpay payment ${paymentId} for ${orderId} doesn't match (expected ${formatINR(p.amount)})`);
       await this.prisma.payment.update({ where: { id: p.id }, data: { status: 'FAILED' } });
       throw new BadRequestException('Payment verification failed');
     }
@@ -163,7 +170,15 @@ export class PaymentsService {
       payload?: { payment?: { entity?: { id: string; order_id: string } } };
     };
     const entity = evt.payload?.payment?.entity;
-    if ((evt.event === 'payment.captured' || evt.event === 'order.paid') && entity?.order_id) {
+    if ((evt.event === 'payment.captured' || evt.event === 'order.paid') && entity?.order_id && entity.id) {
+      const p = await this.prisma.payment.findUnique({ where: { providerOrderId: entity.order_id } });
+      if (!p || p.status === 'PAID') return { ok: true };
+      // re-checked with Razorpay (order, amount, currency, captured); if Razorpay can't be reached this throws, and
+      // Razorpay retries the webhook later
+      if (!(await this.provider.confirm(entity.id, entity.order_id, p.amount))) {
+        this.log.warn(`razorpay webhook: payment ${entity.id} for ${entity.order_id} doesn't match what was ordered`);
+        return { ok: true };
+      }
       await this.markPaid(entity.order_id, entity.id);
     }
     return { ok: true };
@@ -188,24 +203,34 @@ export class PaymentsService {
       if (b.status !== 'PENDING_PAYMENT') {
         // booking expired/cancelled while the user was paying → park the money in their wallet
         await this.wallet.credit(tx, b.userId, p.amount, 'Payment for an expired meetup', { type: 'payment', id: p.id });
-        return { booking: b, parked: true };
+        return { booking: b, parked: 'expired' as const };
+      }
+      // the wallet part was worked out at checkout; if they spent that balance in the meantime, the booking can't be
+      // paid in full, so the money they just paid goes to their wallet instead (never a meetup for less than its price)
+      const w = await tx.wallet.findUnique({ where: { userId: b.userId } });
+      if (p.walletAmount > 0 && (w?.balance ?? 0) < p.walletAmount) {
+        await this.wallet.credit(tx, b.userId, p.amount, 'Payment for a meetup your wallet could no longer cover', { type: 'payment', id: p.id });
+        return { booking: b, parked: 'wallet' as const };
       }
       const promo = await this.wallet.spend(tx, b.userId, p.walletAmount, 'Meetup payment', { type: 'booking', id: b.id });
       // remembered so a refund gives the credit part back as credit, not as withdrawable money
       if (promo) await tx.payment.update({ where: { id: p.id }, data: { walletPromo: promo } });
       await this.escrow.hold(tx, b.id, b.total);
       const updated = await tx.booking.update({ where: { id: b.id }, data: { status: 'REQUESTED', paidAt: new Date() } });
-      return { booking: updated, parked: false };
+      return { booking: updated, parked: null };
     });
     if (!result) return;
     const { booking, parked } = result;
     if (parked) {
-      this.log.warn(`payment ${orderId} arrived for non-pending meetup ${booking.id}; credited to wallet`);
+      this.log.warn(`payment ${orderId} for meetup ${booking.id} credited to wallet (${parked})`);
       await this.notifications.notify(booking.userId, {
         type: 'payment.parked',
         title: 'Payment moved to your wallet',
-        body: 'That meetup had expired, so we added the amount to your Companio wallet.',
-        link: '/wallet',
+        body:
+          parked === 'wallet'
+            ? 'Your wallet balance changed while you were paying, so the meetup couldn’t be fully paid. We added your payment to your Companio wallet — open the meetup and pay again.'
+            : 'That meetup had expired, so we added the amount to your Companio wallet.',
+        link: parked === 'wallet' ? `/checkout/${booking.id}` : '/wallet',
       });
       return;
     }
