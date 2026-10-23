@@ -189,7 +189,7 @@ export function EditUserModal({ user, open, onClose, onSaved }: { user: U; open:
 
 /**
  * "Log in as user": opens the website in a new tab signed in as this person, with full access — changes are saved and
- * every one is audited; payments, withdrawals, coins, messages/reviews and deletion stay blocked. 30 minutes. The tab is
+ * every one is audited; only payments, withdrawals and spending coins stay blocked. 30 minutes. The tab is
  * opened before the request (so pop-up blockers allow it) and given the session in the URL #fragment.
  */
 export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; onClose: () => void }) {
@@ -230,10 +230,10 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
       }
     >
       <ul className="mb-3 list-disc space-y-1 pl-5 text-sm">
-        <li>Opens the website in a new tab, signed in as {first} with <b>full access</b>: you can change their profile, availability, settings and bookings.</li>
-        <li>Every change is saved to the audit log under your name.</li>
+        <li>Opens the website in a new tab, signed in as {first} with <b>full access</b> — you can do anything they can.</li>
+        <li>Every change is saved to the audit log under your name. Messages and reviews you send look to others as if {first} wrote them.</li>
         <li>
-          <b>Always blocked:</b> payments, withdrawals, spending their coins, sending messages or reviews in their name, deleting the account.
+          <b>Always blocked:</b> payments, withdrawal requests and spending their coins.
         </li>
         <li>They get a notice in the app that someone from the team opened their account (your reason isn’t shown to them).</li>
         <li>Ends after 30 minutes, when you close the tab or tap “Exit view”. Your own sign-ins aren’t affected.</li>

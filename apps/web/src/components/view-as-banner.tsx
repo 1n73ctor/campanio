@@ -28,8 +28,8 @@ export function ViewAsBanner() {
       <div className="container-x flex flex-wrap items-center gap-x-4 gap-y-2 py-2 text-sm">
         {viewAs.full ? (
           <p className="min-w-0 flex-1">
-            <b>🔓 Full access</b> — you’re acting as <b>{user?.name ?? 'this user'}</b>. Changes are saved to their account and every one is logged. Payments, withdrawals,
-            messages and reviews stay blocked. Ends at {ends} IST.
+            <b>🔓 Full access</b> — you’re acting as <b>{user?.name ?? 'this user'}</b>. Changes are saved to their account and every one is logged. Payments and withdrawals
+            stay blocked. Ends at {ends} IST.
           </p>
         ) : (
           <p className="min-w-0 flex-1">

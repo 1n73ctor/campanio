@@ -123,8 +123,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             void send();
           }}
         >
-          <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={`Message ${first}…`} disabled={!!viewAs} aria-label="Message" />
-          <Button type="submit" loading={busy} disabled={!text.trim() || !!viewAs}>Send</Button>
+          <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={`Message ${first}…`} disabled={!!viewAs && !viewAs.full} aria-label="Message" />
+          <Button type="submit" loading={busy} disabled={!text.trim() || (!!viewAs && !viewAs.full)}>Send</Button>
         </form>
       ) : (
         <Card tone="sunny" className="mt-4 flex flex-wrap items-center justify-between gap-3 p-4 text-sm">

@@ -63,7 +63,7 @@ export class AdminController {
   @Patch('users/:id/profile') editUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminEditUserDto) {
     return this.svc.editUser(a, id, dto);
   }
-  /** One-click "log in as": a 30-minute full-access session as this user (changes audited; money, messages and deletion blocked), with the reason recorded. */
+  /** One-click "log in as": a 30-minute full-access session as this user (changes audited; payments and withdrawals blocked), with the reason recorded. */
   @Post('users/:id/impersonate') @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async impersonate(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: ImpersonateDto) {
     const mode = dto.mode ?? 'full';

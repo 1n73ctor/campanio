@@ -30,19 +30,12 @@ export interface JwtPayload {
 /** Requests an admin may make while viewing the site as someone else: looking only, never changing anything. */
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-/**
- * Never allowed even with full access, because they'd move real money, can't be undone, or would put words in the
- * person's mouth (a host reading a message or review would believe the member wrote it). Message people from the
- * admin panel instead.
- */
+/** Never allowed when an admin is logged in as someone: anything that moves their money. Everything else is allowed (and audited). */
 const FULL_ACCESS_BLOCKED: [RegExp, string][] = [
-  [/^\/payments(\/|$)/, 'Payments can’t be made as someone else'],
-  [/^\/wallet\/payouts/, 'Withdrawals can’t be made as someone else'],
-  [/^\/chats\/unlock/, 'Coins can’t be spent as someone else'],
-  [/^\/me\/(delete|logout-others)/, 'Deleting the account or signing it out of its devices isn’t possible as someone else'],
-  [/^\/bookings\/[^/]+\/(messages|review)$/, 'Messages and reviews can’t be written as someone else — message them from the admin panel'],
-  [/^\/chats\/[^/]+\/messages$/, 'Messages can’t be written as someone else — message them from the admin panel'],
-  [/^\/auth\//, 'Not allowed while acting as someone else'],
+  [/^\/payments(\/|$)/, 'Payments can’t be made while logged in as someone else'],
+  [/^\/wallet\/payouts/, 'Withdrawals can’t be requested while logged in as someone else'],
+  [/^\/chats\/unlock/, 'Their coins can’t be spent while logged in as someone else'],
+  [/^\/auth\//, 'Not allowed while logged in as someone else'],
 ];
 
 /**
