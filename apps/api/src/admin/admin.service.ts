@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma, User } from '@prisma/client';
 import type { AdminStatsDto, AdminUserDto, PlatformSettings } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
@@ -22,9 +22,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { OffersService } from '../offers/offers.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { AdminEditUserDto, PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
+import type { AdminCreateUserDto, AdminEditUserDto, PageDto, ResolveDisputeDto, ResolveReportDto } from './admin.dto';
 import { ageFromDob, MIN_AGE } from '@companio/types';
 import { MailService } from '../mail/mail.service';
+import { normalizePhone } from '../auth/auth.service';
+import { notificationEmail } from '../mail/templates';
+import { config } from '../common/config';
 import { CompanionFeeService, feePaid, toFeeAdminDto } from '../companions/companion-fee.service';
 
 const PAGE = 25;
@@ -139,6 +142,52 @@ export class AdminService {
     const emailed = dto.email === false ? null : await this.mail.sendAdminMessage(userId, msg);
     await this.audit.log(admin.id, 'user.message', 'user', userId, { title: dto.title, body: dto.body, link: dto.link ?? null, emailedTo: emailed });
     return { ok: true, id: n.id, emailedTo: emailed };
+  }
+
+  /**
+   * An admin adding a member by hand (e.g. someone who signed up with the team offline). The account is ready to sign
+   * in with the phone number; the person still accepts the guidelines themselves at first sign-in (onboarding), which
+   * is also when the welcome credit is given — exactly like a normal sign-up.
+   */
+  async createUser(admin: User, dto: AdminCreateUserDto) {
+    const phone = normalizePhone(dto.phone);
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) throw new ConflictException({ message: 'Someone already has an account with this number', userId: existing.id, statusCode: 409 });
+    if (await this.prisma.user.count({ where: { deletedPhone: phone, status: 'BANNED' } }))
+      throw new BadRequestException('This number belongs to a banned account and can’t be used again');
+    if (dto.dob) {
+      const age = ageFromDob(dto.dob);
+      if (age === null || age < MIN_AGE) throw new BadRequestException(`Must be ${MIN_AGE}+`);
+    }
+    const email = dto.email || null;
+    const u = await this.prisma.user.create({
+      data: {
+        phone,
+        name: dto.name.trim(),
+        contactEmail: email,
+        contactEmailVerifiedAt: email && dto.emailVerified ? new Date() : null,
+        gender: dto.gender,
+        dob: dto.dob ? new Date(dto.dob) : undefined,
+        city: dto.city,
+        bio: dto.bio?.trim() || undefined,
+        wallet: { create: {} },
+      },
+    });
+    await this.audit.log(admin.id, 'user.create', 'user', u.id, { phone, name: u.name, email, note: dto.note?.trim() || null });
+    let invited = false;
+    if (email && dto.sendInvite !== false) {
+      invited = await this.mail.send(
+        email,
+        notificationEmail({
+          firstName: u.name?.split(/\s+/)[0] || 'there',
+          title: 'Your Companio account is ready 🎉',
+          body: `The Companio team has set up your account. To sign in, open Companio and enter your mobile number (+91 ${phone.slice(3, 8)} ${phone.slice(8)}) — we’ll send you a one-time code. Then take a minute to finish your profile and you’re ready to find a buddy.\n\nDidn’t expect this? Just ignore this email.`,
+          button: { url: `${config.webUrl}/login`, label: 'Sign in' },
+          siteUrl: config.webUrl,
+        }),
+      );
+    }
+    return { id: u.id, invited };
   }
 
   /**

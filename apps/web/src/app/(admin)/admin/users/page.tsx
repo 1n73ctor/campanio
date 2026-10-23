@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { CITIES, GENDERS, ROLES, USER_STATUSES, cityBySlug } from '@companio/types';
 import { Avatar, Input, Select, StatusBadge } from '@companio/ui';
+import { AddUser } from '@/admin/components/add-user';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useAdmin, useLoad } from '@/admin/lib/api';
 import { dtIST, formatINR, humanize } from '@/admin/lib/format';
@@ -21,7 +22,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageTitle title="Users" />
+      <PageTitle title="Users" actions={<AddUser />} />
       <form className="mb-4 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); setQuery(q); setPage(1); }}>
         <Input className="max-w-xs" placeholder="Name, phone or email" value={q} onChange={(e) => setQ(e.target.value)} />
         <Select className="max-w-[180px]" value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>

@@ -121,6 +121,29 @@ export class AdminEditCompanionDto {
 }
 
 /** An admin correcting someone's profile. Phone number, role and status are changed elsewhere (or not at all). */
+/** Admin → Users → Add user. They sign in with this number; onboarding (accepting the guidelines) is still theirs. */
+export class AdminCreateUserDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') : value))
+  @Matches(/^(\+?91)?[6-9]\d{9}$/, { message: 'Enter a valid 10-digit Indian mobile number' })
+  phone: string;
+  @IsString() @Length(2, 60) name: string;
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @Matches(/^$|^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, { message: 'Enter a valid email address' })
+  @MaxLength(254)
+  email?: string;
+  /** they confirmed this email with you (otherwise it waits for them to click the link) */
+  @IsOptional() @IsBoolean() emailVerified?: boolean;
+  @IsOptional() @IsISO8601() dob?: string;
+  @IsOptional() @IsIn(GENDERS) gender?: string;
+  @IsOptional() @IsIn(CITIES.map((c) => c.slug)) city?: string;
+  @IsOptional() @IsString() @MaxLength(500) bio?: string;
+  /** email them that their account is ready (needs an email) */
+  @IsOptional() @IsBoolean() sendInvite?: boolean;
+  /** why — kept in the audit log */
+  @IsOptional() @IsString() @MaxLength(300) note?: string;
+}
+
 export class AdminEditUserDto {
   @IsOptional() @IsString() @Length(2, 60) name?: string;
   /** empty string removes the email */

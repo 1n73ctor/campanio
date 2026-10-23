@@ -349,6 +349,9 @@ export function createApiClient(opts: ClientOptions) {
       /** message shown in the person's notifications */
       messageUser: (id: string, msg: { title: string; body: string; link?: string; email?: boolean }) => post<{ ok: true; id: string; emailedTo: string | null }>(`/admin/users/${id}/message`, msg),
       /** correct someone's profile; only the fields sent change. `reason` goes in the audit log */
+      /** add a member by hand; 409 (with body.userId) if the number already has an account */
+      createUser: (input: { phone: string; name: string; email?: string; emailVerified?: boolean; dob?: string; gender?: string; city?: string; bio?: string; sendInvite?: boolean; note?: string }) =>
+        post<{ id: string; invited: boolean }>('/admin/users', input),
       editUser: (id: string, input: AdminEditUserInput) => patch<{ ok: true; changed: string[] }>(`/admin/users/${id}/profile`, input),
       /** "log in as": a 30-minute read-only session as this user (audited with the reason) */
       chatStats: () => get<AdminChatStatsDto>('/admin/chats/stats'),

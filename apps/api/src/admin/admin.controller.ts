@@ -22,6 +22,7 @@ class TotpDto {
 }
 import {
   AdminEditUserDto,
+  AdminCreateUserDto,
   AdminMessageDto,
   ImpersonateDto,
   MaintenanceDto,
@@ -55,6 +56,9 @@ export class AdminController {
   @Post('maintenance') setMaintenance(@CurrentUser() a: User, @Body() dto: MaintenanceDto) { return this.svc.setMaintenance(a, dto.on); }
 
   @Get('users') users(@Query() q: PageDto) { return this.svc.users(q); }
+  @Post('users') @Throttle({ default: { limit: 30, ttl: 60_000 } }) createUser(@CurrentUser() a: User, @Body() dto: AdminCreateUserDto) {
+    return this.svc.createUser(a, dto);
+  }
   @Get('users/:id') user(@CurrentUser() a: User, @Param('id') id: string) { return this.svc.user(id, a); }
   @Patch('users/:id/profile') editUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminEditUserDto) {
     return this.svc.editUser(a, id, dto);

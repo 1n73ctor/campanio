@@ -240,7 +240,7 @@ export default function CoinPurchasesPage() {
                       <span className={cn('rounded-full border-2 border-ink px-2 py-0.5 text-xs font-bold', st.tone)}>{st.label}</span>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Toggle checked={o.active} onChange={(v) => quick(o, { active: v })} label="On" />
+                      <label className="flex cursor-pointer items-center gap-2 font-semibold"><Toggle checked={o.active} onChange={(v) => quick(o, { active: v })} label="On" /><span>On</span></label>
                       <Button
                         size="sm"
                         variant="white"
@@ -315,8 +315,8 @@ export default function CoinPurchasesPage() {
               </Field>
             </div>
             <div className="flex flex-wrap gap-6">
-              <Toggle checked={draft.firstOnly} onChange={(v) => setDraft({ ...draft, firstOnly: v })} label="First top-up only" />
-              <Toggle checked={draft.active} onChange={(v) => setDraft({ ...draft, active: v })} label="On" />
+              <label className="flex cursor-pointer items-center gap-2 font-semibold"><Toggle checked={draft.firstOnly} onChange={(v) => setDraft({ ...draft, firstOnly: v })} label="First top-up only" /><span>First top-up only</span></label>
+              <label className="flex cursor-pointer items-center gap-2 font-semibold"><Toggle checked={draft.active} onChange={(v) => setDraft({ ...draft, active: v })} label="On" /><span>On</span></label>
             </div>
             {draftOk && (
               <Callout tone="lime">
