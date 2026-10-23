@@ -17,8 +17,9 @@ export default function UsersPage() {
   const [status, setStatus] = useState('');
   const [gender, setGender] = useState('');
   const [city, setCity] = useState('');
+  const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
-  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, gender: gender || undefined, city: city || undefined, page }), [query, role, status, gender, city, page]);
+  const { data, error } = useLoad(() => api.admin.users({ q: query || undefined, role: role || undefined, status: status || undefined, gender: gender || undefined, city: city || undefined, source: (source || undefined) as 'admin' | 'self' | undefined, page }), [query, role, status, gender, city, source, page]);
 
   return (
     <>
@@ -42,6 +43,11 @@ export default function UsersPage() {
           <option value="none">Not set</option>
           {[...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
         </Select>
+        <Select className="max-w-[220px]" value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} aria-label="How they joined">
+          <option value="">Any sign-up</option>
+          <option value="admin">🛠 Added by admin</option>
+          <option value="self">Signed up themselves</option>
+        </Select>
       </form>
       {error && <ErrorBox error={error} />}
       {!data ? (
@@ -57,6 +63,11 @@ export default function UsersPage() {
                     <span>
                       <span className="block font-bold underline">{u.name ?? '—'}</span>
                       <span className="text-xs text-ink-mute">{u.phone ?? (u.deletedPhone ? `${u.deletedPhone} (deleted)` : u.email)}</span>
+                      {u.addedBy && (
+                        <span className="mt-0.5 block w-fit rounded-full border-2 border-ink bg-sky px-1.5 text-[11px] font-bold" title={`Added by ${u.addedBy.name ?? 'an admin'}`}>
+                          🛠 Added by admin
+                        </span>
+                      )}
                     </span>
                   </Link>
                 </Td>

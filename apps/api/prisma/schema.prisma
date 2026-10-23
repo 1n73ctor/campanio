@@ -21,6 +21,8 @@ model User {
   contactEmail           String?
   // set when they click the link we emailed to contactEmail; cleared when the address changes. Only verified addresses get our emails.
   contactEmailVerifiedAt DateTime?
+  /// the admin who added this account by hand (Admin → Users → Add user); null = they signed up themselves
+  createdByAdminId       String?
   passwordHash           String?
   name                   String?
   dob                    DateTime?

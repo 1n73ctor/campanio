@@ -505,6 +505,8 @@ export interface AdminUserDto extends UserDto {
   deletedAt?: string | null;
   /** their phone number at deletion time */
   deletedPhone?: string | null;
+  /** the admin who added this account by hand (null = signed up themselves) */
+  addedBy?: { id: string; name: string | null } | null;
 }
 
 export interface PlatformSettings {

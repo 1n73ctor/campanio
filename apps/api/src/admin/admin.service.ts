@@ -109,6 +109,7 @@ export class AdminService {
       ...(q.status ? { status: q.status } : {}),
       ...(q.gender ? { gender: q.gender } : {}),
       ...(q.city ? { city: q.city === 'none' ? null : q.city } : {}),
+      ...(q.source === 'admin' ? { createdByAdminId: { not: null } } : q.source === 'self' ? { createdByAdminId: null } : {}),
       ...(q.q ? { OR: [{ name: { contains: q.q } }, { phone: { contains: q.q } }, { deletedPhone: { contains: q.q } }, { email: { contains: q.q } }, { contactEmail: { contains: q.q } }] } : {}),
     };
     const [total, rows] = await this.prisma.$transaction([
@@ -121,8 +122,10 @@ export class AdminService {
         include: { companion: true, wallet: true, _count: { select: { bookings: true, reportsAgainst: true } } },
       }),
     ]);
+    const addedBy = await this.adminNames(rows.map((u) => u.createdByAdminId));
     const items: AdminUserDto[] = rows.map((u) => ({
       ...toUserDto(u),
+      addedBy: u.createdByAdminId ? { id: u.createdByAdminId, name: addedBy.get(u.createdByAdminId) ?? null } : null,
       bookingsCount: u._count.bookings,
       reportsAgainst: u._count.reportsAgainst,
       walletBalance: u.wallet?.balance ?? 0,
@@ -130,6 +133,14 @@ export class AdminService {
       deletedPhone: u.deletedPhone,
     }));
     return { items, total, page, pageSize };
+  }
+
+  /** Names of the admins who added accounts by hand (for the "Added by admin" tag). */
+  private async adminNames(ids: (string | null)[]) {
+    const unique = [...new Set(ids.filter((x): x is string => !!x))];
+    if (!unique.length) return new Map<string, string | null>();
+    const admins = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, name: true, email: true } });
+    return new Map(admins.map((a) => [a.id, a.name ?? a.email]));
   }
 
   /** Refund a user's companion registration fee to their wallet (any time, admin's decision). */
@@ -170,6 +181,7 @@ export class AdminService {
         dob: dto.dob ? new Date(dto.dob) : undefined,
         city: dto.city,
         bio: dto.bio?.trim() || undefined,
+        createdByAdminId: admin.id,
         wallet: { create: {} },
       },
     });
@@ -345,6 +357,7 @@ export class AdminService {
         companionFee: toFeeAdminDto(u),
         deletedAt: u.deletedAt?.toISOString() ?? null,
         deletedPhone: u.deletedPhone,
+        addedBy: u.createdByAdminId ? { id: u.createdByAdminId, name: (await this.adminNames([u.createdByAdminId])).get(u.createdByAdminId) ?? null } : null,
       },
       linkedAccounts: linked.map((l) => ({ id: l.id, name: l.name, status: l.status, createdAt: l.createdAt.toISOString(), deletedAt: l.deletedAt?.toISOString() ?? null })),
       warnings: u.warnings,

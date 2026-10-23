@@ -35,7 +35,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
       <Link href="/admin/users" className="text-sm font-semibold underline">← Users</Link>
       <PageTitle
         title={u.name ?? 'Unnamed'}
-        subtitle={`${[u.phone ?? u.deletedPhone, u.email].filter(Boolean).join(' · ')} · ${humanize(u.role)} · joined ${dtIST(u.createdAt)}`}
+        subtitle={`${[u.phone ?? u.deletedPhone, u.email].filter(Boolean).join(' · ')} · ${humanize(u.role)} · ${u.addedBy ? `🛠 added by ${u.addedBy.name ?? 'an admin'} on ${dtIST(u.createdAt)}` : `joined ${dtIST(u.createdAt)}`}`}
         actions={
           <>
             <StatusBadge status={u.status} />
