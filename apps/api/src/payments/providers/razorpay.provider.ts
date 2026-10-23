@@ -56,6 +56,15 @@ export class RazorpayProvider implements PaymentProvider {
     throw new ServiceUnavailableException('Couldn’t confirm the payment with Razorpay right now — it’ll be confirmed automatically in a few minutes.');
   }
 
+  /** The payment that paid this order, if any — confirmed (amount, INR, captured) like `confirm`. */
+  async paidPaymentOf(orderId: string, amount: number): Promise<string | null> {
+    const res = await fetch(`https://api.razorpay.com/v1/orders/${orderId}/payments`, { headers: { Authorization: this.auth }, signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    const { items = [] } = (await res.json()) as { items?: { id: string; status: string }[] };
+    for (const p of items.filter((x) => x.status === 'captured' || x.status === 'authorized')) if (await this.confirm(p.id, orderId, amount)) return p.id;
+    return null;
+  }
+
   verifySignature(orderId: string, paymentId: string, signature: string) {
     return safeEq(createHmac('sha256', this.keySecret).update(`${orderId}|${paymentId}`).digest('hex'), signature);
   }

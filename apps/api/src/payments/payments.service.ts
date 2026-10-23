@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { User } from '@prisma/client';
 import { formatINR, type CheckoutResponse, type FeeCheckoutResponse } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
@@ -16,8 +16,10 @@ import { TopUpOffersService } from './topup-offers.service';
 import { MailService } from '../mail/mail.service';
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private log = new Logger('Payments');
+  private timer: NodeJS.Timeout | null = null;
+  private reconciling = false;
   constructor(
     private prisma: PrismaService,
     private wallet: WalletLedger,
@@ -29,6 +31,45 @@ export class PaymentsService {
     private offers: TopUpOffersService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
+
+  onModuleInit() {
+    if (process.env.DISABLE_JOBS === 'true' || !(this.provider instanceof RazorpayProvider)) return;
+    this.timer = setInterval(() => void this.reconcile(), 2 * 60_000);
+    setTimeout(() => void this.reconcile(), 20_000);
+  }
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  /**
+   * Safety net for payments the browser never confirmed (e.g. a phone switched to the UPI app and never came back to
+   * the page) and Razorpay's webhook didn't deliver: every 2 minutes, ask Razorpay about orders still waiting from the
+   * last 2 days and record the ones that were paid — with the same checks (order, amount, INR, captured).
+   */
+  async reconcile() {
+    if (this.reconciling || !(this.provider instanceof RazorpayProvider)) return;
+    this.reconciling = true;
+    try {
+      const now = Date.now();
+      const open = await this.prisma.payment.findMany({
+        where: { provider: 'razorpay', status: 'CREATED', createdAt: { gt: new Date(now - 48 * 3600_000), lt: new Date(now - 60_000) } },
+        orderBy: { createdAt: 'desc' },
+        take: 40,
+      });
+      for (const p of open) {
+        try {
+          const paymentId = await this.provider.paidPaymentOf(p.providerOrderId, p.amount);
+          if (!paymentId) continue;
+          await this.markPaid(p.providerOrderId, paymentId);
+          this.log.warn(`recovered payment ${paymentId} for ${p.providerOrderId} (${p.purpose}, ${formatINR(p.amount)}) — the browser never confirmed it`);
+        } catch (e) {
+          this.log.error(`reconcile ${p.providerOrderId}: ${(e as Error).message}`);
+        }
+      }
+    } finally {
+      this.reconciling = false;
+    }
+  }
 
   async checkout(user: User, bookingId: string, useWallet: boolean): Promise<CheckoutResponse> {
     const b = await this.prisma.booking.findUnique({ where: { id: bookingId } });
