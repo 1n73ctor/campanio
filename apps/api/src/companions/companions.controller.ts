@@ -20,7 +20,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser } from '../common/auth';
 import { Throttle } from '@nestjs/throttler';
-import { publicUrl, storePublicImage, uploadLimits } from '../files/uploads';
+import { publicUrl, storePublicImage, uploadLimits, kycUploadLimits } from '../files/uploads';
 import { KycService } from '../kyc/kyc.service';
 import { CompanionsService } from './companions.service';
 import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
@@ -86,9 +86,9 @@ export class CompanionSelfController {
 
   @Post('photos')
   @UseInterceptors(FileInterceptor('file', uploadLimits))
-  photo(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
+  async photo(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.svc.addPhoto(user.id, publicUrl(storePublicImage(file)));
+    return this.svc.addPhoto(user.id, publicUrl(await storePublicImage(file)));
   }
 
   @Delete('photos/:index')
@@ -128,12 +128,12 @@ export class CompanionSelfController {
 
   @Post('kyc')
   @Throttle({ default: { limit: 6, ttl: 10 * 60_000 } })
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'idDoc', maxCount: 1 }, { name: 'selfie', maxCount: 1 }], uploadLimits))
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'idDoc', maxCount: 1 }, { name: 'idDocBack', maxCount: 1 }, { name: 'selfie', maxCount: 1 }], kycUploadLimits))
   submitKyc(
     @CurrentUser() user: User,
     @Body() dto: KycDto,
-    @UploadedFiles() files: { idDoc?: Express.Multer.File[]; selfie?: Express.Multer.File[] },
+    @UploadedFiles() files: { idDoc?: Express.Multer.File[]; idDocBack?: Express.Multer.File[]; selfie?: Express.Multer.File[] },
   ) {
-    return this.kyc.submit(user, { method: dto.method ?? 'MANUAL', idType: dto.idType, idLast4: dto.idLast4, idDoc: files?.idDoc?.[0], selfie: files?.selfie?.[0] });
+    return this.kyc.submit(user, { method: dto.method ?? 'MANUAL', idType: dto.idType, idLast4: dto.idLast4, idDoc: files?.idDoc?.[0], idDocBack: files?.idDocBack?.[0], selfie: files?.selfie?.[0] });
   }
 }

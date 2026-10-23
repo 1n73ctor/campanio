@@ -144,6 +144,8 @@ model KycSubmission {
   // MANUAL: the companion uploaded a photo of their ID. DIGILOCKER: idDocPath is the photo on their Aadhaar record.
   method         String    @default("MANUAL")
   idDocPath      String
+  /// back of the ID (uploads of two-sided IDs: Aadhaar, driving licence, voter ID)
+  idDocBackPath  String?
   selfiePath     String
   status         String    @default("PENDING")
   reviewNote     String?

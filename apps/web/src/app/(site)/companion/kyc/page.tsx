@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ID_TYPES, formatINR, humanize, type DigilockerIdentityDto, type KycOptionsDto } from '@companio/types';
+import { ID_TYPES, formatINR, humanize, idHasBack, type DigilockerIdentityDto, type KycOptionsDto } from '@companio/types';
 import { Button, Callout, Card, Field, Input, Select } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
@@ -33,6 +33,7 @@ export default function KycPage() {
   const [idType, setIdType] = useState<string>('AADHAAR');
   const [last4, setLast4] = useState('');
   const [idDoc, setIdDoc] = useState<File | null>(null);
+  const [idDocBack, setIdDocBack] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
   const feePay = useCompanionFee();
@@ -118,7 +119,11 @@ export default function KycPage() {
     await api.companion.discardDigilocker().catch(() => undefined);
   };
 
-  const ready = mode === 'digilocker' ? !!identity && !!selfie : !!idDoc && !!selfie && last4.length === 4;
+  const twoSided = idHasBack(idType);
+  // a single PDF can hold both sides
+  const frontIsPdf = idDoc?.type === 'application/pdf';
+  const needsBack = twoSided && !frontIsPdf;
+  const ready = mode === 'digilocker' ? !!identity && !!selfie : !!idDoc && (!needsBack || !!idDocBack) && !!selfie && last4.length === 4;
 
   const submit = async () => {
     if (!ready || !selfie) return;
@@ -132,7 +137,7 @@ export default function KycPage() {
       const k =
         mode === 'digilocker'
           ? await api.companion.submitKyc({ method: 'DIGILOCKER', selfie: photo })
-          : await api.companion.submitKyc({ idType, idLast4: last4, idDoc: idDoc!, selfie: photo });
+          : await api.companion.submitKyc({ idType, idLast4: last4, idDoc: idDoc!, idDocBack: twoSided && idDocBack ? idDocBack : undefined, selfie: photo });
       await refresh();
       toast(k.status === 'APPROVED' ? 'You’re verified ✅ and live!' : 'Submitted! We’ll review within 24h');
       router.push('/companion/dashboard');
@@ -192,7 +197,7 @@ export default function KycPage() {
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="ID type">
-                <Select value={idType} onChange={(e) => setIdType(e.target.value)}>
+                <Select value={idType} onChange={(e) => (setIdType(e.target.value), setIdDocBack(null))}>
                   {ID_TYPES.map((t) => (
                     <option key={t} value={t}>
                       {humanize(t)}
@@ -204,9 +209,29 @@ export default function KycPage() {
                 <Input value={last4} onChange={(e) => setLast4(e.target.value.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase())} placeholder="1234" />
               </Field>
             </div>
-            <Field label="Photo of your ID (front)" hint="JPG, PNG or PDF, max 5MB. Make sure all four corners are visible.">
-              <Input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="pt-2" onChange={(e) => setIdDoc(e.target.files?.[0] ?? null)} />
-            </Field>
+            {twoSided ? (
+              <>
+                <p className="-mb-2 text-sm text-ink-soft">
+                  Your {humanize(idType)} has details on both sides — upload a clear photo of the <b className="text-ink">front and the back</b>. JPG, PNG or PDF, max 5MB each; all
+                  four corners visible.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Front (with your photo)">
+                    <Input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="pt-2" onChange={(e) => setIdDoc(e.target.files?.[0] ?? null)} />
+                  </Field>
+                  <Field label="Back" hint={frontIsPdf ? 'Optional — your PDF can include both sides' : undefined}>
+                    <Input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="pt-2" onChange={(e) => setIdDocBack(e.target.files?.[0] ?? null)} />
+                  </Field>
+                </div>
+              </>
+            ) : (
+              <Field
+                label={idType === 'PASSPORT' ? 'Photo of your passport (the page with your photo)' : 'Photo of your ID'}
+                hint="JPG, PNG or PDF, max 5MB. Make sure all four corners are visible."
+              >
+                <Input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="pt-2" onChange={(e) => setIdDoc(e.target.files?.[0] ?? null)} />
+              </Field>
+            )}
           </section>
         )}
 

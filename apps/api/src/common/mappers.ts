@@ -234,6 +234,7 @@ export function toKycDto(k: KycSubmission & { user: User }, forAdmin = false): K
     idLast4: k.idLast4,
     method: k.method as KycSubmissionDto['method'],
     idDocUrl: signPrivateUrl(k.idDocPath),
+    idDocBackUrl: k.idDocBackPath ? signPrivateUrl(k.idDocBackPath) : null,
     selfieUrl: signPrivateUrl(k.selfiePath),
     status: k.status as KycSubmissionDto['status'],
     reviewNote: k.reviewNote,

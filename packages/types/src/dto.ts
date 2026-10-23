@@ -171,8 +171,10 @@ export interface KycSubmissionDto {
   idType: IdType;
   idLast4: string;
   method: KycMethod;
-  /** for DIGILOCKER, the photo on the Aadhaar record */
+  /** for DIGILOCKER, the photo on the Aadhaar record; for uploads, the front of the ID */
   idDocUrl: string;
+  /** uploads of two-sided IDs (Aadhaar, driving licence, voter ID): the back */
+  idDocBackUrl: string | null;
   selfieUrl: string;
   status: KycStatus;
   reviewNote: string | null;

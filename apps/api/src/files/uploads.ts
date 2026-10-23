@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { BadRequestException } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { memoryStorage } from 'multer';
@@ -5,7 +6,6 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { basename, resolve } from 'path';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { config } from '../common/config';
-import { stripImageMetadata } from './image-metadata';
 
 // resolve (not join) so an absolute UPLOAD_DIR like /srv/companio-data/uploads is used as-is
 export const PUBLIC_DIR = resolve(process.cwd(), config.uploadDir, 'public');
@@ -33,21 +33,36 @@ const newName = (kind: Kind) => `${Date.now()}-${randomBytes(12).toString('hex')
 
 /** Multer keeps uploads in memory (max 5 MB) so nothing reaches disk before it has been checked. */
 export const uploadLimits: MulterOptions = { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 2 } };
+/** ID verification: front + back of the ID + selfie */
+export const kycUploadLimits: MulterOptions = { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 3 } };
 
 /** Profile & companion photos (public): verified image type, location/camera metadata removed, safe name. */
-export function storePublicImage(file: Express.Multer.File | undefined): string {
+/**
+ * Profile and host photos: resized to fit `maxSide` (never enlarged), turned the right way up, and saved as WebP —
+ * a phone photo of several MB becomes ~100–200 KB, so pages load fast. Metadata (GPS location, camera) is dropped.
+ */
+export async function storePublicImage(file: Express.Multer.File | undefined, maxSide = 1600): Promise<string> {
   if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
   const kind = detectKind(file.buffer);
   if (kind !== 'jpg' && kind !== 'png' && kind !== 'webp') throw new BadRequestException('Please upload a JPG, PNG or WebP image');
-  let cleaned: Buffer;
+  let out: Buffer;
   try {
-    cleaned = stripImageMetadata(file.buffer, kind);
+    out = await compressImage(file.buffer, maxSide);
   } catch {
     throw new BadRequestException('We couldn’t process this image — please try a different photo');
   }
-  const name = newName(kind);
-  writeFileSync(resolve(PUBLIC_DIR, name), cleaned, { mode: 0o644 });
+  const name = newName('webp');
+  writeFileSync(resolve(PUBLIC_DIR, name), out, { mode: 0o644 });
   return name;
+}
+
+/** Resize to fit maxSide × maxSide and encode as WebP (sharp drops EXIF/GPS metadata unless asked to keep it). */
+export function compressImage(buf: Buffer, maxSide = 1600) {
+  return sharp(buf, { failOn: 'error', limitInputPixels: 60_000_000 })
+    .rotate()
+    .resize({ width: maxSide, height: maxSide, fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
 }
 
 /** KYC ID documents & selfies (private): verified type, encrypted at rest when a key is configured. */

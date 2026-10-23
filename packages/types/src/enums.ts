@@ -57,6 +57,9 @@ export type Gender = (typeof GENDERS)[number];
 
 export const ID_TYPES = ['AADHAAR', 'PAN', 'PASSPORT', 'DRIVING_LICENCE', 'VOTER_ID'] as const;
 export type IdType = (typeof ID_TYPES)[number];
+/** IDs with details on both sides (Aadhaar's address, DL's validity, Voter ID's address): front and back photos needed */
+export const ID_TYPES_WITH_BACK: readonly IdType[] = ['AADHAAR', 'DRIVING_LICENCE', 'VOTER_ID'];
+export const idHasBack = (t: string | null | undefined) => !!t && (ID_TYPES_WITH_BACK as readonly string[]).includes(t);
 
 /** MANUAL: photo of an ID uploaded by the companion. DIGILOCKER: Aadhaar record shared from DigiLocker. */
 export const KYC_METHODS = ['MANUAL', 'DIGILOCKER'] as const;

@@ -16,6 +16,7 @@
     "mail:test": "tsx prisma/send-test-email.ts",
     "db:verify-existing-emails": "tsx prisma/verify-existing-emails.ts",
     "db:rewrite-file-urls": "tsx prisma/rewrite-file-urls.ts",
+    "photos:compress": "tsx prisma/compress-photos.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "prisma studio"
@@ -44,6 +45,7 @@
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

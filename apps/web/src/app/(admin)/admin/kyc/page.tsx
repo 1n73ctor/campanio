@@ -134,13 +134,9 @@ export default function KycPage() {
                   <StatusBadge status={k.status} />
                 </div>
                 {k.checks && <Checks c={k.checks} />}
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <figure>
-                    <figcaption className="mb-1 text-xs font-bold uppercase">{k.method === 'DIGILOCKER' ? 'Photo on Aadhaar (DigiLocker)' : 'ID document'}</figcaption>
-                    <a href={k.idDocUrl} target="_blank" rel="noreferrer">
-                      <img src={k.idDocUrl} alt="ID document" className="max-h-72 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
-                    </a>
-                  </figure>
+                <div className={`mt-4 grid gap-4 ${k.idDocBackUrl ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                  <Doc url={k.idDocUrl} label={k.method === 'DIGILOCKER' ? 'Photo on Aadhaar (DigiLocker)' : k.idDocBackUrl ? 'ID — front' : 'ID document'} />
+                  {k.idDocBackUrl && <Doc url={k.idDocBackUrl} label="ID — back" />}
                   <figure>
                     <figcaption className="mb-1 text-xs font-bold uppercase">Live selfie</figcaption>
                     <a href={k.selfieUrl} target="_blank" rel="noreferrer">
@@ -178,5 +174,22 @@ export default function KycPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+/** An uploaded ID side: images inline, PDFs as a link (a browser can't show a PDF in an <img>). */
+function Doc({ url, label }: { url: string; label: string }) {
+  const pdf = /\.pdf(\?|$)/i.test(url);
+  return (
+    <figure>
+      <figcaption className="mb-1 text-xs font-bold uppercase">{label}</figcaption>
+      <a href={url} target="_blank" rel="noreferrer">
+        {pdf ? (
+          <span className="flex h-40 items-center justify-center rounded-chunky border-3 border-ink bg-paper font-bold underline">📄 Open PDF</span>
+        ) : (
+          <img src={url} alt={label} className="max-h-72 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
+        )}
+      </a>
+    </figure>
   );
 }

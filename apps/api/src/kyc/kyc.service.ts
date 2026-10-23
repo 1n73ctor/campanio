@@ -16,6 +16,7 @@ import { createHmac, randomBytes } from 'crypto';
 import { rmSync } from 'fs';
 import { resolve } from 'path';
 import type { AadhaarGender, DigilockerIdentityDto, KycFlag, KycOptionsDto, KycSubmissionDto } from '@companio/types';
+import { idHasBack } from '@companio/types';
 import { config } from '../common/config';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../common/settings.service';
@@ -191,7 +192,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
 
   async submit(
     user: User,
-    input: { method: 'MANUAL' | 'DIGILOCKER'; idType?: string; idLast4?: string; idDoc: Upload; selfie: Upload },
+    input: { method: 'MANUAL' | 'DIGILOCKER'; idType?: string; idLast4?: string; idDoc: Upload; idDocBack?: Upload; selfie: Upload },
   ): Promise<KycSubmissionDto> {
     await this.assertCanSubmit(user);
     const selfie = input.selfie?.buffer;
@@ -261,12 +262,18 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
     // manual upload
     if (!input.idType || !input.idLast4) throw new BadRequestException('Choose your ID type and enter its last 4 characters');
     const idDoc = input.idDoc?.buffer;
-    if (!idDoc?.length) throw new BadRequestException('Upload a photo of your ID');
+    const twoSided = idHasBack(input.idType);
+    if (!idDoc?.length) throw new BadRequestException(twoSided ? 'Upload a photo of the front of your ID' : 'Upload a photo of your ID');
     const idKind = detectKind(idDoc);
     if (!idKind) throw new BadRequestException('Please upload a JPG, PNG, WebP or PDF file');
+    // two-sided IDs need the back too (one PDF with both sides counts as both)
+    const back = input.idDocBack?.buffer;
+    if (twoSided && idKind !== 'pdf' && !back?.length) throw new BadRequestException(`Upload a photo of the back of your ${humanizeId(input.idType)} too`);
+    if (back?.length && !detectKind(back)) throw new BadRequestException('Please upload the back of your ID as a JPG, PNG, WebP or PDF file');
     // PDFs and WebP can't go to face match; the reviewer compares those by eye
     const checks = await this.faceChecks(selfie, idKind === 'jpg' || idKind === 'png' ? idDoc : null);
     const idDocPath = storePrivateDoc(input.idDoc);
+    const idDocBackPath = back?.length ? storePrivateDoc(input.idDocBack) : null;
     const selfiePath = storePrivateDoc(input.selfie);
     const [k] = await this.prisma.$transaction([
       this.prisma.kycSubmission.create({
@@ -276,6 +283,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
           idType: input.idType,
           idLast4: input.idLast4.toUpperCase(),
           idDocPath,
+          idDocBackPath,
           selfiePath,
           ...checkColumns(checks),
           flags: JSON.stringify(checks.flags),
@@ -465,3 +473,5 @@ function removePrivate(name: string) {
     /* already gone */
   }
 }
+
+const humanizeId = (t?: string) => ({ AADHAAR: 'Aadhaar', DRIVING_LICENCE: 'driving licence', VOTER_ID: 'voter ID' })[t ?? ''] ?? 'ID';

@@ -127,7 +127,7 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file', uploadLimits))
   async avatar(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const u = await this.prisma.user.update({ where: { id: user.id }, data: { avatarUrl: publicUrl(storePublicImage(file)) }, include: { companion: true } });
+    const u = await this.prisma.user.update({ where: { id: user.id }, data: { avatarUrl: publicUrl(await storePublicImage(file, 800)) }, include: { companion: true } });
     return toUserDto(u);
   }
 
