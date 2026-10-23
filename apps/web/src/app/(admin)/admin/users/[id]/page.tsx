@@ -42,7 +42,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
             {u.status !== 'DELETED' && u.role !== 'ADMIN' && (
               <>
                 <Button size="sm" variant="white" onClick={() => setEditing(true)}>✏️ Edit profile</Button>
-                {u.status === 'ACTIVE' && <Button size="sm" variant="white" onClick={() => setViewing(true)}>👁 Log in as user</Button>}
+                {u.status === 'ACTIVE' && <Button size="sm" variant="white" onClick={() => setViewing(true)}>🔓 Log in as user</Button>}
               </>
             )}
             {u.status !== 'DELETED' && (u.status === 'ACTIVE' ? (

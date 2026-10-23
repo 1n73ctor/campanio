@@ -378,7 +378,7 @@ export function createApiClient(opts: ClientOptions) {
       changePassword: (currentPassword: string, newPassword: string) => post<{ token: string; user: UserDto }>('/admin/me/password', { currentPassword, newPassword }),
       /** one click: the whole site under maintenance, or back */
       setMaintenance: (on: boolean) => post<{ maintenance: boolean }>('/admin/maintenance', { on }),
-      impersonate: (id: string, reason: string, mode: 'view' | 'full' = 'view') => post<{ token: string; expiresAt: string; mode: 'view' | 'full' }>(`/admin/users/${id}/impersonate`, { reason, mode }),
+      impersonate: (id: string, reason: string, mode: 'view' | 'full' = 'full') => post<{ token: string; expiresAt: string; mode: 'view' | 'full' }>(`/admin/users/${id}/impersonate`, { reason, mode }),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
       approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),
