@@ -166,6 +166,8 @@ export class AdminEditUserDto {
 /** "Log in as this user" (read-only view) — the reason is kept in the audit log. */
 export class ImpersonateDto {
   @IsString() @Length(5, 300) reason: string;
+  /** "full" lets the admin make changes as the user (blocked: payments, withdrawals, messages/reviews, deletion) */
+  @IsOptional() @IsIn(['view', 'full']) mode?: 'view' | 'full';
 }
 
 export class MaintenanceDto {

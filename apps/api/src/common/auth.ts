@@ -21,12 +21,29 @@ export interface JwtPayload {
   /** "log in as this user" by an admin: that admin's id, and their own session version when it was issued */
   imp?: string;
   iv?: number;
+  /** "full": the admin may make changes as this user (audited); otherwise view-as is read-only */
+  ia?: 'full';
   /** single-purpose tokens (e.g. account deletion) — never a sign-in */
   purpose?: string;
 }
 
 /** Requests an admin may make while viewing the site as someone else: looking only, never changing anything. */
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * Never allowed even with full access, because they'd move real money, can't be undone, or would put words in the
+ * person's mouth (a host reading a message or review would believe the member wrote it). Message people from the
+ * admin panel instead.
+ */
+const FULL_ACCESS_BLOCKED: [RegExp, string][] = [
+  [/^\/payments(\/|$)/, 'Payments can’t be made as someone else'],
+  [/^\/wallet\/payouts/, 'Withdrawals can’t be made as someone else'],
+  [/^\/chats\/unlock/, 'Coins can’t be spent as someone else'],
+  [/^\/me\/(delete|logout-others)/, 'Deleting the account or signing it out of its devices isn’t possible as someone else'],
+  [/^\/bookings\/[^/]+\/(messages|review)$/, 'Messages and reviews can’t be written as someone else — message them from the admin panel'],
+  [/^\/chats\/[^/]+\/messages$/, 'Messages can’t be written as someone else — message them from the admin panel'],
+  [/^\/auth\//, 'Not allowed while acting as someone else'],
+];
 
 /**
  * The admin behind a "log in as" token, if it's still allowed: still an active admin, and hasn't signed out
@@ -91,10 +108,16 @@ export class AuthGuard implements CanActivate {
     if (payload.purpose) throw new UnauthorizedException('Sign in required');
     const impersonator = await impersonatorOf(this.prisma, payload);
     if (impersonator) {
-      if (!READ_ONLY_METHODS.has(String(req.method).toUpperCase())) {
-        throw new ForbiddenException('You’re viewing as this user (read-only) — changes are blocked. Use the admin panel to make changes.');
-      }
       if (payload.role === 'ADMIN') throw new ForbiddenException('Not allowed');
+      const method = String(req.method).toUpperCase();
+      if (!READ_ONLY_METHODS.has(method)) {
+        if (payload.ia !== 'full') throw new ForbiddenException('You’re viewing as this user (read-only) — changes are blocked. Use the admin panel to make changes.');
+        const path = String(req.originalUrl ?? req.url ?? '').split('?')[0];
+        const blocked = FULL_ACCESS_BLOCKED.find(([re]) => re.test(path));
+        if (blocked) throw new ForbiddenException(blocked[1]);
+        // every change made as someone else is on record: which admin, whose account, what
+        await this.prisma.auditLog.create({ data: { adminId: impersonator.id, action: 'user.impersonate.action', targetType: 'user', targetId: payload.sub, meta: JSON.stringify({ method, path }) } });
+      }
     }
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, include: { companion: true } });
     if (!user || user.status === 'DELETED') throw new UnauthorizedException('Account not found');

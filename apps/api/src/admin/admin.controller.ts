@@ -63,11 +63,12 @@ export class AdminController {
   @Patch('users/:id/profile') editUser(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: AdminEditUserDto) {
     return this.svc.editUser(a, id, dto);
   }
-  /** One-click "log in as": a 30-minute, read-only session as this user, audited with the reason. */
+  /** One-click "log in as": a 30-minute session as this user — read-only, or full access (changes audited) — with the reason recorded. */
   @Post('users/:id/impersonate') @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async impersonate(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: ImpersonateDto) {
-    const target = await this.svc.impersonationTarget(a, id, dto.reason);
-    return this.auth.impersonationToken(a, target);
+    const mode = dto.mode ?? 'view';
+    const target = await this.svc.impersonationTarget(a, id, dto.reason, mode);
+    return this.auth.impersonationToken(a, target, mode);
   }
   @Post('users/:id/refund-companion-fee') refundCompanionFee(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.refundCompanionFee(a, id, dto.note);

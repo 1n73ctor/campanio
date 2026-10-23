@@ -24,7 +24,7 @@ export function ViewAsStart() {
       setError('This link has expired or is incomplete. Start again from the admin panel.');
       return;
     }
-    const v: ViewAs = { token, expiresAt, back: back.startsWith('/admin/') ? back : '/admin/users' };
+    const v: ViewAs = { token, expiresAt, back: back.startsWith('/admin/') ? back : '/admin/users', full: p.get('mode') === 'full' };
     try {
       sessionStorage.setItem(VIEW_AS_KEY, JSON.stringify(v));
     } catch {

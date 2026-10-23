@@ -51,7 +51,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       if (!user || user.status !== 'ACTIVE') throw new Error('inactive');
       if ((payload.v ?? 0) !== user.tokenVersion) throw new Error('session revoked');
       if (impersonator && user.role === 'ADMIN') throw new Error('not allowed');
-      (socket.data as SocketData) = { userId: user.id, role: user.role, readOnly: !!impersonator };
+      (socket.data as SocketData) = { userId: user.id, role: user.role, readOnly: !!impersonator && payload.ia !== 'full' };
       await socket.join(`user:${user.id}`);
       if (user.role === 'ADMIN') await socket.join('admins');
     } catch {

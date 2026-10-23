@@ -17,6 +17,8 @@ export interface ViewAs {
   expiresAt: string;
   /** the admin page to go back to */
   back: string;
+  /** full access: the admin can make changes as this user (audited); otherwise read-only */
+  full?: boolean;
 }
 
 export const readViewAs = (): ViewAs | null => {

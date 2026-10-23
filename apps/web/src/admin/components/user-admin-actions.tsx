@@ -195,6 +195,8 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
   const { api } = useAdmin();
   const toast = useToast();
   const [reason, setReason] = useState('');
+  const [mode, setMode] = useState<'view' | 'full'>('view');
+  const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const start = async () => {
@@ -202,11 +204,13 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
     if (!tab) return toast('Your browser blocked the new tab — allow pop-ups for this site and try again', 'error');
     setBusy(true);
     try {
-      const r = await api.admin.impersonate(user.id, reason.trim());
+      const r = await api.admin.impersonate(user.id, reason.trim(), mode);
       tab.opener = null; // the user's site can't reach back into the admin panel
-      const hash = new URLSearchParams({ token: r.token, exp: r.expiresAt, back: `/admin/users/${user.id}` });
+      const hash = new URLSearchParams({ token: r.token, exp: r.expiresAt, back: `/admin/users/${user.id}`, mode: r.mode ?? 'view' });
       tab.location.replace(`/view-as#${hash}`);
       setReason('');
+      setMode('view');
+      setSure(false);
       onClose();
     } catch (e) {
       tab.close();
@@ -222,19 +226,47 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
       onClose={onClose}
       title={`Log in as ${user.name ?? 'this user'}`}
       footer={
-        <Button loading={busy} disabled={reason.trim().length < 5} onClick={start}>
-          Open their view
+        <Button variant={mode === 'full' ? 'danger' : 'primary'} loading={busy} disabled={reason.trim().length < 5 || (mode === 'full' && !sure)} onClick={start}>
+          {mode === 'full' ? 'Open with full access' : 'Open their view'}
         </Button>
       }
     >
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setMode('view')} className={`rounded-chunky border-3 border-ink p-3 text-left text-sm ${mode === 'view' ? 'bg-lime-soft' : 'bg-white'}`}>
+          <b>👁 View only</b>
+          <span className="block text-xs text-ink-soft">See what they see. Nothing can be changed. Recommended.</span>
+        </button>
+        <button type="button" onClick={() => setMode('full')} className={`rounded-chunky border-3 border-ink p-3 text-left text-sm ${mode === 'full' ? 'bg-pink-soft' : 'bg-white'}`}>
+          <b>🔓 Full access</b>
+          <span className="block text-xs text-ink-soft">Make changes as them — every change is logged.</span>
+        </button>
+      </div>
       <ul className="mb-3 list-disc space-y-1 pl-5 text-sm">
         <li>Opens the website in a new tab, signed in as {user.name?.split(' ')[0] ?? 'them'}.</li>
-        <li>
-          <b>Read-only</b>: you can see everything they see, but nothing can be changed, sent, booked or paid.
-        </li>
+        {mode === 'view' ? (
+          <li>
+            <b>Read-only</b>: you can see everything they see, but nothing can be changed, sent, booked or paid.
+          </li>
+        ) : (
+          <>
+            <li>
+              <b>You can make changes as them</b> — edit their profile, availability, settings, bookings. Each change is saved to the audit log.
+            </li>
+            <li>
+              <b>Still blocked:</b> payments, withdrawals, spending their coins, sending messages or reviews in their name, deleting the account.
+            </li>
+            <li>They get a notice in the app that someone from the team opened their account (your reason isn’t shown to them).</li>
+          </>
+        )}
         <li>Ends after 30 minutes, when you close the tab or tap “Exit view”. Your own sign-ins aren’t affected.</li>
         <li>Recorded in the audit log with your reason.</li>
       </ul>
+      {mode === 'full' && (
+        <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-chunky border-2 border-danger bg-pink-soft p-3 text-sm">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-ink" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+          <span>I need to change things in {user.name?.split(' ')[0] ?? 'their'}’s account to help them, and I understand every change is logged under my name.</span>
+        </label>
+      )}
       <Field label="Reason (kept in the audit log)">
         <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Checking the booking page they reported as broken" />
       </Field>
