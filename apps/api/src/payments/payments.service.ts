@@ -12,6 +12,7 @@ import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
 import { CashfreeProvider } from './providers/cashfree.provider';
 import { CompanionFeeService } from '../companions/companion-fee.service';
+import { TopUpOffersService } from './topup-offers.service';
 import { MailService } from '../mail/mail.service';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class PaymentsService {
     private rt: RealtimeService,
     private fee: CompanionFeeService,
     private mail: MailService,
+    private offers: TopUpOffersService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
 
@@ -91,7 +93,14 @@ export class PaymentsService {
    */
   async checkoutTopUp(user: User, amount: number): Promise<FeeCheckoutResponse> {
     if (!Number.isInteger(amount) || amount < TOPUP_MIN || amount > TOPUP_MAX) throw new BadRequestException(`Add between ${formatINR(TOPUP_MIN)} and ${formatINR(TOPUP_MAX)}`);
-    const base = { purpose: 'WALLET_TOPUP', userId: user.id, walletAmount: 0 };
+    // the bonus is decided here, by the server, and saved with the payment (an offer edited mid-payment doesn't change it)
+    const best = await this.offers.best(user.id, amount);
+    const base = {
+      purpose: 'WALLET_TOPUP',
+      userId: user.id,
+      walletAmount: 0,
+      ...(best ? { bonus: best.bonus, offerId: best.offer.id, offerTitle: best.offer.title, offerFirstOnly: best.offer.firstOnly } : {}),
+    };
     const { orderId, sessionId } = await this.provider.createOrder(amount, `topup_${user.id}`, customerOf(user));
     await this.prisma.payment.create({ data: { ...base, provider: this.provider.name, providerOrderId: orderId, amount } });
     if (this.provider instanceof CashfreeProvider) {
@@ -109,11 +118,21 @@ export class PaymentsService {
       if (claimed.count === 0) return null; // already processed
       const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
       await this.wallet.credit(tx, p.userId, p.amount, 'Coins added', { type: 'topup', id: p.id }, p.amount);
-      return p;
+      let bonus = p.bonus;
+      // a "first top-up" bonus only counts if no other top-up was paid first (e.g. two started at once)
+      if (bonus > 0 && p.offerFirstOnly) {
+        const other = await tx.payment.count({ where: { userId: p.userId, purpose: 'WALLET_TOPUP', status: 'PAID', id: { not: p.id } } });
+        if (other > 0) {
+          bonus = 0;
+          await tx.payment.update({ where: { id: p.id }, data: { bonus: 0 } });
+        }
+      }
+      if (bonus > 0) await this.wallet.credit(tx, p.userId, bonus, `Bonus coins${p.offerTitle ? ` — ${p.offerTitle}` : ''}`, { type: 'topup-bonus', id: p.id }, bonus);
+      return { ...p, bonus };
     });
     if (!p) return;
     // no notification: the wallet page confirms it on screen, and the wallet ledger keeps the record
-    this.log.log(`wallet top-up ${formatINR(p.amount)} by ${p.userId}`);
+    this.log.log(`wallet top-up ${formatINR(p.amount)}${p.bonus ? ` + ${p.bonus} bonus coins` : ''} by ${p.userId}`);
   }
 
   async verify(user: User, orderId: string, paymentId: string, signature: string) {

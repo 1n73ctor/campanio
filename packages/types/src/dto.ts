@@ -670,3 +670,36 @@ export interface AdminChatStatsDto {
   conversations: number;
 }
 
+
+// ---------- coin purchases (wallet top-ups by Razorpay) and their bonus offers ----------
+export interface TopUpOfferDto {
+  id: string;
+  title: string;
+  minAmount: Rupees;
+  bonusPct: number;
+  maxBonus: number | null;
+  firstOnly: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  active: boolean;
+}
+
+export interface CoinPurchaseDto {
+  id: string;
+  user: { id: string; name: string | null; phone: string | null };
+  amount: Rupees;
+  bonus: number;
+  offerTitle: string | null;
+  /** CREATED (started, not paid), PAID or FAILED */
+  status: string;
+  provider: string;
+  providerPaymentId: string | null;
+  createdAt: string;
+}
+
+export interface CoinPurchaseSummaryDto {
+  today: { count: number; amount: Rupees; bonus: number };
+  week: { count: number; amount: Rupees; bonus: number };
+  month: { count: number; amount: Rupees; bonus: number };
+  allTime: { count: number; amount: Rupees; bonus: number; buyers: number };
+}

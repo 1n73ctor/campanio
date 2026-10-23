@@ -3,6 +3,8 @@ import { config } from '../common/config';
 import { BookingsModule } from '../bookings/bookings.module';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
+import { TopUpOffersService } from './topup-offers.service';
+import { AdminCoinsController } from './admin-coins.controller';
 import { PAYMENT_PROVIDER } from './providers/provider';
 import { MockProvider } from './providers/mock.provider';
 import { RazorpayProvider } from './providers/razorpay.provider';
@@ -10,10 +12,11 @@ import { CashfreeProvider } from './providers/cashfree.provider';
 
 @Module({
   imports: [BookingsModule],
-  controllers: [PaymentsController],
+  controllers: [PaymentsController, AdminCoinsController],
   exports: [PaymentsService],
   providers: [
     PaymentsService,
+    TopUpOffersService,
     {
       provide: PAYMENT_PROVIDER,
       useFactory: () => {

@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
@@ -8,6 +8,7 @@ import { Type } from 'class-transformer';
 import { SkipThrottle } from '@nestjs/throttler';
 import { AuthGuard, CurrentUser } from '../common/auth';
 import { PaymentsService } from './payments.service';
+import { TopUpOffersService } from './topup-offers.service';
 
 class CheckoutDto {
   @IsString() bookingId: string;
@@ -28,7 +29,10 @@ class VerifyDto {
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private svc: PaymentsService) {}
+  constructor(
+    private svc: PaymentsService,
+    private offers: TopUpOffersService,
+  ) {}
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
@@ -45,6 +49,14 @@ export class PaymentsController {
   @HttpCode(200)
   companionFee(@CurrentUser() user: User, @Body() dto: FeeCheckoutDto) {
     return this.svc.checkoutCompanionFee(user, dto.useWallet ?? true);
+  }
+
+  /** Bonus offers this member can use when adding coins. */
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('topup/offers')
+  topUpOffers(@CurrentUser() user: User) {
+    return this.offers.forMember(user.id);
   }
 
   /** Add coins to the wallet (spend-only). */

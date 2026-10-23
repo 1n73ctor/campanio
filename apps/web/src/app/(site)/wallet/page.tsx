@@ -20,16 +20,11 @@ export default function WalletPage() {
   const [amount, setAmount] = useState('');
   const [upi, setUpi] = useState('');
   const [busy, setBusy] = useState(false);
-  const [coins, setCoins] = useState(false);
 
   const load = () => {
     api.wallet.get().then(setW).catch(() => {});
     if (user?.companion) api.wallet.payouts().then(setPayouts).catch(() => {});
   };
-  useEffect(() => {
-    // "Add coins" shows when paid chats are on (meetups are paid at checkout)
-    api.chats.prices().then((p) => setCoins(!!p?.enabled)).catch(() => {});
-  }, [api]);
   useEffect(() => {
     if (user) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,11 +57,9 @@ export default function WalletPage() {
         <div>
           <p className="text-sm font-bold uppercase tracking-wider">Balance</p>
           <p className="font-display text-5xl font-extrabold tabular-nums">{formatINR(w.balance)}</p>
-          {coins && (
-            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
-              <CoinAmount n={w.balance} size={20} /> coins
-            </p>
-          )}
+          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
+            <CoinAmount n={w.balance} size={20} /> coins
+          </p>
           {credit > 0 && (
             <p className="mt-1 text-sm">
               {formatINR(withdrawable)} {user.companion ? 'withdrawable' : 'money'} · <b>{formatINR(credit)} credit & coins</b> — for meetups and chats, can’t be withdrawn
@@ -80,7 +73,7 @@ export default function WalletPage() {
         )}
       </Card>
 
-      {coins && <AddCoins id="add-coins" className="mt-6" onAdded={load} />}
+      <AddCoins id="add-coins" className="mt-6" onAdded={load} />
 
       <InviteCard className="mt-6" />
 

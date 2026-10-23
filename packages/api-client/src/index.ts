@@ -1,4 +1,7 @@
 import type {
+  CoinPurchaseDto,
+  CoinPurchaseSummaryDto,
+  TopUpOfferDto,
   AdminChatStatsDto,
   AdminChatUnlockDto,
   ChatPricesDto,
@@ -307,6 +310,8 @@ export function createApiClient(opts: ClientOptions) {
     },
     payments: {
       /** add coins (spend-only wallet balance); confirm with verify() like other payments */
+      /** bonus offers this member can use when adding coins */
+      topUpOffers: () => get<TopUpOfferDto[]>('/payments/topup/offers'),
       topUp: (amount: number) => post<FeeCheckoutResponse>('/payments/topup', { amount }),
       checkout: (bookingId: string, useWallet = true) => post<CheckoutResponse>('/payments/checkout', { bookingId, useWallet }),
       companionFee: (useWallet = true) => post<FeeCheckoutResponse>('/payments/companion-fee', { useWallet }),
@@ -354,6 +359,12 @@ export function createApiClient(opts: ClientOptions) {
       assistantConversation: (id: string) => get<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}`),
       assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
       saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
+      coinSummary: () => get<CoinPurchaseSummaryDto>('/admin/coins/summary'),
+      coinPurchases: (q: { page?: number; status?: string; q?: string }) => get<Paginated<CoinPurchaseDto>>('/admin/coins/purchases', q),
+      topUpOffers: () => get<TopUpOfferDto[]>('/admin/coins/offers'),
+      saveTopUpOffer: (o: { id?: string; title: string; minAmount: number; bonusPct: number; maxBonus?: number | null; firstOnly?: boolean; startsAt?: string | null; endsAt?: string | null; active?: boolean }) =>
+        post<TopUpOfferDto>('/admin/coins/offers', o),
+      deleteTopUpOffer: (id: string) => del<{ ok: true }>(`/admin/coins/offers/${id}`),
       deleteAssistantKnowledge: (id: string) => del<{ ok: true }>(`/admin/assistant/knowledge/${id}`),
       replyAssistant: (id: string, text: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/reply`, { text }),
       closeAssistant: (id: string) => post<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}/close`),

@@ -255,6 +255,12 @@ model Payment {
   walletAmount      Int      @default(0)
   /// how much of walletAmount was spend-only credit — a refund gives that part back as credit, never as cash
   walletPromo       Int      @default(0)
+  /// WALLET_TOPUP: extra coins from an offer, worked out when the payment started (added on top once it's paid)
+  bonus             Int      @default(0)
+  offerId           String?
+  offerTitle        String?
+  /// the offer was "first top-up only" — re-checked when the payment completes
+  offerFirstOnly    Boolean  @default(false)
   status            String   @default("CREATED")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -633,4 +639,25 @@ model AssistantKnowledge {
   createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Bonus coins on wallet top-ups, set by an admin (Admin → Coin purchases → Offers). The best offer that applies is
+/// given; extra coins are spend-only, like all coins.
+model TopUpOffer {
+  id        String    @id @default(cuid())
+  /// shown to members, e.g. "Diwali bonus"
+  title     String
+  /// applies to top-ups of at least this many rupees
+  minAmount Int
+  /// extra coins as a % of the amount paid
+  bonusPct  Int
+  /// most extra coins one top-up can get (null = no cap)
+  maxBonus  Int?
+  /// only a member's first ever top-up
+  firstOnly Boolean   @default(false)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
