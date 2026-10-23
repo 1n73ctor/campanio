@@ -489,8 +489,6 @@ export interface AdminStatsDto {
   openReports: number;
   activeSos: number;
   pendingPayouts: number;
-  /** coin top-ups paid by UPI QR, waiting for an admin to check and approve */
-  pendingTopups: number;
   /** chat-bubble conversations waiting for a reply from the team */
   assistantWaiting: number;
   series: { date: string; bookings: number; gmv: Rupees; signups: number }[];
@@ -554,7 +552,6 @@ export interface PlatformSettings {
   /** 1 = the AI support assistant chat bubble is on (needs ANTHROPIC_API_KEY on the server) */
   assistantEnabled: number;
   /** 1 = members add coins by paying the platform's UPI QR and an admin approves it; 0 = through the payment gateway */
-  manualTopup: number;
   /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */
   maintenanceMode: number;
 }
@@ -673,39 +670,3 @@ export interface AdminChatStatsDto {
   conversations: number;
 }
 
-// ---------- coin top-ups by UPI QR (until the payment gateway is live) ----------
-export type TopUpStatus = 'STARTED' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-
-export interface TopUpRequestDto {
-  id: string;
-  amount: Rupees;
-  ref: string;
-  /** what to write in the UPI payment note */
-  note: string;
-  utr: string | null;
-  status: TopUpStatus;
-  credited: Rupees | null;
-  reviewNote: string | null;
-  /** topping up to pay this meetup (paid automatically once approved) */
-  bookingId: string | null;
-  createdAt: string;
-  submittedAt: string | null;
-  reviewedAt: string | null;
-}
-
-/** Started a QR payment: what to show the member. */
-export interface TopUpStartDto extends TopUpRequestDto {
-  payeeName: string;
-  /** upi://pay link with the amount and note filled in (opens the UPI app on phones) */
-  upiLink: string;
-  /** the same link as a QR code (data: URL) */
-  qr: string;
-}
-
-export interface AdminTopUpDto extends TopUpRequestDto {
-  user: { id: string; name: string | null; phone: string | null };
-  /** another approved request already used this transaction ID */
-  utrUsedBy: string | null;
-  /** the meetup this top-up pays for once approved */
-  forMeetup: { id: string; total: Rupees; status: string } | null;
-}

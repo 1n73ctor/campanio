@@ -79,11 +79,6 @@ export const config = {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
     model: process.env.ASSISTANT_MODEL || 'claude-haiku-4-5-20251001',
   },
-  /** the platform's UPI ID and name for coin top-ups by QR (until the payment gateway is live). Empty = off. */
-  upiPayee: {
-    vpa: (process.env.UPI_PAYEE_VPA ?? '').trim(),
-    name: (process.env.UPI_PAYEE_NAME ?? 'Companio').trim(),
-  },
   /** serve the Swagger API docs (always on in development; off in production unless set) */
   docsEnabled: process.env.NODE_ENV !== 'production' || ['1', 'true', 'yes'].includes((process.env.API_DOCS ?? '').toLowerCase()),
 };

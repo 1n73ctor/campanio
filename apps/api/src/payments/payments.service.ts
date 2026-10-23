@@ -13,7 +13,6 @@ import { RazorpayProvider } from './providers/razorpay.provider';
 import { CashfreeProvider } from './providers/cashfree.provider';
 import { CompanionFeeService } from '../companions/companion-fee.service';
 import { MailService } from '../mail/mail.service';
-import { SettingsService } from '../common/settings.service';
 
 @Injectable()
 export class PaymentsService {
@@ -26,7 +25,6 @@ export class PaymentsService {
     private rt: RealtimeService,
     private fee: CompanionFeeService,
     private mail: MailService,
-    private settings: SettingsService,
     @Inject(PAYMENT_PROVIDER) private provider: PaymentProvider,
   ) {}
 
@@ -46,8 +44,6 @@ export class PaymentsService {
       return { status: 'PAID', bookingId: b.id };
     }
 
-    // online payment is off while members top up by UPI QR (the gateway isn't live yet)
-    if ((await this.settings.get()).manualTopup === 1) throw new BadRequestException(`Add ${formatINR(external)} to your wallet by UPI to pay for this meetup`);
     const { orderId, sessionId } = await this.provider.createOrder(external, `booking_${b.id}`, customerOf(user));
     await this.prisma.payment.create({
       data: { bookingId: b.id, userId: user.id, provider: this.provider.name, providerOrderId: orderId, amount: external, walletAmount },
@@ -91,11 +87,9 @@ export class PaymentsService {
 
   /**
    * Add coins (wallet balance) through the gateway — for paid chats and meetups. Topped-up coins are spend-only, so a
-   * stolen card can't be turned into a UPI payout. Only while paid chats are switched on.
+   * stolen card can't be turned into a UPI payout.
    */
   async checkoutTopUp(user: User, amount: number): Promise<FeeCheckoutResponse> {
-    const s = await this.settings.get();
-    if (s.manualTopup === 1) throw new ForbiddenException('Coins are added by UPI QR for now — use “Add coins” in your wallet');
     if (!Number.isInteger(amount) || amount < TOPUP_MIN || amount > TOPUP_MAX) throw new BadRequestException(`Add between ${formatINR(TOPUP_MIN)} and ${formatINR(TOPUP_MAX)}`);
     const base = { purpose: 'WALLET_TOPUP', userId: user.id, walletAmount: 0 };
     const { orderId, sessionId } = await this.provider.createOrder(amount, `topup_${user.id}`, customerOf(user));

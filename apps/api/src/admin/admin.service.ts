@@ -55,7 +55,7 @@ export class AdminService {
   async stats(): Promise<AdminStatsDto> {
     const since = new Date(Date.now() - 13 * DAY);
     since.setHours(0, 0, 0, 0);
-    const [users, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, pendingTopups, assistantWaiting, recentBookings, recentUsers] =
+    const [users, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, recentBookings, recentUsers] =
       await Promise.all([
         this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: { not: 'DELETED' } } }),
         this.prisma.companionProfile.count(),
@@ -67,7 +67,6 @@ export class AdminService {
         this.prisma.report.count({ where: { status: 'OPEN' } }),
         this.prisma.sosAlert.count({ where: { status: 'ACTIVE' } }),
         this.prisma.payout.count({ where: { status: 'REQUESTED' } }),
-        this.prisma.topUpRequest.count({ where: { status: 'PENDING' } }),
         this.prisma.assistantConversation.count({ where: { humanStatus: 'waiting' } }),
         this.prisma.booking.findMany({ where: { paidAt: { gte: since } }, select: { paidAt: true, total: true } }),
         this.prisma.user.findMany({ where: { createdAt: { gte: since }, role: { not: 'ADMIN' } }, select: { createdAt: true } }),
@@ -94,7 +93,6 @@ export class AdminService {
       openReports,
       activeSos,
       pendingPayouts,
-      pendingTopups,
       assistantWaiting,
       series,
     };

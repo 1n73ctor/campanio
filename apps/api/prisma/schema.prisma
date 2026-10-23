@@ -547,8 +547,8 @@ model ChatUnlock {
   @@index([createdAt])
 }
 
-/// Coins bought by paying the platform's UPI QR (until the payment gateway is live). An admin checks the payment
-/// against the UPI app (amount, note with the reference code, transaction ID) and approves it, which adds the coins.
+/// Old coin top-ups paid by UPI QR and approved by an admin (replaced by Razorpay). Kept only as a record of past
+/// payments; nothing creates new ones.
 model TopUpRequest {
   id           String    @id @default(cuid())
   userId       String

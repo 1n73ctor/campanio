@@ -99,18 +99,9 @@ export class BookingsJobs implements OnModuleInit, OnModuleDestroy {
       const s = await this.settings.get();
       const now = Date.now();
 
-      // unpaid after 30 minutes → expired; but a booking waiting for its UPI top-up to be approved is held for up to
-      // 24 hours (or until an hour before it starts)
+      // unpaid after 30 minutes → expired
       await this.prisma.booking.updateMany({
-        where: {
-          status: 'PENDING_PAYMENT',
-          createdAt: { lt: new Date(now - 30 * 60_000) },
-          OR: [
-            { topUps: { none: { status: { in: ['STARTED', 'PENDING'] } } } },
-            { createdAt: { lt: new Date(now - 24 * HOUR) } },
-            { startAt: { lt: new Date(now + HOUR) } },
-          ],
-        },
+        where: { status: 'PENDING_PAYMENT', createdAt: { lt: new Date(now - 30 * 60_000) } },
         data: { status: 'EXPIRED', cancelledAt: new Date(), cancelReason: 'Payment not completed' },
       });
 

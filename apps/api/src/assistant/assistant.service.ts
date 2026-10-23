@@ -319,17 +319,13 @@ export class AssistantService implements OnModuleInit, OnModuleDestroy {
     if (name === 'get_my_wallet') {
       const w = await this.prisma.wallet.findUnique({ where: { userId: viewer.id }, include: { txns: { orderBy: { createdAt: 'desc' }, take: 10 } } });
       const b = await this.wallet.balances(viewer.id);
-      const [payouts, topups] = await Promise.all([
-        this.prisma.payout.findMany({ where: { userId: viewer.id }, orderBy: { createdAt: 'desc' }, take: 5 }),
-        this.prisma.topUpRequest.findMany({ where: { userId: viewer.id, status: { not: 'CANCELLED' } }, orderBy: { createdAt: 'desc' }, take: 5 }),
-      ]);
+      const payouts = await this.prisma.payout.findMany({ where: { userId: viewer.id }, orderBy: { createdAt: 'desc' }, take: 5 });
       return {
         balance: formatINR(b.balance),
         spendOnlyCreditAndCoins: formatINR(b.promoBalance),
         withdrawable: formatINR(b.withdrawable),
         recent: (w?.txns ?? []).map((t) => ({ when: when(t.createdAt), type: t.type, amount: formatINR(t.amount), reason: t.reason })),
         payouts: payouts.map((p) => ({ amount: formatINR(p.amount), status: p.status, requested: when(p.createdAt), note: p.note })),
-        coinTopUps: topups.map((t) => ({ amount: formatINR(t.amount), code: t.ref, status: t.status, note: t.reviewNote })),
       };
     }
     return { error: 'Unknown tool' };

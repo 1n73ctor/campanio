@@ -27,8 +27,8 @@ export default function WalletPage() {
     if (user?.companion) api.wallet.payouts().then(setPayouts).catch(() => {});
   };
   useEffect(() => {
-    // "Add coins" shows when paid chats are on, or while members top up by UPI QR to pay for meetups
-    Promise.all([api.chats.prices().catch(() => null), api.topups.mode().catch(() => null)]).then(([p, m]) => setCoins(!!p?.enabled || !!m?.manual));
+    // "Add coins" shows when paid chats are on (meetups are paid at checkout)
+    api.chats.prices().then((p) => setCoins(!!p?.enabled)).catch(() => {});
   }, [api]);
   useEffect(() => {
     if (user) load();

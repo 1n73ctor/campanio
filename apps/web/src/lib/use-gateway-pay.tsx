@@ -51,7 +51,7 @@ export function useGatewayPay(description: string) {
       currency: 'INR',
       name: 'Companio',
       description,
-      prefill: { contact: user?.phone ?? undefined, name: user?.name ?? undefined },
+      prefill: { contact: user?.phone ?? undefined, name: user?.name ?? undefined, email: user?.email ?? undefined },
       theme: { color: '#FF7AC6' },
       handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         try {
