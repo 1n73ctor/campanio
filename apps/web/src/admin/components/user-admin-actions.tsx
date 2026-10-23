@@ -235,7 +235,6 @@ export function ViewAsModal({ user, open, onClose }: { user: U; open: boolean; o
         <li>
           <b>Always blocked:</b> payments, withdrawal requests and spending their coins.
         </li>
-        <li>They get a notice in the app that someone from the team opened their account (your reason isn’t shown to them).</li>
         <li>Ends after 30 minutes, when you close the tab or tap “Exit view”. Your own sign-ins aren’t affected.</li>
       </ul>
       <Field label="Reason (kept in the audit log)">

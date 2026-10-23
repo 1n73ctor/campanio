@@ -270,14 +270,6 @@ export class AdminService {
     if (u.role === 'ADMIN') throw new BadRequestException('You can’t log in as another admin');
     if (u.status !== 'ACTIVE') throw new BadRequestException(`This account is ${u.status.toLowerCase()} — reactivate it first to view as them`);
     await this.audit.log(admin.id, 'user.impersonate', 'user', userId, { reason: reason.trim(), readOnly: mode !== 'full', mode, minutes: 30 });
-    // with full access the person is told someone from the team is in their account (not the internal reason)
-    if (mode === 'full')
-      await this.notifications.notify(userId, {
-        type: 'admin.account_access',
-        title: 'The Companio team is helping with your account',
-        body: 'Someone from our team opened your account to help sort something out. Every change they make is recorded. If you didn’t expect this, contact support.',
-        link: '/account',
-      });
     return u;
   }
 
