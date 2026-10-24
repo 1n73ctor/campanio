@@ -77,7 +77,7 @@ export class AdminService {
         this.prisma.user.findMany({ where: { createdAt: { gte: since }, role: { not: 'ADMIN' } }, select: { createdAt: true } }),
       ]);
 
-    const money = await this.money(escrows.reduce((s, e) => s + e.retained, 0));
+    const money = await this.money();
     const series: AdminStatsDto['series'] = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(since.getTime() + i * DAY);
@@ -140,28 +140,44 @@ export class AdminService {
     return { items, total, page, pageSize };
   }
 
-  /**
-   * Real money only (gateway payments, never the test gateway or wallet-only payments): what came in, revenue by source
-   * (meetup fees + commission, registration fees not refunded, the platform's share of paid chats) and what's sitting
-   * in members' wallets.
-   */
-  private async money(meetupRevenue: number): Promise<AdminStatsDto['money']> {
+  /** Money in, revenue and wallet totals — real money only (credit, bonus coins and test payments never count). */
+  private async money(): Promise<AdminStatsDto['money']> {
     const startOfToday = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30');
     const monthAgo = new Date(Date.now() - 30 * DAY);
-    const [paid, chats, wallets] = await Promise.all([
+    const [paid, chats, wallets, escrows] = await Promise.all([
       this.prisma.payment.findMany({
         where: { status: 'PAID', provider: { notIn: ['mock', 'wallet'] }, amount: { gt: 0 } },
-        select: { amount: true, purpose: true, createdAt: true, user: { select: { companionFeeRefundedAt: true } } },
+        select: { amount: true, purpose: true, createdAt: true, userId: true, user: { select: { companionFeeRefundedAt: true } } },
       }),
-      this.prisma.chatUnlock.findMany({ where: { status: { not: 'REFUNDED' } }, select: { price: true, hostEarning: true } }),
+      this.prisma.chatUnlock.findMany({ where: { status: { not: 'REFUNDED' } }, select: { userId: true, price: true, hostEarning: true }, orderBy: { createdAt: 'asc' } }),
       this.prisma.wallet.aggregate({ _sum: { balance: true, promoBalance: true } }),
+      this.prisma.escrow.findMany({
+        where: { retained: { gt: 0 } },
+        select: { retained: true, booking: { select: { total: true, payments: { where: { status: 'PAID' }, select: { provider: true, amount: true, walletAmount: true, walletPromo: true } } } } },
+      }),
     ]);
     const sum = (rows: typeof paid) => rows.reduce((n, p) => n + p.amount, 0);
     const fees = paid.filter((p) => p.purpose === 'COMPANION_FEE');
+    // meetups: kept fees × the share of the booking paid with real money
+    const meetups = escrows.reduce((n, e) => {
+      const real = e.booking.payments.filter((p) => p.provider !== 'mock').reduce((m, p) => m + p.amount + p.walletAmount - p.walletPromo, 0);
+      return n + (e.booking.total > 0 ? Math.round((e.retained * Math.min(real, e.booking.total)) / e.booking.total) : 0);
+    }, 0);
+    // chats: only up to the coins each member actually bought
+    const coinsBought = new Map<string, number>();
+    for (const p of paid) if (p.purpose === 'WALLET_TOPUP') coinsBought.set(p.userId, (coinsBought.get(p.userId) ?? 0) + p.amount);
+    let chatRevenue = 0;
+    for (const c of chats) {
+      const left = coinsBought.get(c.userId) ?? 0;
+      if (left <= 0) continue;
+      const real = Math.min(c.price, left);
+      coinsBought.set(c.userId, left - real);
+      chatRevenue += Math.round(real * ((c.price - c.hostEarning) / c.price));
+    }
     const revenue = {
-      meetups: meetupRevenue,
+      meetups,
       fees: sum(fees.filter((p) => !p.user.companionFeeRefundedAt)),
-      chats: chats.reduce((n, c) => n + c.price - c.hostEarning, 0),
+      chats: chatRevenue,
       total: 0,
     };
     revenue.total = revenue.meetups + revenue.fees + revenue.chats;
@@ -181,7 +197,6 @@ export class AdminService {
     return new Map(admins.map((a) => [a.id, a.name ?? a.email]));
   }
 
-  /** Refund a user's companion registration fee to their wallet (any time, admin's decision). */
   /** A direct message from the team: lands in the person's notifications (live, if they're online). */
   async messageUser(admin: User, userId: string, dto: { title: string; body: string; link?: string; email?: boolean }) {
     const u = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -354,6 +369,7 @@ export class AdminService {
     return { ok: true, sent };
   }
 
+  /** Refund a user's companion registration fee to their wallet (any time, admin's decision). */
   async refundCompanionFee(admin: User, userId: string, note?: string) {
     const amount = await this.prisma.$transaction((tx) => this.fee.refund(tx, userId, note || 'refunded by admin'));
     await this.fee.notifyRefunded(userId, amount);
