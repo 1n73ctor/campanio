@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Card, Toggle } from '@companio/ui';
+import { Toggle } from '@companio/ui';
 import { errMsg, useAdmin } from '@/admin/lib/api';
 import { useToast } from '@/admin/components/toast';
 
@@ -45,21 +45,19 @@ function useSwitch() {
   return { set, busy };
 }
 
-/** Dashboard card: one switch puts the site under maintenance (browsing stays open, changes pause) or back. */
-export function MaintenanceCard() {
+/** Dashboard switch (top right): puts the site under maintenance (browsing stays open, changes pause) or back. */
+export function MaintenanceSwitch() {
   const on = useMaintenance();
   const { set, busy } = useSwitch();
   if (on === null) return null;
   return (
-    <Card tone={on ? 'pink' : 'white'} className="mb-6 flex items-center justify-between gap-4 p-5">
-      <div>
-        <p className="font-display text-lg font-extrabold">🛠️ Maintenance mode</p>
-        <p className="text-sm text-ink-soft">
-          {on ? 'On — people can browse, but sign-in, bookings, payments and chats are paused.' : 'Off — everything works normally.'}
-        </p>
-      </div>
+    <label
+      title={on ? 'On — people can browse, but sign-in, bookings, payments and chats are paused' : 'Off — everything works normally'}
+      className={`flex cursor-pointer items-center gap-2 rounded-full border-2 border-ink px-3 py-1 text-sm font-bold ${on ? 'bg-pink' : 'bg-white'}`}
+    >
+      🛠️ Maintenance
       <Toggle checked={on} disabled={busy} onChange={(v) => void set(v)} label="Maintenance mode" />
-    </Card>
+    </label>
   );
 }
 

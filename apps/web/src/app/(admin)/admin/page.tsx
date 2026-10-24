@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Card, Stat, StatusBadge } from '@companio/ui';
 import { BarChart } from '@/admin/components/bar-chart';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
-import { MaintenanceCard } from '@/admin/components/maintenance';
+import { MaintenanceSwitch } from '@/admin/components/maintenance';
 import { useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, formatINR } from '@/admin/lib/format';
 
@@ -25,20 +25,19 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageTitle title="Dashboard" subtitle="Platform health at a glance. Money is in INR." />
-      <MaintenanceCard />
+      <PageTitle title="Dashboard" subtitle="Platform health at a glance. Money is in INR." actions={<MaintenanceSwitch />} />
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Link href="/admin/users">
-          <Stat label="Total users" value={data.users.toLocaleString('en-IN')} tone="white" hint={`+${data.series.slice(-7).reduce((n, d) => n + d.signups, 0)} joined in the last 7 days`} />
+          <Stat label="Total users" value={data.users.toLocaleString('en-IN')} tone="lavender" hint={`+${data.series.slice(-7).reduce((n, d) => n + d.signups, 0)} joined in the last 7 days`} />
         </Link>
         <Link href="/admin/users">
-          <Stat label="Members" value={(data.users - data.companions).toLocaleString('en-IN')} tone="white" hint="Signed up, not hosts" />
+          <Stat label="Members" value={(data.users - data.companions).toLocaleString('en-IN')} tone="mint" hint="Signed up, not hosts" />
         </Link>
         <Link href="/admin/users">
-          <Stat label="Hosts" value={data.companions.toLocaleString('en-IN')} tone="white" hint={`${data.listedCompanions} live on Explore`} />
+          <Stat label="Hosts" value={data.companions.toLocaleString('en-IN')} tone="tangerine" hint={`${data.listedCompanions} live on Explore`} />
         </Link>
         <Link href="/admin/users">
-          <Stat label="Joined today" value={data.series.at(-1)?.signups ?? 0} tone="white" hint={`${data.series.at(-2)?.signups ?? 0} yesterday`} />
+          <Stat label="Joined today" value={data.series.at(-1)?.signups ?? 0} tone="sky" hint={`${data.series.at(-2)?.signups ?? 0} yesterday`} />
         </Link>
       </div>
       {data.money && (
