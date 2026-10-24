@@ -8,7 +8,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CompanionsService } from '../companions/companions.service';
 import { PaymentsService, grantPremium, type PremiumKind } from '../payments/payments.service';
 import { canSeeHost, premiumAccess } from '../common/premium-access';
-import { ensureBlurred } from '../files/uploads';
+import { readdirSync, unlinkSync } from 'fs';
+import { resolve } from 'path';
+import { PUBLIC_DIR, ensureBlurred } from '../files/uploads';
 
 /**
  * ⭐ Premium hosts: an admin marks a host Premium; members see a blurred card until they unlock that host (₹99), all
@@ -30,6 +32,10 @@ export class PremiumService implements OnModuleInit {
 
   /** make sure every Premium host has blurred copies of their photos */
   async onModuleInit() {
+    // blurred copies used to be named after the real photo ("<photo>-blur.webp"), which gave the real one away
+    try {
+      for (const f of readdirSync(PUBLIC_DIR)) if (f.endsWith('-blur.webp')) unlinkSync(resolve(PUBLIC_DIR, f));
+    } catch {}
     const hosts = await this.prisma.companionProfile.findMany({ where: { premium: true }, include: { user: { select: { avatarUrl: true } } } }).catch(() => []);
     for (const h of hosts) await this.blurAll(h.user.avatarUrl, h.photos);
   }

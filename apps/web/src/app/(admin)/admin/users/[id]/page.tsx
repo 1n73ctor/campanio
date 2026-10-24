@@ -8,12 +8,12 @@ import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { BubbleMessage, EditUserModal, ViewAsModal } from '@/admin/components/user-admin-actions';
 import { USER_TEMPLATES } from '@/admin/lib/message-templates';
-import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
+import { errMsg, refreshPublicPages, useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, d, dt, dtIST, formatINR, humanize } from '@/admin/lib/format';
 
 export default function UserDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { api } = useAdmin();
+  const { api, token } = useAdmin();
   const toast = useToast();
   const { data, error, reload } = useLoad(() => api.admin.user(id), [id]);
   const [target, setTarget] = useState<Exclude<UserStatus, 'DELETED'> | null>(null);
@@ -51,6 +51,7 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
                     if (on && u.companion?.kycStatus !== 'APPROVED') return toast('Only verified hosts can be Premium', 'error');
                     try {
                       await api.admin.setPremium(u.id, on);
+                      await refreshPublicPages(token);
                       toast(on ? 'Now a ⭐ Premium host — members unlock them first' : 'Premium removed');
                       reload();
                     } catch (e) {

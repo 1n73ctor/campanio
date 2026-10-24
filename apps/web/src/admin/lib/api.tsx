@@ -6,6 +6,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 const KEY = 'companio.admin.token';
+
+/** Makes the public site show a change right away instead of after its cache runs out (see app/api/revalidate). */
+export const refreshPublicPages = (token: string | null) =>
+  token ? fetch('/api/revalidate', { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {}) : Promise.resolve();
 const read = () => {
   try {
     return sessionStorage.getItem(KEY);

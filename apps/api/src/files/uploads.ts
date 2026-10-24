@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import { BadRequestException } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { memoryStorage } from 'multer';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'crypto';
 import { basename, resolve } from 'path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { config } from '../common/config';
@@ -117,17 +117,23 @@ export const publicUrl = (fileName: string) => `${config.filesBaseUrl}/uploads/p
 /** Our own public upload's file name from its URL (null for anything else, e.g. an outside avatar). */
 const uploadName = (url: string | null | undefined) => url?.match(/\/uploads\/public\/([\w-]+)\.(?:jpg|jpeg|png|webp)$/i)?.[0].split('/').pop() ?? null;
 
+/**
+ * File name of a photo's blurred copy. Keyed with a server secret, so the real photo's name can't be worked out from
+ * the blurred one (that's what keeps a ⭐ Premium host's photos private until a member unlocks them).
+ */
+const blurName = (name: string) => `b-${createHmac('sha256', config.jwtSecret).update(`blur:${name}`).digest('hex').slice(0, 32)}.webp`;
+
 /** The blurred copy of a photo (⭐ Premium hosts' photos shown to members who haven't unlocked them). */
 export function blurredUrl(url: string | null | undefined): string | null {
   const name = uploadName(url);
-  return name ? publicUrl(`${name.replace(/\.[a-z]+$/i, '')}-blur.webp`) : null;
+  return name ? publicUrl(blurName(name)) : null;
 }
 
 /** Makes the blurred copy if it isn't there yet. Never throws. */
 export async function ensureBlurred(url: string | null | undefined) {
   const name = uploadName(url);
   if (!name) return;
-  const out = resolve(PUBLIC_DIR, `${name.replace(/\.[a-z]+$/i, '')}-blur.webp`);
+  const out = resolve(PUBLIC_DIR, blurName(name));
   if (existsSync(out)) return;
   try {
     const buf = await sharp(readFileSync(resolve(PUBLIC_DIR, name))).rotate().resize({ width: 480, height: 480, fit: 'inside' }).blur(12).webp({ quality: 65 }).toBuffer();

@@ -6,14 +6,14 @@ import type { PremiumKind } from '@companio/api-client';
 import { Button, Callout, Card, Stat, cn } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle, Pager, Table, Td } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
-import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
+import { errMsg, refreshPublicPages, useAdmin, useLoad } from '@/admin/lib/api';
 import { dtIST, formatINR } from '@/admin/lib/format';
 
 const KIND: Record<PremiumKind, string> = { HOST: 'One host', PASS_30: '30-day pass', LIFETIME: 'Lifetime' };
 
 /** ⭐ Premium hosts: who is Premium, who unlocked them, and what it earned (all of it stays with the platform). */
 export default function PremiumPage() {
-  const { api } = useAdmin();
+  const { api, token } = useAdmin();
   const toast = useToast();
   const [page, setPage] = useState(1);
   const { data, error, reload } = useLoad(() => api.admin.premium(page), [page]);
@@ -23,6 +23,7 @@ export default function PremiumPage() {
     if (!confirm(`Remove Premium from ${name ?? 'this host'}? Their profile becomes visible to everyone again.`)) return;
     try {
       await api.admin.setPremium(userId, false);
+      await refreshPublicPages(token);
       toast('Premium removed');
       reload();
     } catch (e) {
