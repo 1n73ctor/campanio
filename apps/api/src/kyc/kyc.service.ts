@@ -241,6 +241,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
           include: { user: true },
         });
         await tx.companionProfile.update({ where: { userId: user.id }, data: { kycStatus: auto ? 'APPROVED' : 'PENDING', ...(auto ? { isListed: true } : {}) } });
+        await tx.companionProfile.updateMany({ where: { userId: user.id, hostOff: true }, data: { isListed: false } });
         // the government record is the better source for age checks shown to admins
         if (!user.dob && s.dob) await tx.user.update({ where: { id: user.id }, data: { dob: s.dob } });
         return created;

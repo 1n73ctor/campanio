@@ -74,6 +74,7 @@ export default function UsersPage() {
                 <Td>
                   {humanize(u.role)}
                   {u.companion && <span className="block text-xs text-ink-mute">KYC {u.companion.kycStatus.toLowerCase()}</span>}
+                  {u.companion?.hostOff && <span className="mt-0.5 inline-block rounded-full bg-paper-deep px-2 py-0.5 text-xs font-bold">⛔ Host turned off</span>}
                 </Td>
                 <Td className="text-sm">{u.gender ? humanize(u.gender) : '—'}</Td>
                 <Td>{cityBySlug(u.city ?? '')?.name ?? '—'}</Td>

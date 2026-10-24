@@ -41,6 +41,29 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
             <StatusBadge status={u.status} />
             {u.companion && u.status !== 'DELETED' && (
               <label
+                title={u.companion.hostOff ? 'Turned off: hidden from members, can’t be booked or messaged' : 'Shown to members as a host'}
+                className={`flex cursor-pointer items-center gap-2 rounded-full border-2 border-ink px-3 py-1 text-sm font-bold ${u.companion.hostOff ? 'bg-paper-deep' : 'bg-lime-soft'}`}
+              >
+                <Toggle
+                  checked={!u.companion.hostOff}
+                  label="Host"
+                  onChange={async (on) => {
+                    if (!on && !confirm(`Turn ${u.name ?? 'this host'} into a normal user? Their profile is hidden from members and they can’t switch it back on. Their data and earnings are kept.`)) return;
+                    try {
+                      await api.admin.setHost(u.id, on);
+                      await refreshPublicPages(token);
+                      toast(on ? 'Host again — profile is back on' : 'Now a normal user — profile hidden');
+                      reload();
+                    } catch (e) {
+                      toast(errMsg(e), 'error');
+                    }
+                  }}
+                />
+                <span>{u.companion.hostOff ? 'Normal user' : 'Host'}</span>
+              </label>
+            )}
+            {u.companion && u.status !== 'DELETED' && (
+              <label
                 title={u.companion.kycStatus === 'APPROVED' ? 'Profile blurred until a member unlocks it' : 'Only verified hosts can be Premium'}
                 className="flex cursor-pointer items-center gap-2 rounded-full border-2 border-ink bg-sunny-soft px-3 py-1 text-sm font-bold"
               >

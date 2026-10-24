@@ -439,6 +439,33 @@ export class AdminService {
     return { ok: true };
   }
 
+  /**
+   * "Normal user" switch for a host: off hides them from members (no bookings, no new chats) and stops them going live
+   * again themselves; their profile, verification, reviews and earnings are kept. Refused while they have open meetups.
+   */
+  async setHostActive(admin: User, userId: string, on: boolean) {
+    const c = await this.prisma.companionProfile.findUnique({ where: { userId } });
+    if (!c) throw new BadRequestException('This person isn’t a host');
+    if (!on) {
+      const open = await this.prisma.booking.count({ where: { companionUserId: userId, status: { in: ['REQUESTED', 'ACCEPTED', 'IN_PROGRESS'] } } });
+      if (open)
+        throw new BadRequestException(`They have ${open} open meetup${open === 1 ? '' : 's'} (requested or accepted). Finish or cancel ${open === 1 ? 'it' : 'them'} in Bookings first.`);
+    }
+    if (c.hostOff === !on) return { host: on };
+    await this.prisma.companionProfile.update({
+      where: { userId },
+      data: on ? { hostOff: false, hostOffAt: null, isListed: c.kycStatus === 'APPROVED' } : { hostOff: true, hostOffAt: new Date(), isListed: false },
+    });
+    await this.audit.log(admin.id, on ? 'host.on' : 'host.off', 'user', userId, {});
+    await this.notifications.notify(
+      userId,
+      on
+        ? { type: 'host.on', title: 'Your host profile is back on', body: 'Members can find you and send meetup requests again.', link: '/companion/dashboard' }
+        : { type: 'host.off', title: 'Your host profile has been turned off', body: 'Members can no longer find or book you. Contact support for details.', link: '/companion/dashboard' },
+    );
+    return { host: on };
+  }
+
   // ---------- KYC ----------
   async kycList(q: PageDto) {
     const { skip, take, page, pageSize } = this.page(q);
@@ -482,6 +509,7 @@ export class AdminService {
     const refunded = await this.prisma.$transaction(async (tx) => {
       await tx.kycSubmission.update({ where: { id }, data: { status, reviewNote: note ?? null, reviewerId: admin.id, reviewedAt: new Date() } });
       await tx.companionProfile.update({ where: { userId: k.userId }, data: { kycStatus: status, ...(approve ? { isListed: true } : {}) } });
+      await tx.companionProfile.updateMany({ where: { userId: k.userId, hostOff: true }, data: { isListed: false } });
       return !approve && refundFee ? this.fee.refund(tx, k.userId, 'verification not approved') : 0;
     });
     if (refunded) {

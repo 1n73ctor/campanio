@@ -183,3 +183,7 @@ export class ImpersonateDto {
 export class MaintenanceDto {
   @IsBoolean() on: boolean;
 }
+
+export class HostSwitchDto {
+  @IsBoolean() host: boolean;
+}

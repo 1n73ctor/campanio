@@ -178,6 +178,7 @@ export class CompanionsService {
 
   async setListed(userId: string, listed: boolean) {
     const p = await this.own(userId);
+    if (listed && p.hostOff) throw new ForbiddenException('Your host profile was turned off by Companio — contact support');
     if (listed && p.kycStatus !== 'APPROVED') throw new BadRequestException('Your ID verification must be approved before you go live');
     return toCompanionProfileDto(await this.prisma.companionProfile.update({ where: { userId }, data: { isListed: listed } }));
   }

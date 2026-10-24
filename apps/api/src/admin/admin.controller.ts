@@ -39,6 +39,7 @@ import {
   ResolveReportDto,
   SettingsDto,
   UserStatusDto,
+  HostSwitchDto,
 } from './admin.dto';
 
 @ApiTags('admin')
@@ -72,6 +73,7 @@ export class AdminController {
     const target = await this.svc.impersonationTarget(a, id, dto.reason, mode);
     return this.auth.impersonationToken(a, target, mode);
   }
+  @Post('users/:id/host') setHost(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: HostSwitchDto) { return this.svc.setHostActive(a, id, dto.host); }
   @Post('users/:id/refund-companion-fee') refundCompanionFee(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
     return this.svc.refundCompanionFee(a, id, dto.note);
   }

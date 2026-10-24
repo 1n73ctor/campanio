@@ -44,6 +44,11 @@ export default function CompanionDashboard() {
         }
       />
 
+      {d.profile.hostOff && (
+        <Callout tone="pink" title="Your host profile has been turned off" className="mb-6">
+          Members can’t find, book or message you right now. Your profile, reviews and earnings are kept. Contact support if you have questions.
+        </Callout>
+      )}
       {kyc !== 'APPROVED' && (
         <Callout tone={kyc === 'REJECTED' ? 'pink' : 'sunny'} title={kyc === 'PENDING' ? 'Verification under review ⏳' : kyc === 'REJECTED' ? 'Verification needs attention' : 'Verify your ID to go live'} className="mb-6">
           {kyc === 'PENDING' ? 'We usually review within 24 hours. You’ll get a notification.' : kyc === 'REJECTED' ? d.latestKyc?.reviewNote ?? 'Please re-submit.' : 'Members can only book verified hosts.'}{' '}
@@ -76,12 +81,12 @@ export default function CompanionDashboard() {
         <aside className="space-y-4">
           <Card className="flex items-center justify-between gap-3 p-5">
             <div>
-              <p className="font-display font-extrabold">{d.profile.isListed ? 'You’re live 🟢' : 'Profile paused'}</p>
+              <p className="font-display font-extrabold">{d.profile.hostOff ? 'Turned off by Companio' : d.profile.isListed ? 'You’re live 🟢' : 'Profile paused'}</p>
               <p className="text-xs text-ink-soft">{d.profile.isListed ? 'Members can find you and send meetup requests.' : 'Hidden from search.'}</p>
             </div>
             <Toggle
               checked={d.profile.isListed}
-              disabled={kyc !== 'APPROVED'}
+              disabled={kyc !== 'APPROVED' || !!d.profile.hostOff}
               label="Listed"
               onChange={async (v) => {
                 try {

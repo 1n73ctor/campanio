@@ -95,6 +95,8 @@ export interface CompanionProfileDto {
   womenOnly: boolean;
   /** ⭐ Premium host (set by an admin) */
   premium?: boolean;
+  /** turned off by an admin: hidden from members and can't go live again themselves */
+  hostOff?: boolean;
   ratingAvg: number;
   ratingCount: number;
   completedBookings: number;

@@ -130,6 +130,9 @@ model CompanionProfile {
   /// ⭐ Premium host (set by an admin): photos and bio stay blurred until a member unlocks them
   premium           Boolean  @default(false)
   premiumSince      DateTime?
+  /// turned off by an admin ("Normal user"): hidden, can't be booked or messaged, can't go live again themselves
+  hostOff           Boolean  @default(false)
+  hostOffAt         DateTime?
   ratingAvg         Float    @default(0)
   ratingCount       Int      @default(0)
   completedBookings Int      @default(0)

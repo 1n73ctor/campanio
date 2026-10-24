@@ -62,6 +62,7 @@ export function toCompanionProfileDto(c: CompanionProfile): CompanionProfileDto 
     availability: json<Availability>(c.availability, {}),
     kycStatus: c.kycStatus as CompanionProfileDto['kycStatus'],
     isListed: c.isListed,
+    hostOff: c.hostOff,
     womenOnly: c.womenOnly,
     premium: c.premium,
     ratingAvg: Math.round(c.ratingAvg * 10) / 10,

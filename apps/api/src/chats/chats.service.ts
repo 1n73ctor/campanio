@@ -136,7 +136,7 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
   async unlock(viewer: User, companionId: string, kind: ChatUnlockKind) {
     await this.assertEnabled();
     const p = await this.prisma.companionProfile.findUnique({ where: { id: companionId }, include: { user: true } });
-    if (!p || p.user.status !== 'ACTIVE' || p.kycStatus !== 'APPROVED') throw new NotFoundException('This host isn’t available to message');
+    if (!p || p.user.status !== 'ACTIVE' || p.kycStatus !== 'APPROVED' || p.hostOff) throw new NotFoundException('This host isn’t available to message');
     if (p.userId === viewer.id) throw new BadRequestException('You can’t message yourself');
     if (viewer.role === 'ADMIN') throw new ForbiddenException('Admins can’t open member chats');
     await this.assertNotBlocked(viewer.id, p.userId);

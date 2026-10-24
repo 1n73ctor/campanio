@@ -390,6 +390,7 @@ export function createApiClient(opts: ClientOptions) {
       assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
       saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
       premium: (page = 1) => get<AdminPremium>('/admin/premium', { page }),
+      setHost: (userId: string, host: boolean) => post<{ host: boolean }>(`/admin/users/${userId}/host`, { host }),
       setPremium: (userId: string, premium: boolean) => post<{ premium: boolean }>(`/admin/premium/hosts/${userId}`, { premium }),
       coinSummary: () => get<CoinPurchaseSummaryDto>('/admin/coins/summary'),
       coinPurchases: (q: { page?: number; status?: string; q?: string }) => get<Paginated<CoinPurchaseDto>>('/admin/coins/purchases', q),
