@@ -68,13 +68,16 @@ export default function KycPage() {
   const [note, setNote] = useState('');
   const [refundFee, setRefundFee] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // by-eye checks per submission (uploaded IDs): all ticked before Approve unlocks
+  const [ticks, setTicks] = useState<Record<string, Record<string, boolean>>>({});
 
   const rejectFee = data?.items.find((k) => k.id === reject)?.fee;
 
-  const decide = async (id: string, approve: boolean) => {
+  const decide = async (id: string, approve: boolean, closeNote?: string) => {
     setBusy(id);
     try {
-      approve ? await api.admin.approveKyc(id) : await api.admin.rejectKyc(id, note, refundFee);
+      if (closeNote) await api.admin.rejectKyc(id, closeNote, false);
+      else approve ? await api.admin.approveKyc(id, undefined, ticks[id]) : await api.admin.rejectKyc(id, note, refundFee);
       toast(approve ? 'Approved — companion is live' : refundFee ? 'Rejected and fee refunded to their wallet' : 'Rejected');
       setReject(null);
       setNote('');
@@ -113,9 +116,13 @@ export default function KycPage() {
               <Card key={k.id} className="p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-display text-xl font-extrabold">{k.userName}</p>
+                    <p className="flex flex-wrap items-center gap-2 font-display text-xl font-extrabold">
+                      {k.userName}
+                      <AccountBadge status={k.account?.status} />
+                    </p>
                     <p className="text-sm text-ink-soft">
-                      {k.userPhone} · {cityBySlug(k.companion?.city ?? '')?.name} · age {age ?? '?'} {age !== null && age < 18 && <b className="text-danger">UNDER 18</b>}
+                      {k.userPhone ?? (k.account?.deletedPhone ? `${k.account.deletedPhone} (deleted)` : '—')} · {cityBySlug(k.companion?.city ?? '')?.name} · age {age ?? '?'}{' '}
+                      {age !== null && age < 18 && <b className="text-danger">UNDER 18</b>}
                     </p>
                     <p className="text-sm">“{k.companion?.headline}”</p>
                     <p className="mt-1 text-xs text-ink-mute">
@@ -133,7 +140,14 @@ export default function KycPage() {
                   </div>
                   <StatusBadge status={k.status} />
                 </div>
+                {k.account && k.account.status !== 'ACTIVE' && (
+                  <Callout tone="pink" className="mt-3">
+                    <b>{k.account.status === 'DELETED' ? `🗑 Account deleted${k.account.deletedAt ? ` on ${dt(k.account.deletedAt)}` : ''}` : `This account is ${k.account.status.toLowerCase()}`}</b> —
+                    it can’t be approved.
+                  </Callout>
+                )}
                 {k.checks && <Checks c={k.checks} />}
+                {k.account && <Compare a={k.account} idType={k.idType} idLast4={k.idLast4} digilocker={k.method === 'DIGILOCKER'} />}
                 <div className={`mt-4 grid gap-4 ${k.idDocBackUrl ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                   <Doc url={k.idDocUrl} label={k.method === 'DIGILOCKER' ? 'Photo on Aadhaar (DigiLocker)' : k.idDocBackUrl ? 'ID — front' : 'ID document'} />
                   {k.idDocBackUrl && <Doc url={k.idDocBackUrl} label="ID — back" />}
@@ -145,15 +159,46 @@ export default function KycPage() {
                   </figure>
                 </div>
                 {k.reviewNote && <p className="mt-3 text-sm">Note: {k.reviewNote}</p>}
-                {k.status === 'PENDING' && (
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="lime" loading={busy === k.id} onClick={() => decide(k.id, true)}>
-                      ✅ Approve & list
-                    </Button>
-                    <Button variant="white" onClick={() => setReject(k.id)}>
-                      Reject
+                {k.status === 'PENDING' && k.account && k.account.status !== 'ACTIVE' ? (
+                  <div className="mt-4">
+                    <Button variant="white" loading={busy === k.id} onClick={() => decide(k.id, false, k.account?.status === 'DELETED' ? 'Account deleted by the user' : `Account ${k.account?.status.toLowerCase()}`)}>
+                      Close — account {k.account.status === 'DELETED' ? 'deleted' : k.account.status.toLowerCase()}
                     </Button>
                   </div>
+                ) : (
+                  k.status === 'PENDING' && (
+                    <>
+                      {k.method !== 'DIGILOCKER' && (
+                        <div className="mt-4 rounded-chunky border-2 border-ink bg-sunny-soft p-3">
+                          <p className="mb-2 text-sm font-bold">Check by eye against the ID, then approve:</p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {CHECKS.map(([key, label]) => (
+                              <Checkbox
+                                key={key}
+                                checked={!!ticks[k.id]?.[key]}
+                                onChange={(e) => setTicks((t) => ({ ...t, [k.id]: { ...t[k.id], [key]: e.target.checked } }))}
+                                label={label}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="lime"
+                          loading={busy === k.id}
+                          disabled={k.method !== 'DIGILOCKER' && !CHECKS.every(([key]) => ticks[k.id]?.[key])}
+                          onClick={() => decide(k.id, true)}
+                        >
+                          ✅ Approve & list
+                        </Button>
+                        <Button variant="white" onClick={() => setReject(k.id)}>
+                          Reject
+                        </Button>
+                        {k.method !== 'DIGILOCKER' && !CHECKS.every(([key]) => ticks[k.id]?.[key]) && <span className="text-xs text-ink-mute">Tick all four checks to approve</span>}
+                      </div>
+                    </>
+                  )
                 )}
               </Card>
             );
@@ -193,3 +238,41 @@ function Doc({ url, label }: { url: string; label: string }) {
     </figure>
   );
 }
+
+const CHECKS: [string, string][] = [
+  ['name', 'Name on the ID matches their profile name'],
+  ['dob', 'Date of birth matches, and they’re 18+'],
+  ['gender', 'Gender matches (it decides women-only bookings)'],
+  ['face', 'The selfie is the same person as the ID photo'],
+];
+
+function AccountBadge({ status }: { status?: string }) {
+  if (!status) return null;
+  const tone = status === 'ACTIVE' ? 'bg-lime' : status === 'DELETED' ? 'bg-ink text-white' : 'bg-danger text-white';
+  const label = status === 'ACTIVE' ? 'Active account' : status === 'DELETED' ? '🗑 Deleted' : status.charAt(0) + status.slice(1).toLowerCase();
+  return <span className={`rounded-full border-2 border-ink px-2 py-0.5 font-sans text-xs font-bold ${tone}`}>{label}</span>;
+}
+
+/** What they entered on their profile — what the ID has to match. */
+function Compare({ a, idType, idLast4, digilocker }: { a: NonNullable<import('@companio/api-client').AdminKyc['account']>; idType: string; idLast4: string; digilocker: boolean }) {
+  const age = ageFromDob(a.dob);
+  const row = (label: string, value: React.ReactNode) => (
+    <div className="flex gap-2">
+      <span className="w-28 shrink-0 text-ink-mute">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+  return (
+    <div className="mt-3 rounded-chunky border-2 border-ink/20 bg-white p-3 text-sm">
+      <p className="mb-1.5 text-xs font-bold uppercase text-ink-mute">{digilocker ? 'Their profile (compare with the Aadhaar record above)' : 'Their profile — the ID must match this'}</p>
+      <div className="grid gap-1 sm:grid-cols-2">
+        {row('Name', a.name ?? '—')}
+        {row('Date of birth', a.dob ? `${new Date(a.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} (age ${age ?? '?'})` : '— not given')}
+        {row('Gender', a.gender ? humanize(a.gender) : '— not given')}
+        {row('City', cityBySlug(a.city ?? '')?.name ?? '—')}
+        {row('ID', `${humanize(idType)} ending ${idLast4}`)}
+      </div>
+    </div>
+  );
+}
+

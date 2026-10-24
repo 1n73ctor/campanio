@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, Matches, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsObject, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, Matches, ValidateNested } from 'class-validator';
 import { CATEGORIES, CITIES, DISPUTE_OUTCOMES, GENDERS, LANGUAGES, MODERATION_ACTIONS, USER_STATUSES } from '@companio/types';
 
 export class PageDto {
@@ -47,6 +47,11 @@ export class BroadcastDto extends AdminMessageDto {
 
 export class NoteDto {
   @IsOptional() @IsString() @MaxLength(500) note?: string;
+}
+
+/** KYC approval: the reviewer's by-eye checks (name, dob, gender, face) are saved with it */
+export class KycApproveDto extends NoteDto {
+  @IsOptional() @IsObject() checked?: Record<string, boolean>;
 }
 
 export class RejectDto {

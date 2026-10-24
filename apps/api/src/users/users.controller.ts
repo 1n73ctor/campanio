@@ -158,6 +158,9 @@ export class UsersController {
     await this.prisma.$transaction([
       this.prisma.companionProfile.updateMany({ where: { userId: user.id }, data: { isListed: false } }),
       this.prisma.user.update({ where: { id: user.id }, data: { status: 'DELETED', deletedAt: new Date(), deletedPhone: user.phone, phone: null, tokenVersion: { increment: 1 } } }),
+      // a verification waiting for review has nothing left to review
+      this.prisma.kycSubmission.updateMany({ where: { userId: user.id, status: 'PENDING' }, data: { status: 'REJECTED', reviewNote: 'Account deleted by the user', reviewedAt: new Date() } }),
+      this.prisma.companionProfile.updateMany({ where: { userId: user.id, kycStatus: 'PENDING' }, data: { kycStatus: 'REJECTED' } }),
     ]);
     return { deleted: true };
   }

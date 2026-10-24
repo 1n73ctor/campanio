@@ -140,7 +140,10 @@ export type AdminBookingDetail = {
   sos: SosAlertDto[];
   locations: { userId: string; lat: number; lng: number; updatedAt: string }[];
 };
-export type AdminKyc = KycSubmissionDto & { companion: { headline: string; city: string; dob: string | null } | null };
+export type AdminKyc = KycSubmissionDto & {
+  companion: { headline: string; city: string; dob: string | null } | null;
+  account?: { status: string; deletedAt: string | null; deletedPhone: string | null; name: string | null; gender: string | null; dob: string | null; city: string | null };
+};
 export type FlaggedMessage = MessageDto & { flagReason: string | null; sender: { id: string; name: string | null } };
 export type AdminReview = { id: string; bookingId: string; rating: number; comment: string | null; hidden: boolean; author: { id: string; name: string | null }; target: { id: string; name: string | null }; createdAt: string };
 export type AdminSos = SosAlertDto & { booking: { id: string; meetingPoint: string; startAt: string; userName: string | null; companionName: string | null; status: string } };
@@ -385,7 +388,7 @@ export function createApiClient(opts: ClientOptions) {
       impersonate: (id: string, reason: string, mode: 'view' | 'full' = 'full') => post<{ token: string; expiresAt: string; mode: 'view' | 'full' }>(`/admin/users/${id}/impersonate`, { reason, mode }),
       setUserStatus: (id: string, status: Exclude<UserStatus, 'DELETED'>, reason?: string) => post<{ ok: true }>(`/admin/users/${id}/status`, { status, reason }),
       kyc: (q: AdminPage) => get<Paginated<AdminKyc>>('/admin/kyc', q),
-      approveKyc: (id: string, note?: string) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note }),
+      approveKyc: (id: string, note?: string, checked?: Record<string, boolean>) => post<{ ok: true }>(`/admin/kyc/${id}/approve`, { note, checked }),
       rejectKyc: (id: string, note: string, refundFee = false) => post<{ ok: true }>(`/admin/kyc/${id}/reject`, { note, refundFee }),
       twoFactor: () => get<{ enabled: boolean }>('/admin/2fa'),
       twoFactorSetup: () => post<{ secret: string; otpauthUrl: string; qrSvg: string }>('/admin/2fa/setup'),

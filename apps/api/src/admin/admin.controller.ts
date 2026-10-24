@@ -23,6 +23,7 @@ class TotpDto {
 import {
   AdminEditUserDto,
   AdminCreateUserDto,
+  KycApproveDto,
   AdminMessageDto,
   ImpersonateDto,
   MaintenanceDto,
@@ -88,8 +89,9 @@ export class AdminController {
   @Get('kyc') kyc(@Query() q: PageDto) { return this.svc.kycList(q); }
   /** Is DigiLocker + face checking set up on this server? (shown next to the auto-approve setting) */
   @Get('kyc/checks') kycChecks() { return kycOptions(); }
-  @Post('kyc/:id/approve') kycApprove(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: NoteDto) {
-    return this.svc.kycDecide(a, id, true, dto.note);
+  @Post('kyc/:id/approve') kycApprove(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: KycApproveDto) {
+    const checked = dto.checked ? Object.fromEntries(Object.entries(dto.checked).filter(([k, v]) => ['name', 'dob', 'gender', 'face'].includes(k) && typeof v === 'boolean')) : undefined;
+    return this.svc.kycDecide(a, id, true, dto.note, false, checked);
   }
   @Post('kyc/:id/reject') kycReject(@CurrentUser() a: User, @Param('id') id: string, @Body() dto: RejectDto) {
     return this.svc.kycDecide(a, id, false, dto.note, dto.refundFee);

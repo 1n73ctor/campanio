@@ -394,17 +394,35 @@ export class AdminService {
       this.prisma.kycSubmission.findMany({ where, include: { user: { include: { companion: true } } }, orderBy: { createdAt: 'desc' }, skip, take }),
     ]);
     return {
-      items: rows.map((k) => ({ ...toKycDto(k, true), fee: toFeeAdminDto(k.user), companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null })),
+      items: rows.map((k) => ({
+        ...toKycDto(k, true),
+        fee: toFeeAdminDto(k.user),
+        companion: k.user.companion ? { headline: k.user.companion.headline, city: k.user.companion.city, dob: k.user.dob?.toISOString() ?? null } : null,
+        // what they told us on their profile — to compare with the ID by eye — and whether the account still exists
+        account: {
+          status: k.user.status,
+          deletedAt: k.user.deletedAt?.toISOString() ?? null,
+          deletedPhone: k.user.deletedPhone,
+          name: k.user.name,
+          gender: k.user.gender,
+          dob: k.user.dob?.toISOString().slice(0, 10) ?? null,
+          city: k.user.companion?.city ?? k.user.city,
+        },
+      })),
       total,
       page,
       pageSize,
     };
   }
 
-  async kycDecide(admin: User, id: string, approve: boolean, note?: string, refundFee = false) {
-    const k = await this.prisma.kycSubmission.findUnique({ where: { id } });
+  async kycDecide(admin: User, id: string, approve: boolean, note?: string, refundFee = false, checked?: Record<string, boolean>) {
+    const k = await this.prisma.kycSubmission.findUnique({ where: { id }, include: { user: true } });
     if (!k) throw new NotFoundException();
     if (k.status !== 'PENDING') throw new BadRequestException('Already reviewed');
+    if (approve && k.user.status !== 'ACTIVE') throw new BadRequestException(`This account is ${k.user.status.toLowerCase()} — it can’t be approved`);
+    // the reviewer's by-eye checks are kept with the decision
+    const ticks = checked && Object.keys(checked).length ? `Checked by eye: ${Object.entries(checked).map(([k2, v]) => `${k2} ${v ? '✓' : '✗'}`).join(', ')}` : null;
+    if (ticks) note = note ? `${note} · ${ticks}` : ticks;
     const status = approve ? 'APPROVED' : 'REJECTED';
     // rejecting can also refund the registration fee (the admin's call); a refund means re-applying needs a new payment
     const refunded = await this.prisma.$transaction(async (tx) => {
@@ -419,7 +437,7 @@ export class AdminService {
     await this.notifications.notify(k.userId, approve
       ? { type: 'kyc.approved', title: "You're verified ✅ and live!", body: 'Your profile is now visible to members. Set your availability to get meetups.', link: '/companion/dashboard' }
       : { type: 'kyc.rejected', title: 'Verification needs another look', body: note ?? 'Please re-submit clearer documents.', link: '/companion/kyc' });
-    await this.audit.log(admin.id, `kyc.${status.toLowerCase()}`, 'kyc', id, { note });
+    await this.audit.log(admin.id, `kyc.${status.toLowerCase()}`, 'kyc', id, { note, checked: checked ?? null });
     return { ok: true };
   }
 
