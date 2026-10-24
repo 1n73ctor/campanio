@@ -61,7 +61,7 @@ export default function Dashboard() {
           <Stat label="Total users" value={data.users.toLocaleString('en-IN')} tone="lavender" hint={`+${data.series.slice(-7).reduce((n, d) => n + d.signups, 0)} joined in the last 7 days`} />
         </Link>
         <Link href="/admin/users">
-          <Stat label="Members" value={(data.users - data.companions).toLocaleString('en-IN')} tone="mint" hint="Signed up, not hosts" />
+          <Stat label="Members" value={(data.users - data.companions).toLocaleString('en-IN')} tone="mint" hint={`Active · ${data.deletedUsers} deleted account${data.deletedUsers === 1 ? '' : 's'}`} />
         </Link>
         <Link href="/admin/users">
           <Stat label="Hosts" value={data.companions.toLocaleString('en-IN')} tone="tangerine" hint={`${data.listedCompanions} live on Explore`} />

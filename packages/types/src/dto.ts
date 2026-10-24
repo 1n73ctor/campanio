@@ -486,6 +486,8 @@ export interface NotificationDto {
 // ---------- admin ----------
 export interface AdminStatsDto {
   users: number;
+  /** accounts that were deleted (not counted in users) */
+  deletedUsers: number;
   companions: number;
   listedCompanions: number;
   bookings: Record<string, number>;

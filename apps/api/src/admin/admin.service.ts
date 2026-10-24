@@ -59,9 +59,10 @@ export class AdminService {
     const since0 = chatsSince && !Number.isNaN(Date.parse(chatsSince)) ? new Date(chatsSince) : new Date(Date.now() - 24 * 3600_000);
     const since = new Date(Date.now() - 13 * DAY);
     since.setHours(0, 0, 0, 0);
-    const [users, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, newPaidChats, recentBookings, recentUsers] =
+    const [users, deletedUsers, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, newPaidChats, recentBookings, recentUsers] =
       await Promise.all([
         this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: { not: 'DELETED' } } }),
+        this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: 'DELETED' } }),
         this.prisma.companionProfile.count({ where: { user: { status: { not: 'DELETED' } } } }),
         this.prisma.companionProfile.count({ where: { isListed: true, user: { status: { not: 'DELETED' } } } }),
         this.prisma.booking.groupBy({ by: ['status'], _count: true }),
@@ -88,6 +89,7 @@ export class AdminService {
     }
     return {
       users,
+      deletedUsers,
       companions,
       listedCompanions: listed,
       bookings: Object.fromEntries(byStatus.map((r) => [r.status, r._count])),
