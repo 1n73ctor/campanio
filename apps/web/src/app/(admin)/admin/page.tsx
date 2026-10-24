@@ -1,12 +1,39 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Card, Stat, StatusBadge } from '@companio/ui';
 import { BarChart } from '@/admin/components/bar-chart';
-import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
+import { ErrorBox, Loading } from '@/admin/components/ui';
 import { MaintenanceSwitch } from '@/admin/components/maintenance';
 import { useAdmin, useLoad } from '@/admin/lib/api';
 import { BOOKING_STATUS_LABEL, formatINR } from '@/admin/lib/format';
+
+/** "Good morning, Suraj 👋" with today's date and the time (India time), kept up to date. */
+function Greeting() {
+  const { admin } = useAdmin();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+  const tz = 'Asia/Kolkata';
+  const h = Number(now.toLocaleString('en-IN', { hour: 'numeric', hour12: false, timeZone: tz }));
+  const part = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const first = admin?.name?.split(' ')[0];
+  return (
+    <div>
+      <h1 className="font-display text-3xl font-extrabold">
+        {part}
+        {first ? `, ${first}` : ''} 👋
+      </h1>
+      <p className="text-ink-soft">
+        {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz })} ·{' '}
+        <span className="font-semibold tabular-nums">{now.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: tz })}</span>
+      </p>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { api } = useAdmin();
@@ -25,7 +52,10 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageTitle title="Dashboard" subtitle="Platform health at a glance. Money is in INR." actions={<MaintenanceSwitch />} />
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <Greeting />
+        <MaintenanceSwitch />
+      </div>
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Link href="/admin/users">
           <Stat label="Total users" value={data.users.toLocaleString('en-IN')} tone="lavender" hint={`+${data.series.slice(-7).reduce((n, d) => n + d.signups, 0)} joined in the last 7 days`} />
