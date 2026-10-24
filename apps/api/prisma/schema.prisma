@@ -127,6 +127,9 @@ model CompanionProfile {
   isListed          Boolean  @default(false)
   // women companions can accept bookings from women only
   womenOnly         Boolean  @default(false)
+  /// ⭐ Premium host (set by an admin): photos and bio stay blurred until a member unlocks them
+  premium           Boolean  @default(false)
+  premiumSince      DateTime?
   ratingAvg         Float    @default(0)
   ratingCount       Int      @default(0)
   completedBookings Int      @default(0)
@@ -265,6 +268,8 @@ model Payment {
   offerTitle        String?
   /// the offer was "first top-up only" — re-checked when the payment completes
   offerFirstOnly    Boolean  @default(false)
+  /// PREMIUM: what's being unlocked, as JSON { kind, hostUserId? }
+  meta              String?
   status            String   @default("CREATED")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -291,6 +296,8 @@ model Wallet {
   balance      Int         @default(0)
   /// the part of `balance` that is spend-only credit: pays for bookings, can never be withdrawn (see WalletLedger)
   promoBalance Int         @default(0)
+  /// the part of `promoBalance` that is coins bought with real money (only these can unlock Premium hosts)
+  paidCoins    Int         @default(0)
   updatedAt    DateTime    @updatedAt
   txns         WalletTxn[]
 }
@@ -664,4 +671,24 @@ model TopUpOffer {
   active    Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+/// A member unlocking Premium hosts: one host (HOST), all of them for 30 days (PASS_30) or for good (LIFETIME).
+/// Paid only with real money — through the gateway or with coins they bought. All of it is platform revenue.
+model PremiumUnlock {
+  id           String    @id @default(cuid())
+  userId       String
+  kind         String
+  /// HOST unlocks: the host's user id
+  hostUserId   String?
+  price        Int
+  /// GATEWAY or COINS
+  paidWith     String
+  paymentId    String?
+  /// PASS_30: when it runs out (null = never)
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([hostUserId])
 }

@@ -20,7 +20,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { AuthGuard, CurrentUser } from '../common/auth';
 import { Throttle } from '@nestjs/throttler';
-import { publicUrl, storePublicImage, uploadLimits, kycUploadLimits } from '../files/uploads';
+import { ensureBlurred, publicUrl, storePublicImage, uploadLimits, kycUploadLimits } from '../files/uploads';
 import { KycService } from '../kyc/kyc.service';
 import { CompanionsService } from './companions.service';
 import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
@@ -88,7 +88,10 @@ export class CompanionSelfController {
   @UseInterceptors(FileInterceptor('file', uploadLimits))
   async photo(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.svc.addPhoto(user.id, publicUrl(await storePublicImage(file)));
+    const url = publicUrl(await storePublicImage(file));
+    // ⭐ Premium hosts: the blurred copy members see before unlocking
+    await ensureBlurred(url);
+    return this.svc.addPhoto(user.id, url);
   }
 
   @Delete('photos/:index')

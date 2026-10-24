@@ -65,7 +65,7 @@ export class AdminService {
         this.prisma.companionProfile.count(),
         this.prisma.companionProfile.count({ where: { isListed: true } }),
         this.prisma.booking.groupBy({ by: ['status'], _count: true }),
-        this.prisma.escrow.findMany({ select: { amount: true, status: true, retained: true, refunded: true } }),
+      this.prisma.escrow.findMany({ select: { amount: true, status: true, retained: true, refunded: true } }),
         this.prisma.kycSubmission.count({ where: { status: 'PENDING' } }),
         this.prisma.dispute.count({ where: { status: 'OPEN' } }),
         this.prisma.report.count({ where: { status: 'OPEN' } }),
@@ -144,13 +144,14 @@ export class AdminService {
   private async money(): Promise<AdminStatsDto['money']> {
     const startOfToday = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30');
     const monthAgo = new Date(Date.now() - 30 * DAY);
-    const [paid, chats, wallets, escrows] = await Promise.all([
+    const [paid, chats, wallets, premium, escrows] = await Promise.all([
       this.prisma.payment.findMany({
         where: { status: 'PAID', provider: { notIn: ['mock', 'wallet'] }, amount: { gt: 0 } },
         select: { amount: true, purpose: true, createdAt: true, userId: true, user: { select: { companionFeeRefundedAt: true } } },
       }),
       this.prisma.chatUnlock.findMany({ where: { status: { not: 'REFUNDED' } }, select: { userId: true, price: true, hostEarning: true }, orderBy: { createdAt: 'asc' } }),
       this.prisma.wallet.aggregate({ _sum: { balance: true, promoBalance: true } }),
+      this.prisma.premiumUnlock.aggregate({ _sum: { price: true } }),
       this.prisma.escrow.findMany({
         where: { retained: { gt: 0 } },
         select: { retained: true, booking: { select: { total: true, payments: { where: { status: 'PAID' }, select: { provider: true, amount: true, walletAmount: true, walletPromo: true } } } } },
@@ -178,12 +179,14 @@ export class AdminService {
       meetups,
       fees: sum(fees.filter((p) => !p.user.companionFeeRefundedAt)),
       chats: chatRevenue,
+      // ⭐ Premium unlocks: always real money (gateway or bought coins), all kept by the platform
+      premium: premium._sum.price ?? 0,
       total: 0,
     };
-    revenue.total = revenue.meetups + revenue.fees + revenue.chats;
+    revenue.total = revenue.meetups + revenue.fees + revenue.chats + revenue.premium;
     return {
       received: { today: sum(paid.filter((p) => p.createdAt >= startOfToday)), month: sum(paid.filter((p) => p.createdAt >= monthAgo)), all: sum(paid) },
-      byPurpose: { meetups: sum(paid.filter((p) => p.purpose === 'BOOKING')), fees: sum(fees), coins: sum(paid.filter((p) => p.purpose === 'WALLET_TOPUP')) },
+      byPurpose: { meetups: sum(paid.filter((p) => p.purpose === 'BOOKING')), fees: sum(fees), coins: sum(paid.filter((p) => p.purpose === 'WALLET_TOPUP')), premium: sum(paid.filter((p) => p.purpose === 'PREMIUM')) },
       revenue,
       wallets: { total: wallets._sum.balance ?? 0, credit: wallets._sum.promoBalance ?? 0 },
     };

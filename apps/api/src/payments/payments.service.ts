@@ -153,12 +153,34 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount, walletAmount: 0 };
   }
 
+  /** ⭐ Premium unlock paid through the gateway (the kind and host were fixed when the payment started). */
+  async checkoutPremium(user: User, kind: PremiumKind, hostUserId: string | null, price: number): Promise<FeeCheckoutResponse> {
+    const meta = JSON.stringify({ kind, hostUserId });
+    const { orderId, sessionId } = await this.provider.createOrder(price, `premium_${user.id}`.slice(0, 40), customerOf(user));
+    await this.prisma.payment.create({ data: { purpose: 'PREMIUM', userId: user.id, walletAmount: 0, provider: this.provider.name, providerOrderId: orderId, amount: price, meta } });
+    if (this.provider instanceof CashfreeProvider) return { status: 'ACTION_REQUIRED', provider: 'cashfree', orderId, paymentSessionId: sessionId!, mode: this.provider.mode, amount: price, walletAmount: 0 };
+    if (this.provider instanceof RazorpayProvider) return { status: 'ACTION_REQUIRED', provider: 'razorpay', orderId, amount: price, walletAmount: 0, keyId: this.provider.keyId };
+    return { status: 'ACTION_REQUIRED', provider: 'mock', orderId, amount: price, walletAmount: 0 };
+  }
+
+  private async markPremiumPaid(paymentId: string, providerPaymentId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.payment.updateMany({ where: { id: paymentId, status: { not: 'PAID' } }, data: { status: 'PAID', providerPaymentId } });
+      if (claimed.count === 0) return;
+      const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+      const m = JSON.parse(p.meta ?? '{}') as { kind?: PremiumKind; hostUserId?: string | null };
+      if (!m.kind) return;
+      await grantPremium(tx, { userId: p.userId, kind: m.kind, hostUserId: m.hostUserId ?? null, price: p.amount, paidWith: 'GATEWAY', paymentId: p.id });
+    });
+  }
+
   private async markTopUpPaid(paymentId: string, providerPaymentId: string) {
     const p = await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.payment.updateMany({ where: { id: paymentId, status: { not: 'PAID' } }, data: { status: 'PAID', providerPaymentId } });
       if (claimed.count === 0) return null; // already processed
       const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
       await this.wallet.credit(tx, p.userId, p.amount, 'Coins added', { type: 'topup', id: p.id }, p.amount);
+      await this.wallet.addPaidCoins(tx, p.userId, p.amount);
       let bonus = p.bonus;
       // a "first top-up" bonus only counts if no other top-up was paid first (e.g. two started at once)
       if (bonus > 0 && p.offerFirstOnly) {
@@ -253,6 +275,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     if (!p0) throw new NotFoundException('Payment not found');
     if (p0.purpose === 'COMPANION_FEE') return this.markFeePaid(p0.id, providerPaymentId);
     if (p0.purpose === 'WALLET_TOPUP') return this.markTopUpPaid(p0.id, providerPaymentId);
+    if (p0.purpose === 'PREMIUM') return this.markPremiumPaid(p0.id, providerPaymentId);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const p = await tx.payment.findUniqueOrThrow({ where: { id: p0.id } });
@@ -334,3 +357,16 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 const TOPUP_MIN = 50;
 const TOPUP_MAX = 10_000;
 const customerOf = (u: User) => ({ id: u.id, phone: u.phone, name: u.name, email: u.contactEmail });
+
+export type PremiumKind = 'HOST' | 'PASS_30' | 'LIFETIME';
+type Tx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
+
+/** Records a ⭐ Premium unlock. A 30-day pass bought while one is running adds 30 days to it. */
+export async function grantPremium(tx: Tx, u: { userId: string; kind: PremiumKind; hostUserId: string | null; price: number; paidWith: 'GATEWAY' | 'COINS'; paymentId?: string }) {
+  let expiresAt: Date | null = null;
+  if (u.kind === 'PASS_30') {
+    const running = await tx.premiumUnlock.findFirst({ where: { userId: u.userId, kind: 'PASS_30', expiresAt: { gt: new Date() } }, orderBy: { expiresAt: 'desc' } });
+    expiresAt = new Date(Math.max(Date.now(), running?.expiresAt?.getTime() ?? 0) + 30 * 86_400_000);
+  }
+  return tx.premiumUnlock.create({ data: { userId: u.userId, kind: u.kind, hostUserId: u.kind === 'HOST' ? u.hostUserId : null, price: u.price, paidWith: u.paidWith, paymentId: u.paymentId ?? null, expiresAt } });
+}

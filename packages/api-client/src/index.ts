@@ -140,6 +140,20 @@ export type AdminBookingDetail = {
   sos: SosAlertDto[];
   locations: { userId: string; lat: number; lng: number; updatedAt: string }[];
 };
+export type PremiumKind = 'HOST' | 'PASS_30' | 'LIFETIME';
+export type PremiumOffer = {
+  prices: Record<PremiumKind, number>;
+  access: { all: boolean; lifetime: boolean; until: string | null; hosts: string[] };
+  paidCoins: number;
+};
+export type AdminPremium = {
+  summary: { unlocks: number; revenue: number; premiumHosts: number; byKind: Partial<Record<PremiumKind, { count: number; revenue: number }>> };
+  hosts: { userId: string; name: string | null; phone: string | null; since: string | null; unlocks: number }[];
+  items: { id: string; kind: PremiumKind; price: number; paidWith: 'GATEWAY' | 'COINS'; expiresAt: string | null; createdAt: string; member: { id: string; name: string | null; phone: string | null }; host: { id: string; name: string | null; phone: string | null } | null }[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 export type AdminKyc = KycSubmissionDto & {
   companion: { headline: string; city: string; dob: string | null } | null;
   account?: { status: string; deletedAt: string | null; deletedPhone: string | null; name: string | null; gender: string | null; dob: string | null; city: string | null };
@@ -259,6 +273,13 @@ export function createApiClient(opts: ClientOptions) {
       search: (q: CompanionSearchQuery) => get<Paginated<CompanionCardDto>>('/companions', q as Query),
       get: (id: string) => get<CompanionDetailDto>(`/companions/${id}`),
     },
+    /** ⭐ Premium hosts: unlock one host, all for 30 days, or for good — real money only */
+    premium: {
+      offer: () => get<PremiumOffer>('/premium'),
+      unlocked: () => get<{ id: string; userId: string; avatarUrl: string | null }[]>('/premium/unlocked'),
+      host: (profileId: string) => get<CompanionDetailDto>(`/premium/hosts/${profileId}`),
+      unlock: (kind: PremiumKind, payWith: 'coins' | 'gateway', hostId?: string) => post<FeeCheckoutResponse>('/premium/unlock', { kind, payWith, hostId }),
+    },
     companion: {
       /** registration fee owed before applying; `due: false` → no payment step */
       fee: () => get<CompanionFeeDto>('/companion/fee'),
@@ -368,6 +389,8 @@ export function createApiClient(opts: ClientOptions) {
       assistantConversation: (id: string) => get<AdminAssistantTranscript>(`/admin/assistant/conversations/${id}`),
       assistantKnowledge: () => get<AdminAssistantKnowledge[]>('/admin/assistant/knowledge'),
       saveAssistantKnowledge: (input: { id?: string; question: string; answer: string; active?: boolean }) => post<AdminAssistantKnowledge>('/admin/assistant/knowledge', input),
+      premium: (page = 1) => get<AdminPremium>('/admin/premium', { page }),
+      setPremium: (userId: string, premium: boolean) => post<{ premium: boolean }>(`/admin/premium/hosts/${userId}`, { premium }),
       coinSummary: () => get<CoinPurchaseSummaryDto>('/admin/coins/summary'),
       coinPurchases: (q: { page?: number; status?: string; q?: string }) => get<Paginated<CoinPurchaseDto>>('/admin/coins/purchases', q),
       topUpOffers: () => get<TopUpOfferDto[]>('/admin/coins/offers'),

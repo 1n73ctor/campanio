@@ -1,3 +1,4 @@
+import { assertCanSeeHost } from '../common/premium-access';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Booking, Prisma, User } from '@prisma/client';
 import { randomInt } from 'crypto';
@@ -83,6 +84,7 @@ export class BookingsService {
     if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Host not available');
     if (c.userId === user.id) throw new BadRequestException("You can't send a meetup request to yourself");
     if (c.womenOnly && user.gender !== 'FEMALE') throw new ForbiddenException(`${c.user.name?.split(' ')[0] ?? 'This host'} only accepts meetups from women`);
+    await assertCanSeeHost(this.prisma, user, c.userId);
     if (!c.categories.split(',').includes(dto.category)) throw new BadRequestException(`${c.user.name} doesn't offer ${categoryBySlug(dto.category)?.name ?? dto.category}`);
 
     const blocked = await this.prisma.block.count({

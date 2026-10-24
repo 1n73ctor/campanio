@@ -1,3 +1,4 @@
+import { blurredUrl } from '../files/uploads';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CompanionProfile, Prisma, User } from '@prisma/client';
 import { WEEKDAYS, type CompanionDetailDto, type CompanionDashboardDto, type Paginated, type CompanionCardDto } from '@companio/types';
@@ -79,7 +80,7 @@ export class CompanionsService {
     return rows.map((r) => ({ ...toCompanionCard(r), ...availabilityBadges(r.availability, busy.filter((b) => b.companionUserId === r.userId), now) }));
   }
 
-  async detail(id: string): Promise<CompanionDetailDto> {
+  async detail(id: string, full = false): Promise<CompanionDetailDto> {
     const c = await this.prisma.companionProfile.findUnique({ where: { id }, include: { user: true } });
     if (!c || !c.isListed || c.kycStatus !== 'APPROVED' || c.user.status !== 'ACTIVE') throw new NotFoundException('Host not found');
     const reviews = await this.prisma.review.findMany({
@@ -90,12 +91,15 @@ export class CompanionsService {
     });
     const p = toCompanionProfileDto(c);
     const [card] = await this.withBadges([c]);
+    // ⭐ Premium: blurred photos, only the first line of about, no bio — the full profile comes from /premium/hosts/:id once unlocked
+    const locked = c.premium && !full;
     return {
       ...card,
-      about: c.about,
-      photos: p.photos,
+      ...(full ? { avatarUrl: c.user.avatarUrl } : {}),
+      about: locked ? aboutTeaser(c.about) : c.about,
+      photos: locked ? p.photos.map((x) => blurredUrl(x)).filter((x): x is string => !!x) : p.photos,
       availability: p.availability,
-      bio: c.user.bio,
+      bio: locked ? null : c.user.bio,
       memberSince: c.createdAt.toISOString(),
       reviews: reviews.map(toReviewDto),
     };
@@ -234,4 +238,12 @@ export class CompanionsService {
     });
     return agg._sum.amount ?? 0;
   }
+}
+
+/** First line of a Premium host's about, cut to ~90 characters, as a teaser for the locked profile. */
+function aboutTeaser(about: string) {
+  const line = about.split('\n').find((l) => l.trim())?.trim() ?? '';
+  if (line.length <= 90) return line;
+  const cut = line.lastIndexOf(' ', 90);
+  return `${line.slice(0, cut > 40 ? cut : 90)}…`;
 }

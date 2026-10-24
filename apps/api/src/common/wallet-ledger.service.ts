@@ -94,12 +94,29 @@ export class WalletLedger implements OnModuleInit {
         data: { balance: { decrement: amount }, promoBalance: promoOf(w) === w.promoBalance ? { decrement: promo } : promoOf(w) - promo },
       });
       if (res.count !== 1) continue;
+      // bought coins are part of the spend-only balance and can't be more than what's left of it
+      const promoAfter = (promoOf(w) === w.promoBalance ? w.promoBalance : promoOf(w)) - promo;
+      await tx.wallet.updateMany({ where: { id: w.id, paidCoins: { gt: promoAfter } }, data: { paidCoins: Math.max(0, promoAfter) } });
       await tx.walletTxn.create({
         data: { walletId: w.id, type: 'DEBIT', amount, reason, refType: ref.type, refId: ref.id, promoAmount: promo, balanceAfter: w.balance - amount },
       });
       return promo;
     }
     throw new ConflictException('Your wallet changed while we were updating it — please try again');
+  }
+
+  /** Coins bought with real money were added (a paid top-up). */
+  async addPaidCoins(tx: Tx, userId: string, amount: number) {
+    if (amount > 0) await tx.wallet.update({ where: { userId }, data: { paidCoins: { increment: amount } } });
+  }
+
+  /** Pays with coins bought with real money only (never credit, bonus or cashback). */
+  async spendPaidCoins(tx: Tx, userId: string, amount: number, reason: string, ref: Ref) {
+    const w = await this.ensure(tx, userId);
+    if (w.paidCoins < amount) throw new BadRequestException(`You have ${w.paidCoins} bought coins — ${amount} needed. Credit and bonus coins can’t be used for this.`);
+    const taken = await tx.wallet.updateMany({ where: { id: w.id, paidCoins: { gte: amount } }, data: { paidCoins: { decrement: amount } } });
+    if (taken.count !== 1) throw new ConflictException('Your wallet changed while we were updating it — please try again');
+    await this.spend(tx, userId, amount, reason, ref);
   }
 
   /** The part of a booking refund to give back as credit: whatever credit paid for it and hasn't come back yet. */

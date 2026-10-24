@@ -31,6 +31,8 @@ import { PublicSafetyShareController, SafetyShareController } from './safety/saf
 import { ReferralsController } from './referrals/referrals.controller';
 import { KycService } from './kyc/kyc.service';
 import { MailModule } from './mail/mail.service';
+import { PremiumService } from './premium/premium.service';
+import { AdminPremiumController, PremiumController } from './premium/premium.controller';
 import { DemoDigilockerController } from './kyc/demo-digilocker';
 
 @Module({
@@ -55,6 +57,8 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     MetaController,
     UsersController,
     EmailVerifyController,
+    PremiumController,
+    AdminPremiumController,
     CompanionsController,
     CompanionSelfController,
     WalletController,
@@ -67,6 +71,6 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     PublicSafetyShareController,
     DemoDigilockerController,
   ],
-  providers: [CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
+  providers: [PremiumService, CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
 })
 export class AppModule {}

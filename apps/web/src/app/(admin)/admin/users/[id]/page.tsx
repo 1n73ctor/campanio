@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { ageFromDob, cityBySlug, type UserStatus } from '@companio/types';
-import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea } from '@companio/ui';
+import { Avatar, Button, Card, Field, Input, Modal, Select, Stat, StatusBadge, Textarea, Toggle } from '@companio/ui';
 import { ErrorBox, Loading, PageTitle } from '@/admin/components/ui';
 import { useToast } from '@/admin/components/toast';
 import { BubbleMessage, EditUserModal, ViewAsModal } from '@/admin/components/user-admin-actions';
@@ -39,6 +39,28 @@ export default function UserDetail({ params }: { params: Promise<{ id: string }>
         actions={
           <>
             <StatusBadge status={u.status} />
+            {u.companion && u.status !== 'DELETED' && (
+              <label
+                title={u.companion.kycStatus === 'APPROVED' ? 'Profile blurred until a member unlocks it' : 'Only verified hosts can be Premium'}
+                className="flex cursor-pointer items-center gap-2 rounded-full border-2 border-ink bg-sunny-soft px-3 py-1 text-sm font-bold"
+              >
+                <Toggle
+                  checked={!!u.companion.premium}
+                  label="Premium host"
+                  onChange={async (on) => {
+                    if (on && u.companion?.kycStatus !== 'APPROVED') return toast('Only verified hosts can be Premium', 'error');
+                    try {
+                      await api.admin.setPremium(u.id, on);
+                      toast(on ? 'Now a ⭐ Premium host — members unlock them first' : 'Premium removed');
+                      reload();
+                    } catch (e) {
+                      toast(errMsg(e), 'error');
+                    }
+                  }}
+                />
+                <span>⭐ Premium</span>
+              </label>
+            )}
             {u.status !== 'DELETED' && u.role !== 'ADMIN' && (
               <>
                 <Button size="sm" variant="white" onClick={() => setEditing(true)}>✏️ Edit profile</Button>

@@ -4,7 +4,7 @@ import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/m
 import { memoryStorage } from 'multer';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { basename, resolve } from 'path';
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { config } from '../common/config';
 
 // resolve (not join) so an absolute UPLOAD_DIR like /srv/companio-data/uploads is used as-is
@@ -113,3 +113,26 @@ export function decryptDoc(data: Buffer): Buffer {
 export const isEncryptedDoc = (data: Buffer) => data.subarray(0, MAGIC.length).equals(MAGIC);
 
 export const publicUrl = (fileName: string) => `${config.filesBaseUrl}/uploads/public/${fileName}`;
+
+/** Our own public upload's file name from its URL (null for anything else, e.g. an outside avatar). */
+const uploadName = (url: string | null | undefined) => url?.match(/\/uploads\/public\/([\w-]+)\.(?:jpg|jpeg|png|webp)$/i)?.[0].split('/').pop() ?? null;
+
+/** The blurred copy of a photo (⭐ Premium hosts' photos shown to members who haven't unlocked them). */
+export function blurredUrl(url: string | null | undefined): string | null {
+  const name = uploadName(url);
+  return name ? publicUrl(`${name.replace(/\.[a-z]+$/i, '')}-blur.webp`) : null;
+}
+
+/** Makes the blurred copy if it isn't there yet. Never throws. */
+export async function ensureBlurred(url: string | null | undefined) {
+  const name = uploadName(url);
+  if (!name) return;
+  const out = resolve(PUBLIC_DIR, `${name.replace(/\.[a-z]+$/i, '')}-blur.webp`);
+  if (existsSync(out)) return;
+  try {
+    const buf = await sharp(readFileSync(resolve(PUBLIC_DIR, name))).rotate().resize({ width: 480, height: 480, fit: 'inside' }).blur(12).webp({ quality: 65 }).toBuffer();
+    writeFileSync(out, buf, { mode: 0o644 });
+  } catch {
+    /* missing or unreadable original: the card shows its fallback */
+  }
+}

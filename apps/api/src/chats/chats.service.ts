@@ -1,3 +1,4 @@
+import { assertCanSeeHost } from '../common/premium-access';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { ChatUnlock, Conversation, DirectMessage, User } from '@prisma/client';
 import { formatINR, type AdminChatStatsDto, type AdminChatUnlockDto, type ChatPricesDto, type ChatUnlockKind, type ConversationDto, type DirectMessageDto } from '@companio/types';
@@ -139,6 +140,7 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
     if (p.userId === viewer.id) throw new BadRequestException('You can’t message yourself');
     if (viewer.role === 'ADMIN') throw new ForbiddenException('Admins can’t open member chats');
     await this.assertNotBlocked(viewer.id, p.userId);
+    await assertCanSeeHost(this.prisma, viewer, p.userId);
     const s = await this.prices();
     const price = kind === 'PERMANENT' ? s.permanentPrice : s.timedPrice;
 

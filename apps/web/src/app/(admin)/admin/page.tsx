@@ -39,14 +39,14 @@ export default function Dashboard() {
             label="Platform revenue"
             value={formatINR(data.money.revenue.total)}
             tone="pink"
-            hint={`Meetups ${formatINR(data.money.revenue.meetups)} · Host fees ${formatINR(data.money.revenue.fees)} · Chats ${formatINR(data.money.revenue.chats)}`}
+            hint={`Meetups ${formatINR(data.money.revenue.meetups)} · Host fees ${formatINR(data.money.revenue.fees)} · Chats ${formatINR(data.money.revenue.chats)} · Premium ${formatINR(data.money.revenue.premium)}`}
           />
           <Stat label="GMV · in escrow" value={`${formatINR(data.gmv)} · ${formatINR(data.inEscrow)}`} tone="sky" hint="Meetup value (net of refunds) · held until meetups happen" />
           <Stat label="In members’ wallets" value={formatINR(data.money.wallets.total)} tone="sunny" hint={`${formatINR(data.money.wallets.total - data.money.wallets.credit)} money · ${formatINR(data.money.wallets.credit)} coins & credit`} />
         </div>
       )}
       <p className="mt-2 text-xs text-ink-mute">
-        Money received = real payments through Razorpay ({formatINR(data.money?.byPurpose.fees ?? 0)} host fees · {formatINR(data.money?.byPurpose.coins ?? 0)} coins · {formatINR(data.money?.byPurpose.meetups ?? 0)} meetups); test payments aren’t counted. {data.users} members · {data.companions} hosts ({data.listedCompanions} live).
+        Money received = real payments through Razorpay ({formatINR(data.money?.byPurpose.fees ?? 0)} host fees · {formatINR(data.money?.byPurpose.coins ?? 0)} coins · {formatINR(data.money?.byPurpose.meetups ?? 0)} meetups · {formatINR(data.money?.byPurpose.premium ?? 0)} Premium); test payments aren’t counted. {data.users} members · {data.companions} hosts ({data.listedCompanions} live).
       </p>
 
       <h2 className="mb-3 mt-8 font-display text-lg font-extrabold">Work queues</h2>

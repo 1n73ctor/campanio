@@ -33,6 +33,10 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   chatPermanentPrice: 99,
   chatRefundHours: 48,
   chatHostSharePct: 50,
+  // ⭐ Premium hosts: unlock one host, all for 30 days, or all for good (platform keeps it all)
+  premiumHostPrice: 99,
+  premiumPassPrice: 499,
+  premiumLifetimePrice: 999,
   assistantEnabled: 0,
   maintenanceMode: 0,
 };

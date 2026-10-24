@@ -1,3 +1,4 @@
+import { blurredUrl } from '../files/uploads';
 import type {
   Booking,
   CompanionProfile,
@@ -62,6 +63,7 @@ export function toCompanionProfileDto(c: CompanionProfile): CompanionProfileDto 
     kycStatus: c.kycStatus as CompanionProfileDto['kycStatus'],
     isListed: c.isListed,
     womenOnly: c.womenOnly,
+    premium: c.premium,
     ratingAvg: Math.round(c.ratingAvg * 10) / 10,
     ratingCount: c.ratingCount,
     completedBookings: c.completedBookings,
@@ -108,6 +110,8 @@ export function toCompanionCard(c: CompanionProfile & { user: User }): Companion
     completedBookings: c.completedBookings,
     verified: c.kycStatus === 'APPROVED',
     womenOnly: c.womenOnly,
+    // ⭐ Premium: only the blurred photo goes out here; the real one comes from /premium once unlocked
+    ...(c.premium ? { premium: true, avatarUrl: blurredUrl(c.user.avatarUrl) } : {}),
   };
 }
 

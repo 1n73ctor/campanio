@@ -193,6 +193,29 @@ export default function SettingsPage() {
           </Button>
         </Card>
         <Card className="p-6 lg:col-span-2">
+          <h2 className="font-display text-lg font-extrabold">👑 Premium hosts</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Members unlock a Premium host’s profile before they can see their photos, book or message them. Only real money (UPI/card or coins they bought) can be
+            used — not welcome credit, bonus or cashback. All unlock money stays with the platform.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {(
+              [
+                ['premiumHostPrice', 'Unlock one host (₹)'],
+                ['premiumPassPrice', 'All Premium hosts, 30 days (₹)'],
+                ['premiumLifetimePrice', 'All Premium hosts, lifetime (₹)'],
+              ] as const
+            ).map(([k, label]) => (
+              <Field key={k} label={label}>
+                <NumberInput value={form[k]} onValueChange={(n) => setForm((x) => (x ? { ...x, [k]: Math.max(1, Math.round(n)) } : x))} />
+              </Field>
+            ))}
+          </div>
+          <Button className="mt-4" loading={busy} onClick={save}>
+            Save Premium prices
+          </Button>
+        </Card>
+        <Card className="p-6 lg:col-span-2">
           <h2 className="font-display text-lg font-extrabold">Companion registration fee</h2>
           <p className="mt-1 text-sm text-ink-soft">
             One-time fee to apply as a companion, set per gender. GST ({form.gstPct}%) is added on top. When it’s off, applicants of that gender never see a payment

@@ -112,6 +112,9 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(1) @Max(10000) chatPermanentPrice?: number;
   @IsOptional() @IsInt() @Min(1) @Max(336) chatRefundHours?: number;
   @IsOptional() @IsInt() @Min(0) @Max(90) chatHostSharePct?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(100000) premiumHostPrice?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(100000) premiumPassPrice?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(100000) premiumLifetimePrice?: number;
   @IsOptional() @IsIn([0, 1]) assistantEnabled?: number;
   @IsOptional() @IsIn([0, 1]) maintenanceMode?: number;
 }

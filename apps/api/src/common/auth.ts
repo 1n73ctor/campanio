@@ -35,6 +35,7 @@ const FULL_ACCESS_BLOCKED: [RegExp, string][] = [
   [/^\/payments(\/|$)/, 'Payments can’t be made while logged in as someone else'],
   [/^\/wallet\/payouts/, 'Withdrawals can’t be requested while logged in as someone else'],
   [/^\/chats\/unlock/, 'Their coins can’t be spent while logged in as someone else'],
+  [/^\/premium\/unlock/, 'Their money can’t be spent while logged in as someone else'],
   [/^\/auth\//, 'Not allowed while logged in as someone else'],
 ];
 

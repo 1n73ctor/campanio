@@ -93,6 +93,8 @@ export interface CompanionProfileDto {
   isListed: boolean;
   /** only accepts bookings from members whose gender is FEMALE (available to women companions) */
   womenOnly: boolean;
+  /** ⭐ Premium host (set by an admin) */
+  premium?: boolean;
   ratingAvg: number;
   ratingCount: number;
   completedBookings: number;
@@ -116,6 +118,8 @@ export interface CompanionCardDto {
   verified: boolean;
   /** only accepts bookings from women */
   womenOnly: boolean;
+  /** ⭐ Premium host: photos and bio stay hidden until the member unlocks them */
+  premium?: boolean;
   /** has a free hour today that can still be booked (bookings start 2h+ from now) — only if they set weekly hours */
   freeToday?: boolean;
   /** has 2+ free hours on the coming Saturday or Sunday */
@@ -498,8 +502,8 @@ export interface AdminStatsDto {
   /** real money (gateway, not test payments), revenue by source, and what's sitting in members' wallets */
   money: {
     received: { today: Rupees; month: Rupees; all: Rupees };
-    byPurpose: { meetups: Rupees; fees: Rupees; coins: Rupees };
-    revenue: { meetups: Rupees; fees: Rupees; chats: Rupees; total: Rupees };
+    byPurpose: { meetups: Rupees; fees: Rupees; coins: Rupees; premium: Rupees };
+    revenue: { meetups: Rupees; fees: Rupees; chats: Rupees; premium: Rupees; total: Rupees };
     wallets: { total: Rupees; credit: Rupees };
   };
   series: { date: string; bookings: number; gmv: Rupees; signups: number }[];
@@ -562,6 +566,10 @@ export interface PlatformSettings {
   chatRefundHours: number;
   /** % of each chat payment the host earns (withdrawable) once they reply; the rest is platform revenue */
   chatHostSharePct: number;
+  /** ⭐ Premium hosts: unlock one host · all for 30 days · all for good (₹) */
+  premiumHostPrice: Rupees;
+  premiumPassPrice: Rupees;
+  premiumLifetimePrice: Rupees;
   /** 1 = the AI support assistant chat bubble is on (needs ANTHROPIC_API_KEY on the server) */
   assistantEnabled: number;
   /** 1 = members add coins by paying the platform's UPI QR and an admin approves it; 0 = through the payment gateway */

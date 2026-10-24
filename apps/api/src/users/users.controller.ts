@@ -20,7 +20,7 @@ import { PrismaService } from '../common/prisma.service';
 import { toUserDto } from '../common/mappers';
 import { MailService } from '../mail/mail.service';
 import { SettingsService } from '../common/settings.service';
-import { publicUrl, storePublicImage, uploadLimits } from '../files/uploads';
+import { ensureBlurred, publicUrl, storePublicImage, uploadLimits } from '../files/uploads';
 import { UpdateMeDto } from './users.dto';
 import { OffersService } from '../offers/offers.service';
 import { AuthService } from '../auth/auth.service';
@@ -128,6 +128,7 @@ export class UsersController {
   async avatar(@CurrentUser() user: User, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
     const u = await this.prisma.user.update({ where: { id: user.id }, data: { avatarUrl: publicUrl(await storePublicImage(file, 800)) }, include: { companion: true } });
+    if (u.companion?.premium) await ensureBlurred(u.avatarUrl);
     return toUserDto(u);
   }
 
