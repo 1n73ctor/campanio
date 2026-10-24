@@ -70,8 +70,8 @@ step "Start the API automatically on reboot"
 sudo env PATH="$PATH" "$(command -v pm2)" startup systemd -u "$USER" --hp "$HOME" >/dev/null
 echo "PM2 boot service installed"
 
-step "Daily database + uploads backup at 03:15"
-CRON="15 3 * * * $ROOT/deploy/backup.sh >> $DATA/backups/backup.log 2>&1"
+step "Daily database + uploads backup at 03:15 India time (21:45 UTC)"
+CRON="45 21 * * * $ROOT/deploy/backup.sh >> $DATA/backups/backup.log 2>&1"
 (crontab -l 2>/dev/null | grep -vF "deploy/backup.sh"; echo "$CRON") | crontab -
 echo "Installed: $CRON"
 

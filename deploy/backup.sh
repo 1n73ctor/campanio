@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Backs up the SQLite database (a consistent online copy) and the uploads folder, keeping 14 days.
+# Backs up the SQLite database (a consistent online copy) and the uploads folder, keeping 15 days (the newest backup
+# is always kept, however old).
 # Runs daily from cron (installed by setup-server.sh) and before every deploy.
 #   Optional: set BACKUP_REMOTE (an rclone remote, e.g. "r2:companio-backups") to also copy backups off the server —
 #   a backup that only lives on the same disk won't survive losing the server.
@@ -8,7 +9,7 @@ set -euo pipefail
 DATA="${COMPANIO_DATA:-/srv/companio-data}"
 DB="$DATA/companio.db"
 OUT="$DATA/backups"
-KEEP_DAYS="${KEEP_DAYS:-14}"
+KEEP_DAYS="${KEEP_DAYS:-15}"
 STAMP="$(date +%F-%H%M)"
 mkdir -p "$OUT"
 
@@ -26,7 +27,10 @@ if [[ -d "$DATA/uploads" ]]; then
   echo "$(date "+%F %T") uploads  → $OUT/uploads-$STAMP.tar.gz"
 fi
 
-find "$OUT" -maxdepth 1 \( -name 'companio-*.db.gz' -o -name 'uploads-*.tar.gz' \) -mtime +"$KEEP_DAYS" -delete
+NEWEST_DB="$(ls -t "$OUT"/companio-*.db.gz 2>/dev/null | head -1 || true)"
+NEWEST_UPLOADS="$(ls -t "$OUT"/uploads-*.tar.gz 2>/dev/null | head -1 || true)"
+find "$OUT" -maxdepth 1 \( -name 'companio-*.db.gz' -o -name 'uploads-*.tar.gz' \) -mtime +"$KEEP_DAYS" \
+  ! -path "${NEWEST_DB:-/none}" ! -path "${NEWEST_UPLOADS:-/none}" -delete
 
 if [[ -n "${BACKUP_REMOTE:-}" ]] && command -v rclone >/dev/null; then
   rclone copy "$OUT" "$BACKUP_REMOTE" --include 'companio-*.db.gz' --include 'uploads-*.tar.gz'
