@@ -495,6 +495,13 @@ export interface AdminStatsDto {
   assistantWaiting: number;
   /** paid chats unlocked since the admin last opened Paid chats (or in the last 24h) */
   newPaidChats: number;
+  /** real money (gateway, not test payments), revenue by source, and what's sitting in members' wallets */
+  money: {
+    received: { today: Rupees; month: Rupees; all: Rupees };
+    byPurpose: { meetups: Rupees; fees: Rupees; coins: Rupees };
+    revenue: { meetups: Rupees; fees: Rupees; chats: Rupees; total: Rupees };
+    wallets: { total: Rupees; credit: Rupees };
+  };
   series: { date: string; bookings: number; gmv: Rupees; signups: number }[];
 }
 

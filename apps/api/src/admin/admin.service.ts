@@ -77,6 +77,7 @@ export class AdminService {
         this.prisma.user.findMany({ where: { createdAt: { gte: since }, role: { not: 'ADMIN' } }, select: { createdAt: true } }),
       ]);
 
+    const money = await this.money(escrows.reduce((s, e) => s + e.retained, 0));
     const series: AdminStatsDto['series'] = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(since.getTime() + i * DAY);
@@ -100,6 +101,7 @@ export class AdminService {
       pendingPayouts,
       assistantWaiting,
       newPaidChats,
+      money,
       series,
     };
   }
@@ -136,6 +138,39 @@ export class AdminService {
       deletedPhone: u.deletedPhone,
     }));
     return { items, total, page, pageSize };
+  }
+
+  /**
+   * Real money only (gateway payments, never the test gateway or wallet-only payments): what came in, revenue by source
+   * (meetup fees + commission, registration fees not refunded, the platform's share of paid chats) and what's sitting
+   * in members' wallets.
+   */
+  private async money(meetupRevenue: number): Promise<AdminStatsDto['money']> {
+    const startOfToday = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30');
+    const monthAgo = new Date(Date.now() - 30 * DAY);
+    const [paid, chats, wallets] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: { status: 'PAID', provider: { notIn: ['mock', 'wallet'] }, amount: { gt: 0 } },
+        select: { amount: true, purpose: true, createdAt: true, user: { select: { companionFeeRefundedAt: true } } },
+      }),
+      this.prisma.chatUnlock.findMany({ where: { status: { not: 'REFUNDED' } }, select: { price: true, hostEarning: true } }),
+      this.prisma.wallet.aggregate({ _sum: { balance: true, promoBalance: true } }),
+    ]);
+    const sum = (rows: typeof paid) => rows.reduce((n, p) => n + p.amount, 0);
+    const fees = paid.filter((p) => p.purpose === 'COMPANION_FEE');
+    const revenue = {
+      meetups: meetupRevenue,
+      fees: sum(fees.filter((p) => !p.user.companionFeeRefundedAt)),
+      chats: chats.reduce((n, c) => n + c.price - c.hostEarning, 0),
+      total: 0,
+    };
+    revenue.total = revenue.meetups + revenue.fees + revenue.chats;
+    return {
+      received: { today: sum(paid.filter((p) => p.createdAt >= startOfToday)), month: sum(paid.filter((p) => p.createdAt >= monthAgo)), all: sum(paid) },
+      byPurpose: { meetups: sum(paid.filter((p) => p.purpose === 'BOOKING')), fees: sum(fees), coins: sum(paid.filter((p) => p.purpose === 'WALLET_TOPUP')) },
+      revenue,
+      wallets: { total: wallets._sum.balance ?? 0, credit: wallets._sum.promoBalance ?? 0 },
+    };
   }
 
   /** Names of the admins who added accounts by hand (for the "Added by admin" tag). */
