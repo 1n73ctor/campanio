@@ -17,6 +17,7 @@
     "db:verify-existing-emails": "tsx prisma/verify-existing-emails.ts",
     "db:rewrite-file-urls": "tsx prisma/rewrite-file-urls.ts",
     "photos:compress": "tsx prisma/compress-photos.ts",
+    "photos:r2": "tsx prisma/move-photos-to-r2.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "prisma studio"
@@ -36,6 +37,7 @@
     "@nestjs/throttler": "~6.5.0",
     "@nestjs/websockets": "^11.1.0",
     "@prisma/client": "~6.19.0",
+    "aws4fetch": "^1.0.20",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "~0.14.2",

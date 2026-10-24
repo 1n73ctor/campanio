@@ -12,6 +12,18 @@ export const config = {
    * https://getcompanio.in) when the website's nginx passes /files/ and /uploads/ through to this API.
    */
   filesBaseUrl: (process.env.FILES_BASE_URL || process.env.PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, ''),
+  /**
+   * Cloudflare R2 for public photos (profile + host photos, blurred Premium copies). All five set = photos are stored in
+   * the bucket and served from R2_PUBLIC_URL (e.g. https://img.getcompanio.in); otherwise they're kept on this server.
+   * ID documents always stay on this server, encrypted.
+   */
+  r2: {
+    accountId: process.env.R2_ACCOUNT_ID ?? '',
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+    bucket: process.env.R2_BUCKET ?? '',
+    publicUrl: (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, ''),
+  },
   otpDevEcho: bool(process.env.OTP_DEV_ECHO) && process.env.NODE_ENV !== 'production',
   smsProvider: process.env.SMS_PROVIDER ?? 'console',
   /** login codes on WhatsApp (Meta WhatsApp Cloud API); empty token = off, SMS (Firebase) only */

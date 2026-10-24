@@ -27,6 +27,20 @@ export default function Dashboard() {
     <>
       <PageTitle title="Dashboard" subtitle="Platform health at a glance. Money is in INR." />
       <MaintenanceCard />
+      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Link href="/admin/users">
+          <Stat label="Total users" value={data.users.toLocaleString('en-IN')} tone="white" hint={`+${data.series.slice(-7).reduce((n, d) => n + d.signups, 0)} joined in the last 7 days`} />
+        </Link>
+        <Link href="/admin/users">
+          <Stat label="Members" value={(data.users - data.companions).toLocaleString('en-IN')} tone="white" hint="Signed up, not hosts" />
+        </Link>
+        <Link href="/admin/users">
+          <Stat label="Hosts" value={data.companions.toLocaleString('en-IN')} tone="white" hint={`${data.listedCompanions} live on Explore`} />
+        </Link>
+        <Link href="/admin/users">
+          <Stat label="Joined today" value={data.series.at(-1)?.signups ?? 0} tone="white" hint={`${data.series.at(-2)?.signups ?? 0} yesterday`} />
+        </Link>
+      </div>
       {data.money && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat

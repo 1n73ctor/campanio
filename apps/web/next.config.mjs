@@ -19,7 +19,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://*.razorpay.com https://sdk.cashfree.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
   `style-src 'self' 'unsafe-inline'`,
-  `img-src 'self' data: blob: ${apiOrigin} https://*.cashfree.com https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com`,
+  `img-src 'self' data: blob: ${apiOrigin} https://img.getcompanio.in https://*.cashfree.com https://www.googletagmanager.com https://*.google-analytics.com https://www.facebook.com https://*.razorpay.com https://www.gstatic.com`,
   `font-src 'self' data:`,
   `connect-src 'self' ${apiOrigin} ${wsOrigin} https://*.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.facebook.com https://*.razorpay.com https://*.cashfree.com https://www.google.com`,
   `frame-src https://*.razorpay.com https://*.cashfree.com https://www.google.com https://recaptcha.google.com https://www.openstreetmap.org${firebaseAuthDomain ? ` https://${firebaseAuthDomain}` : ''}`,

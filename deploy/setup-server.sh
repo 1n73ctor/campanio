@@ -55,6 +55,8 @@ fi
 step "Nginx site for $API_DOMAIN"
 sed "s|__API_DOMAIN__|$API_DOMAIN|g" "$ROOT/deploy/nginx-api.conf" | sudo tee /etc/nginx/sites-available/companio-api >/dev/null
 sudo ln -sf /etc/nginx/sites-available/companio-api /etc/nginx/sites-enabled/companio-api
+# behind Cloudflare: real visitor addresses (see the file)
+sudo cp "$ROOT/deploy/nginx-cloudflare-realip.conf" /etc/nginx/conf.d/cloudflare-realip.conf
 sudo nginx -t
 sudo systemctl reload nginx
 

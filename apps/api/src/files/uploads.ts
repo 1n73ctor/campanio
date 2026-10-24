@@ -6,6 +6,7 @@ import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'crypt
 import { basename, resolve } from 'path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { config } from '../common/config';
+import { r2Enabled, r2Exists, r2Get, r2Put } from './r2';
 
 // resolve (not join) so an absolute UPLOAD_DIR like /srv/companio-data/uploads is used as-is
 export const PUBLIC_DIR = resolve(process.cwd(), config.uploadDir, 'public');
@@ -52,8 +53,30 @@ export async function storePublicImage(file: Express.Multer.File | undefined, ma
     throw new BadRequestException('We couldn’t process this image — please try a different photo');
   }
   const name = newName('webp');
-  writeFileSync(resolve(PUBLIC_DIR, name), out, { mode: 0o644 });
+  await savePublic(name, out);
   return name;
+}
+
+/** A public image: to R2 when it's set up, else this server's public uploads folder. */
+async function savePublic(name: string, buf: Buffer) {
+  if (r2Enabled()) {
+    try {
+      await r2Put(name, buf, MIME[name.slice(name.lastIndexOf('.'))] ?? 'application/octet-stream');
+    } catch {
+      throw new BadRequestException('We couldn’t save your photo right now — please try again in a minute');
+    }
+  } else writeFileSync(resolve(PUBLIC_DIR, name), buf, { mode: 0o644 });
+}
+
+/** A public image's bytes, wherever it's stored (this server first: photos saved before R2 are still here). */
+async function readPublic(name: string): Promise<Buffer | null> {
+  const local = resolve(PUBLIC_DIR, name);
+  if (existsSync(local)) return readFileSync(local);
+  return r2Enabled() ? r2Get(name) : null;
+}
+
+async function publicExists(name: string) {
+  return r2Enabled() ? r2Exists(name) : existsSync(resolve(PUBLIC_DIR, name));
 }
 
 /** Resize to fit maxSide × maxSide and encode as WebP (sharp drops EXIF/GPS metadata unless asked to keep it). */
@@ -112,10 +135,15 @@ export function decryptDoc(data: Buffer): Buffer {
 
 export const isEncryptedDoc = (data: Buffer) => data.subarray(0, MAGIC.length).equals(MAGIC);
 
-export const publicUrl = (fileName: string) => `${config.filesBaseUrl}/uploads/public/${fileName}`;
+export const publicUrl = (fileName: string) => (r2Enabled() ? `${config.r2.publicUrl}/${fileName}` : `${config.filesBaseUrl}/uploads/public/${fileName}`);
 
-/** Our own public upload's file name from its URL (null for anything else, e.g. an outside avatar). */
-const uploadName = (url: string | null | undefined) => url?.match(/\/uploads\/public\/([\w-]+)\.(?:jpg|jpeg|png|webp)$/i)?.[0].split('/').pop() ?? null;
+/** Our own public upload's file name from its URL — on this server or on R2 (null for anything else, e.g. an outside avatar). */
+export function uploadName(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const r2 = config.r2.publicUrl;
+  const m = r2 && url.startsWith(`${r2}/`) ? url.slice(r2.length + 1).match(/^([\w-]+\.(?:jpg|jpeg|png|webp))$/i) : url.match(/\/uploads\/public\/([\w-]+\.(?:jpg|jpeg|png|webp))$/i);
+  return m?.[1] ?? null;
+}
 
 /**
  * File name of a photo's blurred copy. Keyed with a server secret, so the real photo's name can't be worked out from
@@ -133,12 +161,14 @@ export function blurredUrl(url: string | null | undefined): string | null {
 export async function ensureBlurred(url: string | null | undefined) {
   const name = uploadName(url);
   if (!name) return;
-  const out = resolve(PUBLIC_DIR, blurName(name));
-  if (existsSync(out)) return;
   try {
-    const buf = await sharp(readFileSync(resolve(PUBLIC_DIR, name))).rotate().resize({ width: 480, height: 480, fit: 'inside' }).blur(12).webp({ quality: 65 }).toBuffer();
-    writeFileSync(out, buf, { mode: 0o644 });
+    const out = blurName(name);
+    if (await publicExists(out)) return;
+    const original = await readPublic(name);
+    if (!original) return;
+    const buf = await sharp(original).rotate().resize({ width: 480, height: 480, fit: 'inside' }).blur(12).webp({ quality: 65 }).toBuffer();
+    await savePublic(out, buf);
   } catch {
-    /* missing or unreadable original: the card shows its fallback */
+    /* missing or unreadable original, or storage briefly unavailable: the card shows its fallback */
   }
 }

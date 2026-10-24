@@ -62,8 +62,8 @@ export class AdminService {
     const [users, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, newPaidChats, recentBookings, recentUsers] =
       await Promise.all([
         this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: { not: 'DELETED' } } }),
-        this.prisma.companionProfile.count(),
-        this.prisma.companionProfile.count({ where: { isListed: true } }),
+        this.prisma.companionProfile.count({ where: { user: { status: { not: 'DELETED' } } } }),
+        this.prisma.companionProfile.count({ where: { isListed: true, user: { status: { not: 'DELETED' } } } }),
         this.prisma.booking.groupBy({ by: ['status'], _count: true }),
       this.prisma.escrow.findMany({ select: { amount: true, status: true, retained: true, refunded: true } }),
         this.prisma.kycSubmission.count({ where: { status: 'PENDING' } }),
