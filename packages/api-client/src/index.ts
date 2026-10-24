@@ -343,7 +343,7 @@ export function createApiClient(opts: ClientOptions) {
       create: (input: CreateReportInput) => post<{ id: string; status: string; message: string }>('/reports', input),
     },
     admin: {
-      stats: () => get<AdminStatsDto>('/admin/stats'),
+      stats: (chatsSince?: string) => get<AdminStatsDto>('/admin/stats', chatsSince ? { chatsSince } : undefined),
       users: (q: AdminPage) => get<Paginated<AdminUserDto>>('/admin/users', q),
       user: (id: string) => get<AdminUserDetail>(`/admin/users/${id}`),
       broadcastAudience: (audience: 'ALL' | 'MEMBERS' | 'HOSTS', city?: string) => get<{ count: number }>('/admin/broadcast/audience', { audience, city }),

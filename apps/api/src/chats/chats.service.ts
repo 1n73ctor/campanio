@@ -177,6 +177,8 @@ export class ChatsService implements OnModuleInit, OnModuleDestroy {
       });
     });
     this.log.log(`chat unlock ${kind} ${formatINR(price)} by ${viewer.id} → host ${p.userId}`);
+    // admin sidebar counter + pop-up
+    this.rt.toAdmins('chat:unlocked', { member: viewer.name, host: p.user.name, kind });
     return this.dto(result, viewer.id);
   }
 

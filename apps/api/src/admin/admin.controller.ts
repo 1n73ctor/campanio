@@ -51,7 +51,8 @@ export class AdminController {
     private auth: AuthService,
   ) {}
 
-  @Get('stats') stats() { return this.svc.stats(); }
+  /** `chatsSince`: also count paid chats unlocked after this time (the admin's last visit to Paid chats) */
+  @Get('stats') stats(@Query('chatsSince') chatsSince?: string) { return this.svc.stats(chatsSince); }
   /** One click: the whole site under maintenance (or back). Audited. */
   @Post('maintenance') setMaintenance(@CurrentUser() a: User, @Body() dto: MaintenanceDto) { return this.svc.setMaintenance(a, dto.on); }
 

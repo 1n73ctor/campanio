@@ -64,7 +64,7 @@ export default function UsersPage() {
                       <span className="block font-bold underline">{u.name ?? '—'}</span>
                       <span className="text-xs text-ink-mute">{u.phone ?? (u.deletedPhone ? `${u.deletedPhone} (deleted)` : u.email)}</span>
                       {u.addedBy && (
-                        <span className="mt-0.5 block w-fit rounded-full border-2 border-ink bg-sky px-1.5 text-[11px] font-bold" title={`Added by ${u.addedBy.name ?? 'an admin'}`}>
+                        <span className="mt-0.5 block w-fit whitespace-nowrap rounded-full border-2 border-ink bg-sky px-1.5 text-[11px] font-bold" title={`Added by ${u.addedBy.name ?? 'an admin'}`}>
                           🛠 Added by admin
                         </span>
                       )}

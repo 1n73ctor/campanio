@@ -493,6 +493,8 @@ export interface AdminStatsDto {
   pendingPayouts: number;
   /** chat-bubble conversations waiting for a reply from the team */
   assistantWaiting: number;
+  /** paid chats unlocked since the admin last opened Paid chats (or in the last 24h) */
+  newPaidChats: number;
   series: { date: string; bookings: number; gmv: Rupees; signups: number }[];
 }
 

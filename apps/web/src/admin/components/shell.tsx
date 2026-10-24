@@ -12,7 +12,7 @@ import { useAdminRealtime } from '@/admin/lib/realtime';
 import { ToastProvider, useToast } from './toast';
 import { Loading } from './ui';
 
-type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'assistantWaiting'>;
+type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'assistantWaiting' | 'newPaidChats'>;
 
 const NAV: { href: string; label: string; icon: string; count?: keyof Counts; urgent?: boolean }[] = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -23,7 +23,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/payouts', label: 'Payouts', icon: '🏦', count: 'pendingPayouts' },
   { href: '/admin/bookings', label: 'Bookings & refunds', icon: '📅' },
   { href: '/admin/users', label: 'Users', icon: '👥' },
-  { href: '/admin/chats', label: 'Paid chats', icon: '💬' },
+  { href: '/admin/chats', label: 'Paid chats', icon: '💬', count: 'newPaidChats', urgent: true },
   { href: '/admin/coins', label: 'Coin purchases', icon: '🪙' },
   { href: '/admin/assistant', label: 'Assistant', icon: '🤖', count: 'assistantWaiting', urgent: true },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
@@ -43,6 +43,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   );
 }
 
+const CHATS_SEEN = 'companio.admin.chatsSeenAt';
+const chatsSeenAt = () => {
+  try {
+    return localStorage.getItem(CHATS_SEEN);
+  } catch {
+    return null;
+  }
+};
+const markChatsSeen = () => {
+  try {
+    localStorage.setItem(CHATS_SEEN, new Date().toISOString());
+  } catch {}
+};
+
 function Gate({ children }: { children: ReactNode }) {
   const { admin, ready } = useAdmin();
   if (!ready) return <Loading />;
@@ -57,7 +71,14 @@ function Frame({ children }: { children: ReactNode }) {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [open, setOpen] = useState(false);
 
-  const refresh = useCallback(() => api.admin.stats().then(setCounts).catch(() => {}), [api]);
+  // "new" paid chats = since this browser last opened Paid chats (first visit: the last 24 hours)
+  const refresh = useCallback(() => api.admin.stats(chatsSeenAt() ?? undefined).then(setCounts).catch(() => {}), [api]);
+  useEffect(() => {
+    if (pathname.startsWith('/admin/chats')) {
+      markChatsSeen();
+      setCounts((c) => (c ? { ...c, newPaidChats: 0 } : c));
+    }
+  }, [pathname]);
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 30_000);
@@ -82,6 +103,13 @@ function Frame({ children }: { children: ReactNode }) {
     'assistant:waiting': (d) => {
       playHello();
       toast(`🙋 ${(d as { who?: string }).who ?? 'Someone'} wants to talk to the team — Assistant`, 'info');
+      refresh();
+    },
+    'chat:unlocked': (d) => {
+      const x = d as { member?: string; host?: string };
+      playHello();
+      toast(`💬 New paid chat: ${x.member ?? 'A member'} → ${x.host ?? 'a host'}`, 'info');
+      if (pathname.startsWith('/admin/chats')) markChatsSeen();
       refresh();
     },
     'assistant:message': () => {
