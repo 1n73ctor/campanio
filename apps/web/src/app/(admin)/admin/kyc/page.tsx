@@ -8,16 +8,16 @@ import { useToast } from '@/admin/components/toast';
 import { errMsg, useAdmin, useLoad } from '@/admin/lib/api';
 import { dt } from '@/admin/lib/format';
 
-const FLAG: Record<KycFlag, { text: string; serious: boolean }> = {
-  BANNED_IDENTITY: { text: 'Same Aadhaar as a banned or suspended account', serious: true },
-  GENDER_MISMATCH: { text: 'Gender on Aadhaar differs from the profile — matters for women-only bookings', serious: true },
-  FACE_MISMATCH: { text: 'Selfie doesn’t look like the ID photo', serious: true },
-  LIVENESS_FAILED: { text: 'Selfie may not be a live person (photo of a photo, screen or mask?)', serious: true },
-  DUPLICATE_IDENTITY: { text: 'Same Aadhaar is already on another account', serious: false },
-  NAME_MISMATCH: { text: 'The name they typed doesn’t match the name on Aadhaar', serious: false },
-  DOB_MISMATCH: { text: 'Profile date of birth differs from Aadhaar', serious: false },
-  ID_PHOTO_NOT_COMPARED: { text: 'ID photo couldn’t be compared automatically (PDF or unclear) — compare by eye', serious: false },
-  CHECKS_UNAVAILABLE: { text: 'Automatic checks didn’t run (verification service unreachable) — review by eye', serious: false },
+const FLAG: Record<KycFlag, { text: string; serious: boolean; short?: string }> = {
+  BANNED_IDENTITY: { text: 'Same Aadhaar as a banned or suspended account', serious: true, short: 'Banned identity' },
+  GENDER_MISMATCH: { text: 'Gender on Aadhaar differs from the profile — matters for women-only bookings', serious: true, short: 'Gender mismatch' },
+  FACE_MISMATCH: { text: 'Selfie doesn’t look like the ID photo', serious: true, short: 'Face mismatch' },
+  LIVENESS_FAILED: { text: 'Selfie may not be a live person (photo of a photo, screen or mask?)', serious: true, short: 'Not live' },
+  DUPLICATE_IDENTITY: { text: 'Same Aadhaar is already on another account', serious: false, short: 'Duplicate Aadhaar' },
+  NAME_MISMATCH: { text: 'The name they typed doesn’t match the name on Aadhaar', serious: false, short: 'Name mismatch' },
+  DOB_MISMATCH: { text: 'Profile date of birth differs from Aadhaar', serious: false, short: 'DOB mismatch' },
+  ID_PHOTO_NOT_COMPARED: { text: 'ID photo couldn’t be compared automatically (PDF or unclear) — compare by eye', serious: false, short: 'Compare by eye' },
+  CHECKS_UNAVAILABLE: { text: 'Automatic checks didn’t run (verification service unreachable) — review by eye', serious: false, short: 'Checks didn’t run' },
 };
 
 const pct = (n: number | null) => (n === null ? '' : ` ${Math.round(n * 100)}%`);
@@ -70,6 +70,9 @@ export default function KycPage() {
   const [busy, setBusy] = useState<string | null>(null);
   // by-eye checks per submission (uploaded IDs): all ticked before Approve unlocks
   const [ticks, setTicks] = useState<Record<string, Record<string, boolean>>>({});
+  // cards start compact; Review opens one in place
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
 
   const rejectFee = data?.items.find((k) => k.id === reject)?.fee;
 
@@ -109,40 +112,59 @@ export default function KycPage() {
       ) : data.items.length === 0 ? (
         <Card className="p-10 text-center text-ink-mute">Queue is empty 🎉</Card>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {data.items.map((k) => {
             const age = ageFromDob(k.companion?.dob);
             return (
-              <Card key={k.id} className="p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="flex flex-wrap items-center gap-2 font-display text-xl font-extrabold">
+              <Card key={k.id} className="p-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex shrink-0 gap-2">
+                    <Thumb url={k.idDocUrl} label={k.method === 'DIGILOCKER' ? 'Photo on Aadhaar' : k.idDocBackUrl ? 'ID — front' : 'ID document'} onZoom={setZoom} />
+                    {k.idDocBackUrl && <Thumb url={k.idDocBackUrl} label="ID — back" onZoom={setZoom} />}
+                    <Thumb url={k.selfieUrl} label="Live selfie" onZoom={setZoom} />
+                  </div>
+                  <div className="min-w-[12rem] flex-1">
+                    <p className="flex flex-wrap items-center gap-2 font-display text-lg font-extrabold">
                       {k.userName}
                       <AccountBadge status={k.account?.status} />
+                      {k.method === 'DIGILOCKER' && <Badge tone="lime">DigiLocker</Badge>}
+                      {k.checks?.autoApproved && <Badge tone="sky">Auto-approved</Badge>}
                     </p>
-                    <p className="text-sm text-ink-soft">
-                      {k.userPhone ?? (k.account?.deletedPhone ? `${k.account.deletedPhone} (deleted)` : '—')} · {cityBySlug(k.companion?.city ?? '')?.name} · age {age ?? '?'}{' '}
-                      {age !== null && age < 18 && <b className="text-danger">UNDER 18</b>}
+                    <p className="text-sm sm:truncate">
+                      🪪 {k.legalName ? <b>{k.legalName}</b> : <span className="text-ink-mute">no full name typed</span>}
+                      <span className="text-ink-soft">
+                        {' '}
+                        · age {age ?? '?'} · {cityBySlug(k.companion?.city ?? '')?.name ?? '—'} · {humanize(k.idType)} …{k.idLast4}
+                      </span>
+                      {age !== null && age < 18 && <b className="ml-1 text-danger">UNDER 18</b>}
                     </p>
-                    <p className="text-sm">“{k.companion?.headline}”</p>
-                    <p className="mt-2 inline-block rounded-chunky border-2 border-ink bg-sunny-soft px-2.5 py-1 text-sm">
-                      🪪 Name on ID (typed): {k.legalName ? <b>{k.legalName}</b> : <span className="text-ink-mute">not given — compare with the profile name</span>}
-                    </p>
-                    <p className="mt-1 text-xs text-ink-mute">
-                      {humanize(k.idType)} ending {k.idLast4} · submitted {dt(k.createdAt)}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge tone={k.method === 'DIGILOCKER' ? 'lime' : 'white'}>{k.method === 'DIGILOCKER' ? '🪪 Aadhaar via DigiLocker' : '📎 Uploaded ID'}</Badge>
-                      {k.checks?.autoApproved && <Badge tone="sky">Approved automatically</Badge>}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-mute">
+                      <span>{dt(k.createdAt)}</span>
+                      {k.fee?.paidAt && <span>· {k.fee.refundedAt ? 'fee refunded' : `fee paid ${formatINR(k.fee.paidAmount ?? 0)}`}</span>}
+                      {k.checks?.flags.map((f) => (
+                        <span key={f} className={`rounded-full px-2 py-0.5 font-bold ${FLAG[f].serious ? 'bg-danger text-white' : 'bg-sunny-soft text-ink'}`}>
+                          ⚠️ {FLAG[f].short ?? f}
+                        </span>
+                      ))}
                     </div>
-                    {k.fee?.paidAt && (
-                      <Badge tone={k.fee.refundedAt ? 'white' : 'lime'} className="mt-2">
-                        {k.fee.refundedAt ? `Fee ${formatINR(k.fee.paidAmount ?? 0)} refunded` : `Registration fee paid · ${formatINR(k.fee.paidAmount ?? 0)}`}
-                      </Badge>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {k.status !== 'PENDING' && <StatusBadge status={k.status} />}
+                    <Button size="sm" variant={open[k.id] ? 'white' : 'primary'} onClick={() => setOpen((o) => ({ ...o, [k.id]: !o[k.id] }))}>
+                      {open[k.id] ? 'Close' : k.status === 'PENDING' ? 'Review' : 'Details'}
+                    </Button>
+                    {k.status === 'PENDING' && !open[k.id] && (!k.account || k.account.status === 'ACTIVE') && (
+                      <Button size="sm" variant="white" onClick={() => setReject(k.id)}>
+                        Reject
+                      </Button>
                     )}
                   </div>
-                  <StatusBadge status={k.status} />
                 </div>
+                {open[k.id] && (
+                <div className="mt-4 border-t-2 border-dashed border-ink/15 pt-2">
+                <p className="text-sm text-ink-soft">
+                  {k.userPhone ?? (k.account?.deletedPhone ? `${k.account.deletedPhone} (deleted)` : '—')} · “{k.companion?.headline}”
+                </p>
                 {k.account && k.account.status !== 'ACTIVE' && (
                   <Callout tone="pink" className="mt-3">
                     <b>{k.account.status === 'DELETED' ? `🗑 Account deleted${k.account.deletedAt ? ` on ${dt(k.account.deletedAt)}` : ''}` : `This account is ${k.account.status.toLowerCase()}`}</b> —
@@ -157,7 +179,7 @@ export default function KycPage() {
                   <figure>
                     <figcaption className="mb-1 text-xs font-bold uppercase">Live selfie</figcaption>
                     <a href={k.selfieUrl} target="_blank" rel="noreferrer">
-                      <img src={k.selfieUrl} alt="Selfie" className="max-h-72 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
+                      <img src={k.selfieUrl} alt="Selfie" className="max-h-56 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
                     </a>
                   </figure>
                 </div>
@@ -203,12 +225,17 @@ export default function KycPage() {
                     </>
                   )
                 )}
+                </div>
+                )}
               </Card>
             );
           })}
           <Pager page={data.page} total={data.total} pageSize={data.pageSize} onPage={setPage} />
         </div>
       )}
+      <Modal open={!!zoom} onClose={() => setZoom(null)} title={zoom?.label ?? ''}>
+        {zoom && <img src={zoom.url} alt={zoom.label} className="max-h-[75vh] w-full rounded-chunky border-3 border-ink bg-paper object-contain" />}
+      </Modal>
       <Modal open={!!reject} onClose={() => { setReject(null); setRefundFee(false); }} title="Reject verification" footer={<Button variant="danger" loading={busy === reject} disabled={note.trim().length < 3} onClick={() => decide(reject!, false)}>Reject</Button>}>
         <Field label="Reason (sent to the companion)">
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="The ID photo is blurry — please upload a clearer image with all corners visible." />
@@ -225,6 +252,21 @@ export default function KycPage() {
   );
 }
 
+/** Stamp-sized preview; click to see it full size (PDFs open in a new tab). */
+function Thumb({ url, label, onZoom }: { url: string; label: string; onZoom: (z: { url: string; label: string }) => void }) {
+  const pdf = /\.pdf(\?|$)/i.test(url);
+  const cls = 'flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-ink bg-paper transition hover:scale-105';
+  return pdf ? (
+    <a href={url} target="_blank" rel="noreferrer" title={`${label} (PDF)`} className={`${cls} text-xs font-bold`}>
+      📄 PDF
+    </a>
+  ) : (
+    <button type="button" title={label} onClick={() => onZoom({ url, label })} className={cls}>
+      <img src={url} alt={label} className="h-full w-full object-cover" />
+    </button>
+  );
+}
+
 /** An uploaded ID side: images inline, PDFs as a link (a browser can't show a PDF in an <img>). */
 function Doc({ url, label }: { url: string; label: string }) {
   const pdf = /\.pdf(\?|$)/i.test(url);
@@ -235,7 +277,7 @@ function Doc({ url, label }: { url: string; label: string }) {
         {pdf ? (
           <span className="flex h-40 items-center justify-center rounded-chunky border-3 border-ink bg-paper font-bold underline">📄 Open PDF</span>
         ) : (
-          <img src={url} alt={label} className="max-h-72 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
+          <img src={url} alt={label} className="max-h-56 w-full rounded-chunky border-3 border-ink bg-paper object-contain" />
         )}
       </a>
     </figure>
