@@ -32,6 +32,11 @@ export default function KycPage() {
   const [dlError, setDlError] = useState<string | null>(null);
   const [idType, setIdType] = useState<string>('AADHAAR');
   const [last4, setLast4] = useState('');
+  const [legalName, setLegalName] = useState('');
+  // DigiLocker already has the name from the government record
+  useEffect(() => {
+    if (identity?.name) setLegalName((n) => n || identity.name || '');
+  }, [identity]);
   const [idDoc, setIdDoc] = useState<File | null>(null);
   const [idDocBack, setIdDocBack] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<Blob | null>(null);
@@ -123,7 +128,8 @@ export default function KycPage() {
   // a single PDF can hold both sides
   const frontIsPdf = idDoc?.type === 'application/pdf';
   const needsBack = twoSided && !frontIsPdf;
-  const ready = mode === 'digilocker' ? !!identity && !!selfie : !!idDoc && (!needsBack || !!idDocBack) && !!selfie && last4.length === 4;
+  const nameOk = legalName.trim().length >= 2;
+  const ready = nameOk && (mode === 'digilocker' ? !!identity && !!selfie : !!idDoc && (!needsBack || !!idDocBack) && !!selfie && last4.length === 4);
 
   const submit = async () => {
     if (!ready || !selfie) return;
@@ -136,8 +142,8 @@ export default function KycPage() {
       const photo = new File([selfie], 'selfie.jpg', { type: 'image/jpeg' });
       const k =
         mode === 'digilocker'
-          ? await api.companion.submitKyc({ method: 'DIGILOCKER', selfie: photo })
-          : await api.companion.submitKyc({ idType, idLast4: last4, idDoc: idDoc!, idDocBack: twoSided && idDocBack ? idDocBack : undefined, selfie: photo });
+          ? await api.companion.submitKyc({ method: 'DIGILOCKER', legalName: legalName.trim(), selfie: photo })
+          : await api.companion.submitKyc({ idType, idLast4: last4, legalName: legalName.trim(), idDoc: idDoc!, idDocBack: twoSided && idDocBack ? idDocBack : undefined, selfie: photo });
       await refresh();
       toast(k.status === 'APPROVED' ? 'You’re verified ✅ and live!' : 'Submitted! We’ll review within 24h');
       router.push('/companion/dashboard');
@@ -234,6 +240,15 @@ export default function KycPage() {
             )}
           </section>
         )}
+
+        <section>
+          <Field
+            label="Your full name, exactly as on your ID"
+            hint={`Only our verification team sees this. Members still see “${user?.name?.split(' ')[0] ?? 'your profile name'}”.`}
+          >
+            <Input value={legalName} onChange={(e) => setLegalName(e.target.value.slice(0, 100))} placeholder="e.g. Venkata Ravi Shankar Iyer" autoComplete="name" />
+          </Field>
+        </section>
 
         <section>
           <p className="mb-1.5 font-display text-sm font-bold">{mode === 'digilocker' ? '2 · Live selfie' : 'Live selfie'}</p>

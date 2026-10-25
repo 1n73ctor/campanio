@@ -149,6 +149,8 @@ model KycSubmission {
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   idType         String
   idLast4        String
+  /// full name exactly as on the ID, typed by the applicant (their profile name can be a short name) — admins only
+  legalName      String?
   // MANUAL: the companion uploaded a photo of their ID. DIGILOCKER: idDocPath is the photo on their Aadhaar record.
   method         String    @default("MANUAL")
   idDocPath      String

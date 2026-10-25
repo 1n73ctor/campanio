@@ -14,7 +14,7 @@ const FLAG: Record<KycFlag, { text: string; serious: boolean }> = {
   FACE_MISMATCH: { text: 'Selfie doesn’t look like the ID photo', serious: true },
   LIVENESS_FAILED: { text: 'Selfie may not be a live person (photo of a photo, screen or mask?)', serious: true },
   DUPLICATE_IDENTITY: { text: 'Same Aadhaar is already on another account', serious: false },
-  NAME_MISMATCH: { text: 'Profile name doesn’t match the name on Aadhaar', serious: false },
+  NAME_MISMATCH: { text: 'The name they typed doesn’t match the name on Aadhaar', serious: false },
   DOB_MISMATCH: { text: 'Profile date of birth differs from Aadhaar', serious: false },
   ID_PHOTO_NOT_COMPARED: { text: 'ID photo couldn’t be compared automatically (PDF or unclear) — compare by eye', serious: false },
   CHECKS_UNAVAILABLE: { text: 'Automatic checks didn’t run (verification service unreachable) — review by eye', serious: false },
@@ -125,6 +125,9 @@ export default function KycPage() {
                       {age !== null && age < 18 && <b className="text-danger">UNDER 18</b>}
                     </p>
                     <p className="text-sm">“{k.companion?.headline}”</p>
+                    <p className="mt-2 inline-block rounded-chunky border-2 border-ink bg-sunny-soft px-2.5 py-1 text-sm">
+                      🪪 Name on ID (typed): {k.legalName ? <b>{k.legalName}</b> : <span className="text-ink-mute">not given — compare with the profile name</span>}
+                    </p>
                     <p className="mt-1 text-xs text-ink-mute">
                       {humanize(k.idType)} ending {k.idLast4} · submitted {dt(k.createdAt)}
                     </p>
@@ -240,7 +243,7 @@ function Doc({ url, label }: { url: string; label: string }) {
 }
 
 const CHECKS: [string, string][] = [
-  ['name', 'Name on the ID matches their profile name'],
+  ['name', 'Name on the ID matches the name they typed (profile name can be a short name)'],
   ['dob', 'Date of birth matches, and they’re 18+'],
   ['gender', 'Gender matches (it decides women-only bookings)'],
   ['face', 'The selfie is the same person as the ID photo'],

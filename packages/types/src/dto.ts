@@ -188,6 +188,8 @@ export interface KycSubmissionDto {
   reviewedAt: string | null;
   /** registration fee status of the applicant (admin views only) */
   fee?: CompanionFeeAdminDto;
+  /** full name as on the ID, typed by the applicant (admin views only) */
+  legalName?: string | null;
   /** automatic check results (admin views only — never shown to the applicant) */
   checks?: KycChecksDto;
 }

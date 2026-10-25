@@ -192,7 +192,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
 
   async submit(
     user: User,
-    input: { method: 'MANUAL' | 'DIGILOCKER'; idType?: string; idLast4?: string; idDoc: Upload; idDocBack?: Upload; selfie: Upload },
+    input: { method: 'MANUAL' | 'DIGILOCKER'; idType?: string; idLast4?: string; legalName: string; idDoc: Upload; idDocBack?: Upload; selfie: Upload },
   ): Promise<KycSubmissionDto> {
     await this.assertCanSubmit(user);
     const selfie = input.selfie?.buffer;
@@ -205,7 +205,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
       if (!s) throw new BadRequestException('Verify your Aadhaar with DigiLocker first (it stays valid for 2 hours)');
       const checks = await this.faceChecks(selfie, s.photoPath ? readPrivateDoc(s.photoPath) : null);
       const identityHash = hashIdentity(s.name!, s.dob ? s.dob.toISOString().slice(0, 10) : String(s.birthYear), s.last4!);
-      const flags = [...checks.flags, ...this.profileFlags(user, s), ...(await this.duplicateFlags(identityHash, user.id))];
+      const flags = [...checks.flags, ...this.profileFlags(user, s, input.legalName), ...(await this.duplicateFlags(identityHash, user.id))];
       // the sandbox "verifies" made-up identities, so a person always reviews what it produces
       const auto =
         verificationMode() !== 'sandbox' &&
@@ -230,6 +230,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
             idLast4: s.last4!,
             idDocPath: s.photoPath ?? selfiePath, // no Aadhaar photo is rare; the reviewer sees ID_PHOTO_NOT_COMPARED
             selfiePath,
+            legalName: input.legalName,
             verifiedName: s.name,
             verifiedDob: s.dob,
             verifiedGender: s.gender,
@@ -283,6 +284,7 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
           method: 'MANUAL',
           idType: input.idType,
           idLast4: input.idLast4.toUpperCase(),
+          legalName: input.legalName,
           idDocPath,
           idDocBackPath,
           selfiePath,
@@ -351,11 +353,13 @@ export class KycService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** The profile has to describe the same person as the government record. */
-  private profileFlags(user: User, s: DigilockerSession): KycFlag[] {
+  private profileFlags(user: User, s: DigilockerSession, legalName?: string): KycFlag[] {
     const flags: KycFlag[] = [];
     // matters most for women-only bookings: they rely on the companion's gender being real
     if ((user.gender === 'FEMALE' && s.gender === 'M') || (user.gender === 'MALE' && s.gender === 'F')) flags.push('GENDER_MISMATCH');
-    if (user.name && !namesOverlap(user.name, s.name ?? '')) flags.push('NAME_MISMATCH');
+    // the full name they typed from their ID; the profile name can be a short name or nickname
+    const name = legalName || user.name;
+    if (name && !namesOverlap(name, s.name ?? '')) flags.push('NAME_MISMATCH');
     if (user.dob && (s.dob ? user.dob.toISOString().slice(0, 10) !== s.dob.toISOString().slice(0, 10) : user.dob.getUTCFullYear() !== s.birthYear))
       flags.push('DOB_MISMATCH');
     return flags;

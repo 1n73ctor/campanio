@@ -247,6 +247,7 @@ export function toKycDto(k: KycSubmission & { user: User }, forAdmin = false): K
     reviewedAt: iso(k.reviewedAt),
     ...(forAdmin
       ? {
+          legalName: k.legalName,
           checks: {
             verified:
               k.method === 'DIGILOCKER'

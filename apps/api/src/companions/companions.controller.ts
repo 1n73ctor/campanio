@@ -137,6 +137,6 @@ export class CompanionSelfController {
     @Body() dto: KycDto,
     @UploadedFiles() files: { idDoc?: Express.Multer.File[]; idDocBack?: Express.Multer.File[]; selfie?: Express.Multer.File[] },
   ) {
-    return this.kyc.submit(user, { method: dto.method ?? 'MANUAL', idType: dto.idType, idLast4: dto.idLast4, idDoc: files?.idDoc?.[0], idDocBack: files?.idDocBack?.[0], selfie: files?.selfie?.[0] });
+    return this.kyc.submit(user, { method: dto.method ?? 'MANUAL', idType: dto.idType, idLast4: dto.idLast4, legalName: dto.legalName, idDoc: files?.idDoc?.[0], idDocBack: files?.idDocBack?.[0], selfie: files?.selfie?.[0] });
   }
 }

@@ -72,4 +72,10 @@ export class KycDto {
   @IsString()
   @Matches(/^[A-Za-z0-9]{4}$/, { message: 'Enter the last 4 characters of your ID' })
   idLast4?: string;
+  /** full name exactly as on the ID (the profile name members see can be a short name or nickname) */
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value))
+  @Matches(/^[\p{L}\p{M} .'-]+$/u, { message: 'Your name can only have letters, spaces, dots, apostrophes and hyphens' })
+  @Length(2, 100, { message: 'Enter your full name as it appears on your ID' })
+  @IsString({ message: 'Enter your full name as it appears on your ID' })
+  legalName: string;
 }

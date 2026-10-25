@@ -292,7 +292,11 @@ export function createApiClient(opts: ClientOptions) {
       removePhoto: (index: number) => del<CompanionProfileDto>(`/companion/photos/${index}`),
       /** manual: photo of an ID + selfie. DIGILOCKER: selfie only — the Aadhaar details come from DigiLocker. */
       /** two-sided IDs (Aadhaar, driving licence, voter ID) also send `idDocBack` */
-      submitKyc: (input: { method?: 'MANUAL'; idType: string; idLast4: string; idDoc: File | Blob; idDocBack?: File | Blob; selfie: File | Blob } | { method: 'DIGILOCKER'; selfie: File | Blob }) =>
+      submitKyc: (
+        input:
+          | { method?: 'MANUAL'; idType: string; idLast4: string; legalName: string; idDoc: File | Blob; idDocBack?: File | Blob; selfie: File | Blob }
+          | { method: 'DIGILOCKER'; legalName: string; selfie: File | Blob },
+      ) =>
         request<KycSubmissionDto>('POST', '/companion/kyc', form(Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)) as Record<string, string | Blob>)),
       kycOptions: () => get<KycOptionsDto>('/companion/kyc/options'),
       /** go to `url`; DigiLocker sends the companion back to /companion/kyc?dl=1 */
