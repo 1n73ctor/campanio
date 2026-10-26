@@ -23,7 +23,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ensureBlurred, publicUrl, storePublicImage, uploadLimits, kycUploadLimits } from '../files/uploads';
 import { KycService } from '../kyc/kyc.service';
 import { CompanionsService } from './companions.service';
-import { ApplyDto, AvailabilityDto, KycDto, ListingDto, SearchDto, UpdateProfileDto } from './companions.dto';
+import { ApplyDto, AvailabilityDto, KycDto, ListingDto, PhotoOrderDto, SearchDto, UpdateProfileDto } from './companions.dto';
 import { CompanionFeeService } from './companion-fee.service';
 
 @ApiTags('companions')
@@ -92,6 +92,16 @@ export class CompanionSelfController {
     // ⭐ Premium hosts: the blurred copy members see before unlocking
     await ensureBlurred(url);
     return this.svc.addPhoto(user.id, url);
+  }
+
+  @Put('photos/order')
+  reorderPhotos(@CurrentUser() user: User, @Body() dto: PhotoOrderDto) {
+    return this.svc.reorderPhotos(user.id, dto.photos);
+  }
+
+  @Post('photos/:index/profile')
+  useAsProfilePhoto(@CurrentUser() user: User, @Param('index', ParseIntPipe) index: number) {
+    return this.svc.useAsProfilePhoto(user.id, index);
   }
 
   @Delete('photos/:index')

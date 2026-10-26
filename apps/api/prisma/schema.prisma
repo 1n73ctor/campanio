@@ -30,6 +30,8 @@ model User {
   city                   String?
   bio                    String?
   avatarUrl              String?
+  /// the profile picture is the host's first photo (they never uploaded their own): it follows the photo order
+  avatarAuto             Boolean                 @default(false)
   role                   String                  @default("USER")
   status                 String                  @default("ACTIVE")
   statusReason           String?

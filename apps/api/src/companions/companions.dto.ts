@@ -79,3 +79,7 @@ export class KycDto {
   @IsString({ message: 'Enter your full name as it appears on your ID' })
   legalName: string;
 }
+
+export class PhotoOrderDto {
+  @IsArray() @ArrayMaxSize(6) @IsString({ each: true }) photos: string[];
+}

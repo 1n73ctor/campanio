@@ -189,13 +189,40 @@ export class CompanionsService {
     const photos = JSON.parse(p.photos) as string[];
     if (photos.length >= 6) throw new BadRequestException('Up to 6 photos');
     photos.push(url);
-    return toCompanionProfileDto(await this.prisma.companionProfile.update({ where: { userId }, data: { photos: JSON.stringify(photos) } }));
+    return this.savePhotos(userId, photos);
   }
 
   async removePhoto(userId: string, index: number) {
     const p = await this.own(userId);
-    const photos = (JSON.parse(p.photos) as string[]).filter((_, i) => i !== index);
-    return toCompanionProfileDto(await this.prisma.companionProfile.update({ where: { userId }, data: { photos: JSON.stringify(photos) } }));
+    return this.savePhotos(userId, (JSON.parse(p.photos) as string[]).filter((_, i) => i !== index));
+  }
+
+  /** New order for the host's photos — must be exactly the photos they already have. */
+  async reorderPhotos(userId: string, order: string[]) {
+    const p = await this.own(userId);
+    const photos = JSON.parse(p.photos) as string[];
+    if (order.length !== photos.length || new Set(order).size !== order.length || !order.every((u) => photos.includes(u)))
+      throw new BadRequestException('Those photos don’t match your profile — refresh and try again');
+    return this.savePhotos(userId, order);
+  }
+
+  /** "Use as profile photo": one of their host photos becomes the profile picture (and stops following the order). */
+  async useAsProfilePhoto(userId: string, index: number) {
+    const p = await this.own(userId);
+    const url = (JSON.parse(p.photos) as string[])[index];
+    if (!url) throw new BadRequestException('Photo not found');
+    await this.prisma.user.update({ where: { id: userId }, data: { avatarUrl: url, avatarAuto: false } });
+    return toCompanionProfileDto(p);
+  }
+
+  /** Saves the photos; a host without their own profile picture gets their first photo as it. */
+  private async savePhotos(userId: string, photos: string[]) {
+    const [profile] = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { avatarUrl: true, avatarAuto: true } });
+      if (!u.avatarUrl || u.avatarAuto) await tx.user.update({ where: { id: userId }, data: { avatarUrl: photos[0] ?? null, avatarAuto: !!photos[0] } });
+      return [await tx.companionProfile.update({ where: { userId }, data: { photos: JSON.stringify(photos) } })];
+    });
+    return toCompanionProfileDto(profile);
   }
 
   async dashboard(user: User): Promise<CompanionDashboardDto> {

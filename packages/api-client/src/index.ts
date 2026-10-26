@@ -290,6 +290,8 @@ export function createApiClient(opts: ClientOptions) {
       setListed: (listed: boolean) => post<CompanionProfileDto>('/companion/listing', { listed }),
       addPhoto: (file: File | Blob) => request<CompanionProfileDto>('POST', '/companion/photos', form({ file })),
       removePhoto: (index: number) => del<CompanionProfileDto>(`/companion/photos/${index}`),
+      reorderPhotos: (photos: string[]) => request<CompanionProfileDto>('PUT', '/companion/photos/order', { photos }),
+      useAsProfilePhoto: (index: number) => post<CompanionProfileDto>(`/companion/photos/${index}/profile`),
       /** manual: photo of an ID + selfie. DIGILOCKER: selfie only — the Aadhaar details come from DigiLocker. */
       /** two-sided IDs (Aadhaar, driving licence, voter ID) also send `idDocBack` */
       submitKyc: (

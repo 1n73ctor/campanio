@@ -5,6 +5,7 @@ import { WEEKDAYS, nextSlot, type ApplyCompanionInput, type Availability } from 
 import { Button, Card, Input } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
+import { PhotoOrder } from '@/components/photo-order';
 import { CompanionProfileFields, profileValid } from '@/components/profile-form';
 import { useToast } from '@/components/toast';
 import { errMsg } from '@/lib/format';
@@ -58,26 +59,27 @@ export default function CompanionProfilePage() {
 
       <Card className="space-y-4 p-6">
         <h2 className="font-display text-xl font-extrabold">Photos</h2>
-        <p className="text-sm text-ink-soft">Up to 6. Clear, recent, face visible. No group shots or filters.</p>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {photos.map((p, i) => (
-            <div key={p} className="relative">
-              <img src={p} alt="" className="aspect-square w-full rounded-chunky border-3 border-ink object-cover" />
-              <button
-                aria-label="Remove photo"
-                className="absolute -right-2 -top-2 h-7 w-7 rounded-full border-2 border-ink bg-white font-bold"
-                onClick={() => run('photo', async () => setPhotos((await api.companion.removePhoto(i)).photos), 'Photo removed')}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        <p className="text-sm text-ink-soft">
+          Up to 6. Clear, recent, face visible. No group shots or filters. <b>Drag photos</b> (or use ◀ ▶) to change the order — the first one shows first on
+          your profile{user.avatarUrl ? '' : ' and becomes your profile picture'}.
+        </p>
+        <PhotoOrder
+          photos={photos}
+          profileUrl={user.avatarUrl}
+          busy={busy === 'photo'}
+          onOrder={(next) => {
+            setPhotos(next); // show it straight away
+            run('photo', async () => setPhotos((await api.companion.reorderPhotos(next)).photos), 'Order saved');
+          }}
+          onRemove={(i) => run('photo', async () => setPhotos((await api.companion.removePhoto(i)).photos), 'Photo removed')}
+          onMakeProfile={(i) => run('photo', () => api.companion.useAsProfilePhoto(i), 'Profile photo updated')}
+        >
           {photos.length < 6 && (
             <button onClick={() => fileRef.current?.click()} className="flex aspect-square items-center justify-center rounded-chunky border-3 border-dashed border-ink/50 text-3xl">
               +
             </button>
           )}
-        </div>
+        </PhotoOrder>
         <input
           ref={fileRef}
           type="file"
