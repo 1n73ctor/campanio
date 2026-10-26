@@ -10,7 +10,7 @@ import { SITE_URL } from '@/lib/env';
 
 /** Shared template for /explore/[category] and /explore/[category]/[city] SEO landing pages. */
 export function Landing({ cat, city, data }: { cat: Category; city?: City; data: Paginated<CompanionCardDto> }) {
-  const copy = landingCopy(cat, city);
+  const copy = landingCopy(cat, city, data.items.map((c) => c.hourlyRate));
   const path = `/explore/${cat.slug}${city ? `/${city.slug}` : ''}`;
   return (
     <>
@@ -52,6 +52,29 @@ export function Landing({ cat, city, data }: { cat: Category; city?: City; data:
         <div className="mt-8">
           <Results data={data} basePath="/explore" params={{ category: cat.slug, city: city?.slug }} />
         </div>
+
+        {city && (copy.spots || copy.guide) && (
+          <section className="mt-14 max-w-3xl space-y-6">
+            {copy.spots && (
+              <div>
+                <h2 className="mb-2 text-2xl font-extrabold">
+                  Where people meet for {cat.name.toLowerCase()} in {city.name}
+                </h2>
+                <p className="text-lg leading-relaxed text-ink-soft">{copy.spots}</p>
+              </div>
+            )}
+            {copy.guide && (
+              <div>
+                <h2 className="mb-2 text-2xl font-extrabold">Meeting people in {city.name}</h2>
+                <div className="space-y-3 text-lg leading-relaxed text-ink-soft">
+                  {copy.guide.intro.map((p) => (
+                    <p key={p.slice(0, 24)}>{p}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="mt-16 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
           <div>

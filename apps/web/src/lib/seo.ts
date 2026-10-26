@@ -1,7 +1,9 @@
-import type { Category, City } from '@companio/types';
+import { formatINR, type Category, type City } from '@companio/types';
+import { CITY_GUIDES } from './city-guides';
 
 /** Unique copy for each category × city landing page so they don't read as duplicate content. */
-export function landingCopy(cat: Category, city?: City) {
+/** `rates`: hourly rates of the hosts listed on the page, for a real price range. */
+export function landingCopy(cat: Category, city?: City, rates: number[] = []) {
   const where = city ? ` in ${city.name}` : '';
   const title = city ? `Find a ${cat.noun} in ${city.name}` : `Find a ${cat.noun} near you`;
   const description = city
@@ -10,7 +12,12 @@ export function landingCopy(cat: Category, city?: City) {
   const faqs = [
     {
       q: `How much does a ${cat.noun}${where} cost?`,
-      a: `Hosts set their own hourly rate — most${where} charge between ₹299 and ₹999 per hour. You also pay a small connection fee (plus GST) that keeps the platform safe. You'll see the full breakdown before paying.`,
+      a:
+        rates.length > 0
+          ? `Hosts set their own hourly rate. Right now, ${cat.name.toLowerCase()} hosts${where} on Companio charge ${
+              Math.min(...rates) === Math.max(...rates) ? formatINR(rates[0]) : `between ${formatINR(Math.min(...rates))} and ${formatINR(Math.max(...rates))}`
+            } per hour. You also pay a small connection fee (plus GST) that keeps the platform safe. You'll see the full breakdown before paying.`
+          : `Hosts set their own hourly rate — most${where} charge between ₹299 and ₹999 per hour. You also pay a small connection fee (plus GST) that keeps the platform safe. You'll see the full breakdown before paying.`,
     },
     {
       q: `Is it safe to meet a ${cat.noun} through Companio?`,
@@ -25,5 +32,6 @@ export function landingCopy(cat: Category, city?: City) {
       a: 'Your payment sits in escrow until the session happens. If the host declines, cancels or never starts the session, you get a full refund to your wallet automatically.',
     },
   ];
-  return { title, description, faqs };
+  const guide = city ? CITY_GUIDES[city.slug] : undefined;
+  return { title, description, faqs: [...faqs, ...(guide?.faqs ?? [])], guide, spots: guide?.spots[cat.slug] };
 }

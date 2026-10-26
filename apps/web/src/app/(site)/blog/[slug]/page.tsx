@@ -30,9 +30,23 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       <p className="mt-2 text-sm text-ink-mute">{fmtDate(p.date)}</p>
       <div className="mt-8">
         <Prose>
-          {p.body.map((para, i) => (
-            <p key={i}>{para}</p>
-          ))}
+          {p.body.map((b, i) =>
+            typeof b === 'string' ? (
+              <p key={i}>
+                <Inline text={b} />
+              </p>
+            ) : 'h' in b ? (
+              <h2 key={i}>{b.h}</h2>
+            ) : (
+              <ul key={i} className="space-y-1.5">
+                {b.ul.map((li) => (
+                  <li key={li}>
+                    <Inline text={li} />
+                  </li>
+                ))}
+              </ul>
+            ),
+          )}
         </Prose>
       </div>
       <Link href="/explore" className={buttonClass('primary', 'lg', 'mt-10')}>
@@ -40,5 +54,26 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       </Link>
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: p.title, datePublished: p.date, description: p.excerpt, url: `${SITE_URL}/blog/${p.slug}` }} />
     </article>
+  );
+}
+
+/** **bold** and [text](/internal/link) inside a paragraph. */
+function Inline({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const bold = part.match(/^\*\*(.+)\*\*$/);
+        if (bold) return <strong key={i}>{bold[1]}</strong>;
+        const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (link)
+          return (
+            <Link key={i} href={link[2]} className="font-semibold text-ink underline">
+              {link[1]}
+            </Link>
+          );
+        return part;
+      })}
+    </>
   );
 }

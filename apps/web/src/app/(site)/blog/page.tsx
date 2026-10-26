@@ -12,7 +12,7 @@ export default function Blog() {
     <div className="container-x max-w-5xl">
       <PageHeader eyebrow="Blog" title="Stories & guides" />
       <div className="grid gap-5 md:grid-cols-3">
-        {POSTS.map((p) => (
+        {[...POSTS].sort((a, b) => b.date.localeCompare(a.date)).map((p) => (
           <Link key={p.slug} href={`/blog/${p.slug}`}>
             <Card interactive tone={p.tone} className="flex h-full flex-col p-5">
               <span className="text-4xl">{p.emoji}</span>
