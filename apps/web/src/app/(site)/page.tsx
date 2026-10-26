@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CATEGORIES, CITIES, POPULAR_CITIES, formatINR, FEATURED_CATEGORIES } from '@companio/types';
 import { Avatar, Badge, Card, buttonClass, cn, toneSolid } from '@companio/ui';
@@ -8,6 +9,14 @@ import { serverApi, safe } from '@/lib/server-api';
 import { SITE_URL } from '@/lib/env';
 
 export const revalidate = 300;
+
+// what Google shows for the home page (the page itself is unchanged)
+export const metadata: Metadata = {
+  title: { absolute: 'Companio — Verified local buddies for gym, movies & city walks in India' },
+  description:
+    'Find an ID-verified local buddy for the gym, movies, coffee, city walks, travel and events across India. 100% platonic, 18+, safety-first — escrow payments, live location and SOS.',
+  alternates: { canonical: '/' },
+};
 
 const STEPS = [
   { n: '01', title: 'Pick your vibe', body: 'Browse verified hosts by activity, city, price and language. Read real reviews.', tone: 'pink' as const },
@@ -47,14 +56,28 @@ export default async function Home() {
   return (
     <>
       <JsonLd
-        data={{
-          '@context': 'https://schema.org',
-          '@type': 'Organization',
-          name: 'Companio',
-          url: SITE_URL,
-          logo: `${SITE_URL}/pwa-icon/512`,
-          sameAs: [],
-        }}
+        data={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'Companio',
+            alternateName: ['Companio India', 'getcompanio'],
+            url: SITE_URL,
+            logo: `${SITE_URL}/pwa-icon/512`,
+            description: 'Verified local hosts for platonic activities — gym, movies, coffee, city walks, travel and events — across India.',
+            areaServed: { '@type': 'Country', name: 'India' },
+            email: 'safety@getcompanio.in',
+            sameAs: [],
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Companio',
+            alternateName: ['Companio India', 'getcompanio'],
+            url: SITE_URL,
+            potentialAction: { '@type': 'SearchAction', target: `${SITE_URL}/explore?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+          },
+        ]}
       />
       {/* HERO */}
       <section className="dots relative overflow-x-clip border-b-3 border-ink">

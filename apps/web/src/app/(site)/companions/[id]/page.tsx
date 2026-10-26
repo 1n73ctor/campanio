@@ -28,9 +28,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!c) return { title: 'Host not found' };
   const first = c.name.split(' ')[0];
   const city = cityBySlug(c.city)?.name;
+  // "Coffee Chat, Shopping Buddy & Movie Buddy" — the activities people search for
+  const acts = c.categories.map((s) => CATEGORIES.find((x) => x.slug === s)?.name).filter((x): x is string => !!x).slice(0, 3);
+  const actList = acts.length > 1 ? `${acts.slice(0, -1).join(', ')} & ${acts.at(-1)}` : (acts[0] ?? 'Local host');
+  const reviews = c.ratingCount ? ` ${c.ratingAvg.toFixed(1)}★ from ${c.ratingCount} review${c.ratingCount === 1 ? '' : 's'}.` : '';
   return {
-    title: `${first} — ${c.headline}`,
-    description: `Meet ${first}, a verified local host in ${city}, from ${formatINR(c.hourlyRate)}/hr. ${c.ratingCount} reviews, ${c.ratingAvg.toFixed(1)}★.`,
+    title: `${first} — ${actList} in ${city}`,
+    description: `Meet ${first} in ${city}: ID-verified ${actList}, from ${formatINR(c.hourlyRate)}/hr.${reviews} 100% platonic, public places, escrow payments and SOS.`,
     alternates: { canonical: `/companions/${c.id}` },
     openGraph: { title: `${first} on Companio`, description: c.headline, images: c.avatarUrl ? [c.avatarUrl] : undefined },
   };
@@ -180,8 +184,10 @@ export default async function CompanionPage({ params }: { params: Promise<{ id: 
           '@context': 'https://schema.org',
           '@type': 'Service',
           name: `${cats[0]?.name ?? 'Companion'} — ${first}`,
+          serviceType: cats.map((x) => x!.name).join(', '),
+          description: c.headline,
           areaServed: city?.name,
-          provider: { '@type': 'Person', name: first },
+          provider: { '@type': 'Person', name: first, ...(c.avatarUrl ? { image: c.avatarUrl } : {}), ...(city ? { address: { '@type': 'PostalAddress', addressLocality: city.name, addressCountry: 'IN' } } : {}) },
           offers: { '@type': 'Offer', price: c.hourlyRate, priceCurrency: 'INR', url: `${SITE_URL}/companions/${c.id}` },
           ...(c.ratingCount ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: c.ratingAvg, reviewCount: c.ratingCount } } : {}),
         }}
