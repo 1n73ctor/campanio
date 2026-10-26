@@ -12,7 +12,7 @@ import { useAdminRealtime } from '@/admin/lib/realtime';
 import { ToastProvider, useToast } from './toast';
 import { Loading } from './ui';
 
-type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'assistantWaiting' | 'newPaidChats'>;
+type Counts = Pick<AdminStatsDto, 'pendingKyc' | 'openDisputes' | 'openReports' | 'activeSos' | 'pendingPayouts' | 'assistantWaiting' | 'newPaidChats' | 'blogDrafts'>;
 
 const NAV: { href: string; label: string; icon: string; count?: keyof Counts; urgent?: boolean }[] = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -28,6 +28,7 @@ const NAV: { href: string; label: string; icon: string; count?: keyof Counts; ur
   { href: '/admin/premium', label: 'Premium hosts', icon: '👑' },
   { href: '/admin/assistant', label: 'Assistant', icon: '🤖', count: 'assistantWaiting', urgent: true },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
+  { href: '/admin/blog', label: 'Blog & city guides', icon: '📝', count: 'blogDrafts' },
   { href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
   { href: '/admin/audit', label: 'Audit log', icon: '🧾' },

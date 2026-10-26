@@ -38,6 +38,13 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   premiumPassPrice: 499,
   premiumLifetimePrice: 999,
   assistantEnabled: 0,
+  // blog: AI drafts a few posts once a week for an admin to review (nothing publishes without a click)
+  blogAutoEnabled: 1,
+  blogDraftsPerWeek: 2,
+  /** day the drafts are written, India time: 1 = Monday … 7 = Sunday */
+  blogDraftDay: 1,
+  /** 0 = Haiku (cheapest), 1 = Sonnet (recommended), 2 = Opus (best) */
+  blogModel: 1,
   maintenanceMode: 0,
 };
 

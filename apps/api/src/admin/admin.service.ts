@@ -59,7 +59,7 @@ export class AdminService {
     const since0 = chatsSince && !Number.isNaN(Date.parse(chatsSince)) ? new Date(chatsSince) : new Date(Date.now() - 24 * 3600_000);
     const since = new Date(Date.now() - 13 * DAY);
     since.setHours(0, 0, 0, 0);
-    const [users, deletedUsers, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, newPaidChats, recentBookings, recentUsers] =
+    const [users, deletedUsers, companions, listed, byStatus, escrows, pendingKyc, openDisputes, openReports, activeSos, pendingPayouts, assistantWaiting, newPaidChats, recentBookings, recentUsers, contentDrafts] =
       await Promise.all([
         this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: { not: 'DELETED' } } }),
         this.prisma.user.count({ where: { role: { not: 'ADMIN' }, status: 'DELETED' } }),
@@ -76,6 +76,7 @@ export class AdminService {
         this.prisma.chatUnlock.count({ where: { createdAt: { gt: since0 } } }),
         this.prisma.booking.findMany({ where: { paidAt: { gte: since } }, select: { paidAt: true, total: true } }),
         this.prisma.user.findMany({ where: { createdAt: { gte: since }, role: { not: 'ADMIN' } }, select: { createdAt: true } }),
+        Promise.all([this.prisma.blogPost.count({ where: { status: 'DRAFT' } }), this.prisma.cityGuide.count({ where: { status: 'DRAFT' } })]),
       ]);
 
     const money = await this.money();
@@ -102,6 +103,8 @@ export class AdminService {
       activeSos,
       pendingPayouts,
       assistantWaiting,
+      blogDrafts: contentDrafts[0] + contentDrafts[1],
+      cityGuideDrafts: contentDrafts[1],
       newPaidChats,
       money,
       series,

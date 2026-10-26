@@ -699,3 +699,42 @@ model PremiumUnlock {
   @@index([userId, createdAt])
   @@index([hostUserId])
 }
+
+/// Blog posts written in the admin panel or drafted by AI (posts that ship with the code live in apps/web/src/lib/blog.ts)
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String
+  emoji       String    @default("📝")
+  tone        String    @default("sky")
+  /// JSON array of blocks: "paragraph" | { h } | { ul: [] } — text may use **bold** and [links](/path)
+  body        String
+  /// DRAFT | PUBLISHED
+  status      String    @default("DRAFT")
+  /// AI | ADMIN
+  source      String    @default("ADMIN")
+  /// the model that wrote an AI draft
+  model       String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+/// Local text for a city's landing pages (overrides the built-in guide in apps/web/src/lib/city-guides.ts)
+model CityGuide {
+  city      String   @id
+  /// JSON: string[]
+  intro     String
+  /// JSON: { q, a }[]
+  faqs      String
+  /// JSON: { [activitySlug]: string }
+  spots     String
+  /// DRAFT | PUBLISHED
+  status    String   @default("DRAFT")
+  source    String   @default("AI")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

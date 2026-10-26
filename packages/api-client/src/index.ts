@@ -53,6 +53,9 @@ import type {
   VerifyPaymentInput,
   WalletDto,
   WalletTxnDto,
+  Block,
+  BlogPostDto,
+  CityGuideDto,
 } from '@companio/types';
 
 export class ApiError extends Error {
@@ -140,6 +143,7 @@ export type AdminBookingDetail = {
   sos: SosAlertDto[];
   locations: { userId: string; lat: number; lng: number; updatedAt: string }[];
 };
+export type PostInput = { title: string; excerpt: string; emoji?: string; tone?: string; slug?: string; body: Block[] };
 export type PremiumKind = 'HOST' | 'PASS_30' | 'LIFETIME';
 export type PremiumOffer = {
   prices: Record<PremiumKind, number>;
@@ -235,6 +239,11 @@ export function createApiClient(opts: ClientOptions) {
       mine: () => get<{ key: string; human: string | null } | null>('/assistant/mine'),
       contact: (key: string, email: string) => post<{ contactEmail: string }>('/assistant/contact', { key, email }),
       human: (key?: string) => post<{ conversationKey: string; summary: string; human: string }>('/assistant/human', { key }),
+    },
+    /** published blog posts and city guides stored in the database */
+    content: {
+      posts: () => get<BlogPostDto[]>('/content/posts'),
+      cityGuides: () => get<CityGuideDto[]>('/content/city-guides'),
     },
     meta: {
       catalog: () => get<{ categories: Category[]; cities: City[]; languages: string[] }>('/meta/catalog'),
@@ -374,6 +383,19 @@ export function createApiClient(opts: ClientOptions) {
       create: (input: CreateReportInput) => post<{ id: string; status: string; message: string }>('/reports', input),
     },
     admin: {
+      content: {
+        posts: (status?: 'DRAFT' | 'PUBLISHED') => get<{ items: BlogPostDto[]; builtIn: { slug: string; title: string; date: string }[] }>('/admin/content/posts', status ? { status } : undefined),
+        createPost: (p: PostInput) => post<BlogPostDto>('/admin/content/posts', p),
+        updatePost: (id: string, p: PostInput) => put<BlogPostDto>(`/admin/content/posts/${id}`, p),
+        draftPost: (topic?: string) => post<BlogPostDto>('/admin/content/posts/draft', { topic }),
+        publishPost: (id: string, published: boolean) => post<BlogPostDto>(`/admin/content/posts/${id}/publish`, { published }),
+        deletePost: (id: string) => del<{ ok: true }>(`/admin/content/posts/${id}`),
+        guides: () => get<{ items: CityGuideDto[]; builtIn: string[]; missing: string[] }>('/admin/content/city-guides'),
+        saveGuide: (city: string, g: { intro: string[]; faqs: { q: string; a: string }[]; spots: Record<string, string> }) => put<CityGuideDto>(`/admin/content/city-guides/${city}`, g),
+        draftGuide: (city: string) => post<CityGuideDto>(`/admin/content/city-guides/${city}/draft`, {}),
+        publishGuide: (city: string, published: boolean) => post<CityGuideDto>(`/admin/content/city-guides/${city}/publish`, { published }),
+        deleteGuide: (city: string) => del<{ ok: true }>(`/admin/content/city-guides/${city}`),
+      },
       stats: (chatsSince?: string) => get<AdminStatsDto>('/admin/stats', chatsSince ? { chatsSince } : undefined),
       users: (q: AdminPage) => get<Paginated<AdminUserDto>>('/admin/users', q),
       user: (id: string) => get<AdminUserDetail>(`/admin/users/${id}`),

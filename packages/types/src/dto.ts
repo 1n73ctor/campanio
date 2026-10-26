@@ -503,6 +503,9 @@ export interface AdminStatsDto {
   pendingPayouts: number;
   /** chat-bubble conversations waiting for a reply from the team */
   assistantWaiting: number;
+  /** blog posts + city guides waiting for an admin to review (the menu badge) */
+  blogDrafts: number;
+  cityGuideDrafts: number;
   /** paid chats unlocked since the admin last opened Paid chats (or in the last 24h) */
   newPaidChats: number;
   /** real money (gateway, not test payments), revenue by source, and what's sitting in members' wallets */
@@ -578,6 +581,13 @@ export interface PlatformSettings {
   premiumLifetimePrice: Rupees;
   /** 1 = the AI support assistant chat bubble is on (needs ANTHROPIC_API_KEY on the server) */
   assistantEnabled: number;
+  /** 1 = AI writes blog drafts every week for review */
+  blogAutoEnabled: number;
+  blogDraftsPerWeek: number;
+  /** 1 = Monday … 7 = Sunday (India time) */
+  blogDraftDay: number;
+  /** 0 = Haiku · 1 = Sonnet · 2 = Opus */
+  blogModel: number;
   /** 1 = members add coins by paying the platform's UPI QR and an admin approves it; 0 = through the payment gateway */
   /** 1 = the site is under maintenance: visitors see a "back soon" page and the API serves admins only */
   maintenanceMode: number;

@@ -41,6 +41,6 @@ export default async function CategoryCityPage({ params }: { params: Promise<Par
   const cat = categoryBySlug(p.category);
   const city = cityBySlug(p.city);
   if (!cat || !city) notFound();
-  const data = (await load(cat.slug, city.slug)) ?? NONE;
-  return <Landing cat={cat} city={city} data={data} />;
+  const [data, guides] = await Promise.all([load(cat.slug, city.slug), safe(serverApi(600).content.cityGuides(), [])]);
+  return <Landing cat={cat} city={city} data={data ?? NONE} guide={guides.find((g) => g.city === city.slug)} />;
 }

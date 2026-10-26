@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { CATEGORIES, CITIES, POPULAR_CITIES, type Category, type City, type CompanionCardDto, type Paginated } from '@companio/types';
+import { CATEGORIES, CITIES, POPULAR_CITIES, type Category, type City, type CityGuide, type CompanionCardDto, type Paginated } from '@companio/types';
 import { Badge, toneSolid, cn } from '@companio/ui';
 import { ExploreFilters } from './explore-filters';
 import { Faq, JsonLd } from './misc';
@@ -9,8 +9,8 @@ import { landingCopy } from '@/lib/seo';
 import { SITE_URL } from '@/lib/env';
 
 /** Shared template for /explore/[category] and /explore/[category]/[city] SEO landing pages. */
-export function Landing({ cat, city, data }: { cat: Category; city?: City; data: Paginated<CompanionCardDto> }) {
-  const copy = landingCopy(cat, city, data.items.map((c) => c.hourlyRate));
+export function Landing({ cat, city, data, guide }: { cat: Category; city?: City; data: Paginated<CompanionCardDto>; guide?: CityGuide }) {
+  const copy = landingCopy(cat, city, data.items.map((c) => c.hourlyRate), guide);
   const path = `/explore/${cat.slug}${city ? `/${city.slug}` : ''}`;
   return (
     <>

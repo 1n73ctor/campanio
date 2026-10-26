@@ -1,9 +1,10 @@
 import { formatINR, type Category, type City } from '@companio/types';
+import type { CityGuide } from '@companio/types';
 import { CITY_GUIDES } from './city-guides';
 
 /** Unique copy for each category × city landing page so they don't read as duplicate content. */
 /** `rates`: hourly rates of the hosts listed on the page, for a real price range. */
-export function landingCopy(cat: Category, city?: City, rates: number[] = []) {
+export function landingCopy(cat: Category, city?: City, rates: number[] = [], stored?: CityGuide) {
   const where = city ? ` in ${city.name}` : '';
   const title = city ? `Find a ${cat.noun} in ${city.name}` : `Find a ${cat.noun} near you`;
   const description = city
@@ -32,6 +33,7 @@ export function landingCopy(cat: Category, city?: City, rates: number[] = []) {
       a: 'Your payment sits in escrow until the session happens. If the host declines, cancels or never starts the session, you get a full refund to your wallet automatically.',
     },
   ];
-  const guide = city ? CITY_GUIDES[city.slug] : undefined;
+  // a guide published from Admin → City guides wins over the built-in one
+  const guide = city ? (stored ?? CITY_GUIDES[city.slug]) : undefined;
   return { title, description, faqs: [...faqs, ...(guide?.faqs ?? [])], guide, spots: guide?.spots[cat.slug] };
 }

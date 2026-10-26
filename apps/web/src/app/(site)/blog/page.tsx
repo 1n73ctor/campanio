@@ -2,17 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card } from '@companio/ui';
 import { PageHeader } from '@/components/misc';
-import { POSTS } from '@/lib/blog';
+import { allPosts } from '@/lib/posts';
 import { fmtDate } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Blog', description: 'Guides on making friends in a new city, safety, and earning as a host.', alternates: { canonical: '/blog' } };
 
-export default function Blog() {
+export const revalidate = 300;
+
+export default async function Blog() {
+  const posts = await allPosts();
   return (
     <div className="container-x max-w-5xl">
       <PageHeader eyebrow="Blog" title="Stories & guides" />
       <div className="grid gap-5 md:grid-cols-3">
-        {[...POSTS].sort((a, b) => b.date.localeCompare(a.date)).map((p) => (
+        {posts.map((p) => (
           <Link key={p.slug} href={`/blog/${p.slug}`}>
             <Card interactive tone={p.tone} className="flex h-full flex-col p-5">
               <span className="text-4xl">{p.emoji}</span>

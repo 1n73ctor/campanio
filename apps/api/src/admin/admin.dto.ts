@@ -116,6 +116,10 @@ export class SettingsDto {
   @IsOptional() @IsInt() @Min(1) @Max(100000) premiumPassPrice?: number;
   @IsOptional() @IsInt() @Min(1) @Max(100000) premiumLifetimePrice?: number;
   @IsOptional() @IsIn([0, 1]) assistantEnabled?: number;
+  @IsOptional() @IsIn([0, 1]) blogAutoEnabled?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(7) blogDraftsPerWeek?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(7) blogDraftDay?: number;
+  @IsOptional() @IsIn([0, 1, 2]) blogModel?: number;
   @IsOptional() @IsIn([0, 1]) maintenanceMode?: number;
 }
 
