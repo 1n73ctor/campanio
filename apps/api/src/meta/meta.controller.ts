@@ -62,4 +62,14 @@ export class MetaController {
     }
     return out;
   }
+
+  /** Live host profiles (listed, verified, active) for the website's sitemap. */
+  @Get('hosts')
+  async hosts() {
+    const rows = await this.prisma.companionProfile.findMany({
+      where: { isListed: true, kycStatus: 'APPROVED', user: { status: 'ACTIVE' } },
+      select: { id: true, updatedAt: true },
+    });
+    return rows.map((r) => ({ id: r.id, updatedAt: r.updatedAt.toISOString() }));
+  }
 }

@@ -14,6 +14,10 @@ export const generateStaticParams = () => FEATURED_CATEGORIES.flatMap((c) => FEA
 
 type Params = { category: string; city: string };
 
+const load = (category: string, city: string) =>
+  safe(serverApi(600).companions.search({ category, city, sort: 'recommended', pageSize: 12 }), null);
+const NONE = { items: [], total: 0, page: 1, pageSize: 12 };
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const p = await params;
   const cat = categoryBySlug(p.category);
@@ -21,7 +25,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!cat || !city) return {};
   const copy = landingCopy(cat, city);
   const canonical = `/explore/${cat.slug}/${city.slug}`;
-  return { title: copy.title, description: copy.description, alternates: { canonical }, openGraph: { title: copy.title, description: copy.description, url: canonical } };
+  // no hosts here yet: keep it out of Google (thousands of empty pages read as low quality) until one joins
+  const empty = (await load(cat.slug, city.slug))?.total === 0; // not when the API is unreachable
+  return {
+    title: copy.title,
+    description: copy.description,
+    alternates: { canonical },
+    openGraph: { title: copy.title, description: copy.description, url: canonical },
+    ...(empty ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
 export default async function CategoryCityPage({ params }: { params: Promise<Params> }) {
@@ -29,14 +41,6 @@ export default async function CategoryCityPage({ params }: { params: Promise<Par
   const cat = categoryBySlug(p.category);
   const city = cityBySlug(p.city);
   if (!cat || !city) notFound();
-  const data = await safe(
-    serverApi(600).companions.search({
-      category: cat.slug,
-      city: city.slug,
-      sort: 'recommended',
-      pageSize: 12,
-    }),
-    { items: [], total: 0, page: 1, pageSize: 12 },
-  );
+  const data = (await load(cat.slug, city.slug)) ?? NONE;
   return <Landing cat={cat} city={city} data={data} />;
 }

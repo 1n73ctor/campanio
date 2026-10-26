@@ -240,6 +240,7 @@ export function createApiClient(opts: ClientOptions) {
       catalog: () => get<{ categories: Category[]; cities: City[]; languages: string[] }>('/meta/catalog'),
       pricing: () => get<{ connectionFee: number; gstPct: number; freeCancelHours: number; lateCancelRefundPct: number }>('/meta/pricing'),
       coverage: () => get<Record<string, Record<string, number>>>('/meta/coverage'),
+      hosts: () => get<{ id: string; updatedAt: string }[]>('/meta/hosts'),
       offers: () => get<OffersDto>('/meta/offers'),
       status: () => get<{ maintenance: boolean }>('/meta/status'),
     },
