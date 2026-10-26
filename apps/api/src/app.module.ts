@@ -31,6 +31,7 @@ import { PublicSafetyShareController, SafetyShareController } from './safety/saf
 import { ReferralsController } from './referrals/referrals.controller';
 import { KycService } from './kyc/kyc.service';
 import { MailModule } from './mail/mail.service';
+import { IndexNowService } from './seo/indexnow.service';
 import { PremiumService } from './premium/premium.service';
 import { AdminPremiumController, PremiumController } from './premium/premium.controller';
 import { DemoDigilockerController } from './kyc/demo-digilocker';
@@ -71,6 +72,6 @@ import { DemoDigilockerController } from './kyc/demo-digilocker';
     PublicSafetyShareController,
     DemoDigilockerController,
   ],
-  providers: [PremiumService, CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
+  providers: [IndexNowService, PremiumService, CompanionsService, KycService, AdminService, SafetyShareService, RealtimeGateway, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: MaintenanceGuard }],
 })
 export class AppModule {}
