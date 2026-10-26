@@ -18,6 +18,7 @@
     "db:rewrite-file-urls": "tsx prisma/rewrite-file-urls.ts",
     "photos:compress": "tsx prisma/compress-photos.ts",
     "photos:r2": "tsx prisma/move-photos-to-r2.ts",
+    "availability:merge": "tsx prisma/merge-availability.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "prisma studio"

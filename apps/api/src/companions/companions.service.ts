@@ -1,7 +1,7 @@
 import { blurredUrl } from '../files/uploads';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CompanionProfile, Prisma, User } from '@prisma/client';
-import { WEEKDAYS, type CompanionDetailDto, type CompanionDashboardDto, type Paginated, type CompanionCardDto } from '@companio/types';
+import { WEEKDAYS, type CompanionDetailDto, type CompanionDashboardDto, type Paginated, type CompanionCardDto, mergeSlots } from '@companio/types';
 import { PrismaService } from '../common/prisma.service';
 import { WalletLedger } from '../common/wallet-ledger.service';
 import {
@@ -170,7 +170,8 @@ export class CompanionsService {
       for (const s of slots) {
         if (!TIME.test(s?.from) || !TIME.test(s?.to) || s.from >= s.to) throw new BadRequestException(`Invalid time slot on ${day}`);
       }
-      clean[day] = slots.slice(0, 4).map((s) => ({ from: s.from, to: s.to }));
+      // repeated or overlapping slots are combined (10–18 twice + 10–20 → 10–20)
+      clean[day] = mergeSlots(slots.map((s) => ({ from: s.from, to: s.to }))).slice(0, 4);
     }
     const p = await this.prisma.companionProfile.update({ where: { userId }, data: { availability: JSON.stringify(clean) } });
     return toCompanionProfileDto(p);

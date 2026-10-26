@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { WEEKDAYS, type ApplyCompanionInput, type Availability } from '@companio/types';
+import { WEEKDAYS, nextSlot, type ApplyCompanionInput, type Availability } from '@companio/types';
 import { Button, Card, Input } from '@companio/ui';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { FullLoader, PageHeader } from '@/components/misc';
@@ -110,8 +110,8 @@ export default function CompanionProfilePage() {
                     </button>
                   </span>
                 ))}
-                {slots.length < 4 && (
-                  <Button size="sm" variant="white" onClick={() => setDay(d, [...slots, { from: '10:00', to: '18:00' }])}>
+                {slots.length < 4 && nextSlot(slots) && (
+                  <Button size="sm" variant="white" onClick={() => setDay(d, [...slots, nextSlot(slots)!])}>
                     + slot
                   </Button>
                 )}
@@ -119,7 +119,7 @@ export default function CompanionProfilePage() {
             );
           })}
         </div>
-        <Button loading={busy === 'avail'} onClick={() => run('avail', () => api.companion.setAvailability(avail), 'Availability saved')}>
+        <Button loading={busy === 'avail'} onClick={() => run('avail', async () => setAvail((await api.companion.setAvailability(avail)).availability), 'Availability saved')}>
           Save availability
         </Button>
       </Card>
