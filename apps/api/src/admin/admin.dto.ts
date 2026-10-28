@@ -125,8 +125,8 @@ export class SettingsDto {
 
 /** A host's public profile, as an admin may correct it (same limits as the host's own form). */
 export class AdminEditCompanionDto {
-  @IsOptional() @IsString() @Length(8, 90) headline?: string;
-  @IsOptional() @IsString() @Length(10, 1500) about?: string;
+  @IsOptional() @IsString() @Length(2, 90) headline?: string;
+  @IsOptional() @IsString() @Length(2, 1500) about?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(199) @Max(10000) hourlyRate?: number;
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsIn(CATEGORIES.map((c) => c.slug), { each: true }) categories?: string[];
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(6) @IsIn(LANGUAGES, { each: true }) languages?: string[];

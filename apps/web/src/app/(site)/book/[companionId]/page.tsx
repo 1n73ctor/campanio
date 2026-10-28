@@ -181,7 +181,7 @@ export default function BookPage({ params }: { params: Promise<{ companionId: st
               <p className="text-ink-mute">Calculating…</p>
             )}
           </Card>
-          <Button size="lg" className="w-full" loading={busy} disabled={!form.category || !form.date || !form.time || form.meetingPoint.trim().length < 4} onClick={submit}>
+          <Button size="lg" className="w-full" loading={busy} disabled={!form.category || !form.date || !form.time || form.meetingPoint.trim().length < 2} onClick={submit}>
             Continue to payment →
           </Button>
           <p className="text-center text-xs text-ink-mute">Full refund if {first} declines or doesn’t respond.</p>

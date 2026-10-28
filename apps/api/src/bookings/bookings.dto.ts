@@ -10,7 +10,7 @@ export class QuoteDto {
 export class CreateBookingDto extends QuoteDto {
   @IsIn(CATEGORIES.map((c) => c.slug)) category: string;
   @IsISO8601() startAt: string;
-  @IsString() @Length(4, 200) meetingPoint: string;
+  @IsString() @Length(2, 200) meetingPoint: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
