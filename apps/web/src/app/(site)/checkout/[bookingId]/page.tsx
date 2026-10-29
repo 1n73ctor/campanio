@@ -21,7 +21,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ bookingId: 
   const toast = useToast();
   const [b, setB] = useState<BookingDto | null>(null);
   const [balance, setBalance] = useState(0);
-  const [useWallet, setUseWallet] = useState(true);
+  const [useWallet, setUseWallet] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState<Extract<CheckoutResponse, { provider: 'mock' }> | null>(null);
   const [method, setMethod] = useState<'upi' | 'card'>('upi');

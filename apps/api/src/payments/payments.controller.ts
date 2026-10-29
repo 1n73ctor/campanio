@@ -39,7 +39,7 @@ export class PaymentsController {
   @Post('checkout')
   @HttpCode(200)
   checkout(@CurrentUser() user: User, @Body() dto: CheckoutDto) {
-    return this.svc.checkout(user, dto.bookingId, dto.useWallet ?? true);
+    return this.svc.checkout(user, dto.bookingId, dto.useWallet ?? false);
   }
 
   /** Companion registration fee (see CompanionFeeService). Confirm with POST /payments/verify like a booking. */
@@ -48,7 +48,7 @@ export class PaymentsController {
   @Post('companion-fee')
   @HttpCode(200)
   companionFee(@CurrentUser() user: User, @Body() dto: FeeCheckoutDto) {
-    return this.svc.checkoutCompanionFee(user, dto.useWallet ?? true);
+    return this.svc.checkoutCompanionFee(user, dto.useWallet ?? false);
   }
 
   /** Bonus offers this member can use when adding coins. */

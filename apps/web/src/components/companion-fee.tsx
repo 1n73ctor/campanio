@@ -18,7 +18,7 @@ export function useCompanionFee() {
   const toast = useToast();
   const [fee, setFee] = useState<CompanionFeeDto | null>(null);
   const [balance, setBalance] = useState(0);
-  const [useWallet, setUseWallet] = useState(true);
+  const [useWallet, setUseWallet] = useState(false);
   const [mock, setMock] = useState<{ orderId: string; amount: number } | null>(null);
   const [mockBusy, setMockBusy] = useState(false);
   const settle = useRef<((paid: boolean) => void) | null>(null);
